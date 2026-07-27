@@ -43,7 +43,8 @@ class _GuruMapelPageState extends State<GuruMapelPage> {
       }
     }
     switch (_shellTab) {
-      case 1: return const ProfilPageGuru();
+      case 1: return _buildActivityPage();
+      case 2: return const ProfilPageGuru();
       default: return DashboardPageGuru(onFeatureTap: _openFeature, onLogout: _logout);
     }
   }
@@ -81,9 +82,10 @@ class _GuruMapelPageState extends State<GuruMapelPage> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _shellTab,
         onDestinationSelected: (i) { setState(() { _shellTab = i; _activeFeature = null; }); },
-        destinations: [
-          const NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
-          const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profil'),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
+          NavigationDestination(icon: Icon(Icons.timeline), label: 'Aktivitas'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
     );
@@ -96,9 +98,10 @@ class _GuruMapelPageState extends State<GuruMapelPage> {
           selectedIndex: _shellTab,
           onDestinationSelected: (i) { setState(() { _shellTab = i; _activeFeature = null; }); },
           labelType: NavigationRailLabelType.all,
-          destinations: [
-            const NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Dashboard')),
-            const NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profil')),
+          destinations: const [
+            NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Dashboard')),
+            NavigationRailDestination(icon: Icon(Icons.timeline), label: Text('Aktivitas')),
+            NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profil')),
           ],
         ),
         const VerticalDivider(width: 1),
@@ -150,9 +153,10 @@ class _GuruMapelPageState extends State<GuruMapelPage> {
               tooltip: 'Logout',
             ),
           ),
-          destinations: [
-            const NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Dashboard')),
-            const NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profil')),
+          destinations: const [
+            NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Dashboard')),
+            NavigationRailDestination(icon: Icon(Icons.timeline), label: Text('Aktivitas')),
+            NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profil')),
           ],
         ),
         const VerticalDivider(width: 1),
@@ -174,5 +178,9 @@ class _GuruMapelPageState extends State<GuruMapelPage> {
           : _currentPage()),
       ],
     );
+  }
+
+  Widget _buildActivityPage() {
+    return const Center(child: Text('Aktivitas', style: TextStyle(fontSize: 16, color: Colors.grey)));
   }
 }

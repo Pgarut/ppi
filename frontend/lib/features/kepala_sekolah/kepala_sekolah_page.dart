@@ -2,12 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import 'dashboard/dashboard_page_ks.dart';
-import 'jadwal/jadwal_page_ks.dart';
-import 'absensi/absensi_page_ks.dart';
-import 'nilai/nilai_page_ks.dart';
-import 'rapor/rapor_page_ks.dart';
-import 'bk/bk_page_ks.dart';
 import 'laporan/laporan_page_ks.dart';
+import 'bk/bk_page_ks.dart';
 
 class KepalaSekolahPage extends StatefulWidget {
   const KepalaSekolahPage({super.key});
@@ -31,12 +27,8 @@ class _KepalaSekolahPageState extends State<KepalaSekolahPage> {
   Widget _currentPage() {
     if (_activeFeature != null) {
       switch (_activeFeature) {
-        case 'jadwal': return const JadwalPageKS();
-        case 'absensi': return const AbsensiPageKS();
-        case 'nilai': return const NilaiPageKS();
-        case 'rapor': return const RaporPageKS();
-        case 'bk': return const BKPageKS();
         case 'laporan': return const LaporanPageKS();
+        case 'monitoring': return const BKPageKS();
         default: return DashboardPageKS(onFeatureTap: _openFeature, onLogout: _logout);
       }
     }
@@ -80,10 +72,10 @@ class _KepalaSekolahPageState extends State<KepalaSekolahPage> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _shellTab,
         onDestinationSelected: (i) { setState(() { _shellTab = i; _activeFeature = null; }); },
-        destinations: [
-          const NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
-          NavigationDestination(icon: const Icon(Icons.timeline), label: 'Aktivitas'),
-          const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profil'),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
+          NavigationDestination(icon: Icon(Icons.timeline), label: 'Aktivitas'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
     );
@@ -96,10 +88,10 @@ class _KepalaSekolahPageState extends State<KepalaSekolahPage> {
           selectedIndex: _shellTab,
           onDestinationSelected: (i) { setState(() { _shellTab = i; _activeFeature = null; }); },
           labelType: NavigationRailLabelType.all,
-          destinations: [
-            const NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Dashboard')),
-            NavigationRailDestination(icon: const Icon(Icons.timeline), label: const Text('Aktivitas')),
-            const NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profil')),
+          destinations: const [
+            NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Dashboard')),
+            NavigationRailDestination(icon: Icon(Icons.timeline), label: Text('Aktivitas')),
+            NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profil')),
           ],
         ),
         const VerticalDivider(width: 1),
@@ -151,10 +143,10 @@ class _KepalaSekolahPageState extends State<KepalaSekolahPage> {
               tooltip: 'Logout',
             ),
           ),
-          destinations: [
-            const NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Dashboard')),
-            NavigationRailDestination(icon: const Icon(Icons.timeline), label: const Text('Aktivitas')),
-            const NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profil')),
+          destinations: const [
+            NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Dashboard')),
+            NavigationRailDestination(icon: Icon(Icons.timeline), label: Text('Aktivitas')),
+            NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profil')),
           ],
         ),
         const VerticalDivider(width: 1),
