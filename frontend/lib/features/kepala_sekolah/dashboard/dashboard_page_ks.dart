@@ -37,7 +37,7 @@ class _DashboardPageKSState extends State<DashboardPageKS> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Dashboard Kepala Sekolah', style: Theme.of(context).textTheme.headlineSmall),
+        Text('Dashboard Kepala Madrasah (Kamad)', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 16),
         Wrap(
           spacing: 16, runSpacing: 16,

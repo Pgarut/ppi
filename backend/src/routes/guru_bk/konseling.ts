@@ -23,6 +23,8 @@ export async function handleKonselingBK(request: Request, env: Env, user: UserPa
       const body = await request.json() as Record<string, unknown>;
       const { siswa_id, tanggal, jam, jenis } = body;
       if (!tanggal || !jenis) return badRequest('tanggal dan jenis wajib diisi');
+      const validJenis = ['individu', 'kelompok', 'online'];
+      if (!validJenis.includes(jenis as string)) return badRequest('jenis harus individu, kelompok, atau online');
       const result = await env.DB.prepare(
         'INSERT INTO jadwal_konseling (siswa_id, guru_bk_id, tanggal, jam, jenis) VALUES (?, ?, ?, ?, ?)'
       ).bind(siswa_id || null, user.guru_id, tanggal, jam || null, jenis).run();
@@ -38,7 +40,17 @@ export async function handleKonselingBK(request: Request, env: Env, user: UserPa
       const setClauses: string[] = [];
       const vals: unknown[] = [];
       for (const f of ['siswa_id', 'tanggal', 'jam', 'jenis', 'status']) {
-        if (body[f] !== undefined) { setClauses.push(`${f} = ?`); vals.push(body[f]); }
+        if (body[f] !== undefined) {
+          if (f === 'jenis') {
+            const validJenis = ['individu', 'kelompok', 'online'];
+            if (!validJenis.includes(body[f] as string)) return badRequest('jenis harus individu, kelompok, atau online');
+          }
+          if (f === 'status') {
+            const validStatus = ['dijadwalkan', 'selesai', 'dibatalkan'];
+            if (!validStatus.includes(body[f] as string)) return badRequest('status harus dijadwalkan, selesai, atau dibatalkan');
+          }
+          setClauses.push(`${f} = ?`); vals.push(body[f]);
+        }
       }
       if (setClauses.length === 0) return badRequest('Tidak ada field diupdate');
       vals.push(id);
@@ -126,6 +138,8 @@ export async function handleKonselingBK(request: Request, env: Env, user: UserPa
       const body = await request.json() as Record<string, unknown>;
       const { siswa_id, jenis, deskripsi, catatan_pengembangan } = body;
       if (!siswa_id || !jenis || !deskripsi) return badRequest('siswa_id, jenis, deskripsi wajib diisi');
+      const validJenisBM = ['akademik', 'olahraga', 'seni', 'keagamaan', 'organisasi', 'lainnya'];
+      if (!validJenisBM.includes(jenis as string)) return badRequest('jenis bakat minat tidak valid');
       const result = await env.DB.prepare(
         'INSERT INTO bakat_minat (siswa_id, jenis, deskripsi, catatan_pengembangan, guru_bk_id) VALUES (?, ?, ?, ?, ?)'
       ).bind(siswa_id, jenis, deskripsi, catatan_pengembangan || null, user.guru_id).run();
@@ -141,7 +155,13 @@ export async function handleKonselingBK(request: Request, env: Env, user: UserPa
       const setClauses: string[] = [];
       const vals: unknown[] = [];
       for (const f of ['jenis', 'deskripsi', 'catatan_pengembangan']) {
-        if (body[f] !== undefined) { setClauses.push(`${f} = ?`); vals.push(body[f]); }
+        if (body[f] !== undefined) {
+          if (f === 'jenis') {
+            const validJenisBM = ['akademik', 'olahraga', 'seni', 'keagamaan', 'organisasi', 'lainnya'];
+            if (!validJenisBM.includes(body[f] as string)) return badRequest('jenis bakat minat tidak valid');
+          }
+          setClauses.push(`${f} = ?`); vals.push(body[f]);
+        }
       }
       if (setClauses.length === 0) return badRequest('Tidak ada field diupdate');
       vals.push(id);

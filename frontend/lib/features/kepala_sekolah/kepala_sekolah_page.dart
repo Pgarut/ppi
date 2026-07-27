@@ -41,7 +41,7 @@ class _KepalaSekolahPageState extends State<KepalaSekolahPage> {
   @override
   Widget build(BuildContext context) {
     return AcademicShell(
-      title: 'Kepala Sekolah',
+      title: 'Kepala Madrasah (Kamad)',
       currentIndex: _currentIndex,
       onNavigate: (i) => setState(() => _currentIndex = i),
       menuItems: _menuItems,

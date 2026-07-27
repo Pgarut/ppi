@@ -34,4 +34,15 @@ class UserModel {
   bool get isWakilKurikulum => role == 'wakil_kurikulum';
   bool get isGuru => role == 'guru_mapel_wali_kelas';
   bool get isGuruBk => role == 'guru_bk';
+
+  static String roleDisplayName(String role) {
+    switch (role) {
+      case 'admin': return 'Admin';
+      case 'kepala_sekolah': return 'Kepala Madrasah (Kamad)';
+      case 'wakil_kurikulum': return 'Wakil Kurikulum';
+      case 'guru_mapel_wali_kelas': return 'Guru Mapel / Wali Kelas';
+      case 'guru_bk': return 'Guru BK';
+      default: return role;
+    }
+  }
 }

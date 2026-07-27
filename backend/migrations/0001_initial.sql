@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS absensi_guru (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     guru_id   INTEGER NOT NULL REFERENCES guru(id),
     tanggal   TEXT NOT NULL,
-    status    TEXT NOT NULL CHECK (status IN ('hadir','sakit','izin','alfa')),
+    status    TEXT NOT NULL CHECK (status IN ('hadir','sakit','izin','alpa')),
     keterangan TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(guru_id, tanggal)
@@ -288,12 +288,12 @@ CREATE TABLE IF NOT EXISTS jadwal_konseling (
 
 CREATE TABLE IF NOT EXISTS konseling (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    jadwal_id INTEGER REFERENCES jadwal_konseling(id),
     siswa_id  INTEGER NOT NULL REFERENCES siswa(id),
+    guru_bk_id INTEGER NOT NULL REFERENCES guru(id),
     tanggal   TEXT NOT NULL,
-    jenis     TEXT NOT NULL CHECK (jenis IN ('individu','kelompok','online')),
     catatan   TEXT,
     tindak_lanjut TEXT,
-    guru_bk_id INTEGER REFERENCES guru(id),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -302,7 +302,8 @@ CREATE TABLE IF NOT EXISTS bakat_minat (
     siswa_id  INTEGER NOT NULL REFERENCES siswa(id),
     jenis     TEXT NOT NULL CHECK (jenis IN ('akademik','olahraga','seni','keagamaan','organisasi','lainnya')),
     deskripsi TEXT,
-    catatan_guru TEXT,
+    catatan_pengembangan TEXT,
+    guru_bk_id INTEGER NOT NULL REFERENCES guru(id),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/admin_service.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
+import '../../../shared/models/user_model.dart';
 
 class PengaturanPage extends StatefulWidget {
   const PengaturanPage({super.key});
@@ -103,7 +104,7 @@ class _UsersTabState extends State<_UsersTab> {
                 value: roleCtrl.text,
                 decoration: const InputDecoration(labelText: 'Role', border: OutlineInputBorder()),
                 items: const ['admin', 'kepala_sekolah', 'wakil_kurikulum', 'guru_mapel_wali_kelas', 'guru_bk']
-                    .map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                    .map((r) => DropdownMenuItem(value: r, child: Text(UserModel.roleDisplayName(r)))).toList(),
                 onChanged: (v) { roleCtrl.text = v ?? ''; setD(() {}); },
               ),
               const SizedBox(height: 12),
@@ -166,7 +167,7 @@ class _UsersTabState extends State<_UsersTab> {
                   return Card(
                     child: ListTile(
                       title: Text(u['username']?.toString() ?? ''),
-                      subtitle: Text('Role: ${u['role']} | Aktif: ${u['is_active'] == 1 ? 'Ya' : 'Tidak'}'),
+                      subtitle: Text('Role: ${UserModel.roleDisplayName(u['role']?.toString() ?? '')} | Aktif: ${u['is_active'] == 1 ? 'Ya' : 'Tidak'}'),
                       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                         IconButton(icon: const Icon(Icons.edit_outlined, size: 18), onPressed: () => _showForm(edit: u)),
                         IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red), onPressed: () => _delete(u['id'] as int)),
@@ -214,7 +215,7 @@ class _HakAksesTabState extends State<_HakAksesTab> {
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Role', border: OutlineInputBorder()),
               items: const ['admin', 'kepala_sekolah', 'wakil_kurikulum', 'guru_mapel_wali_kelas', 'guru_bk']
-                  .map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                  .map((r) => DropdownMenuItem(value: r, child: Text(UserModel.roleDisplayName(r)))).toList(),
               onChanged: (v) { roleCtrl.text = v ?? ''; setD(() {}); },
             ),
             const SizedBox(height: 12),
@@ -271,7 +272,7 @@ class _HakAksesTabState extends State<_HakAksesTab> {
                 itemBuilder: (_, i) {
                   final item = _items[i];
                   return Card(child: ListTile(
-                    title: Text('${item['role']} — ${item['modul']} — ${item['aksi']}'),
+                    title: Text('${UserModel.roleDisplayName(item['role']?.toString() ?? '')} — ${item['modul']} — ${item['aksi']}'),
                     trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
                         onPressed: () => _delete(item['id'] as int)),
                   ));
