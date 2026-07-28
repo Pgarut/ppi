@@ -60,29 +60,29 @@ INSERT OR IGNORE INTO ruangan (id, nama, kapasitas) VALUES
   (8, 'Perpustakaan', 20);
 
 -- Mata Pelajaran
-INSERT OR IGNORE INTO mata_pelajaran (id, nama, kode, jenjang) VALUES
-  (1,  'Matematika',          'MTK',   'MA/MTs'),
-  (2,  'Bahasa Indonesia',    'BIN',   'MA/MTs'),
-  (3,  'Bahasa Inggris',      'BING',  'MA/MTs'),
-  (4,  'Pendidikan Agama Islam', 'PAI', 'MA/MTs'),
-  (5,  'PKN',                 'PKN',   'MA/MTs'),
-  (6,  'IPA Terpadu',         'IPA',   'MTs'),
-  (7,  'IPS Terpadu',         'IPS',   'MTs'),
-  (8,  'Seni Budaya',         'SB',    'MA/MTs'),
-  (9,  'Penjasorkes',         'PJOK',  'MA/MTs'),
-  (10, 'Prakarya',            'PKWU',  'MA/MTs'),
-  (11, 'Fisika',              'FIS',   'MA'),
-  (12, 'Kimia',               'KIM',   'MA'),
-  (13, 'Biologi',             'BIO',   'MA'),
-  (14, 'Ekonomi',             'EKO',   'MA'),
-  (15, 'Sejarah',             'SJRH',  'MA'),
-  (16, 'Geografi',            'GEO',   'MA'),
-  (17, 'Sosiologi',           'SOS',   'MA'),
-  (18, 'Bahasa Arab',         'ARAB',  'MA/MTs'),
-  (19, 'Qur''an Hadits',      'QH',    'MA/MTs'),
-  (20, 'Akidah Akhlak',       'AA',    'MA/MTs'),
-  (21, 'Fiqih',               'FIQ',   'MA/MTs'),
-  (22, 'SKI',                 'SKI',   'MA/MTs');
+INSERT OR IGNORE INTO mata_pelajaran (id, nama, kode) VALUES
+  (1,  'Matematika',          'MTK'),
+  (2,  'Bahasa Indonesia',    'BIN'),
+  (3,  'Bahasa Inggris',      'BING'),
+  (4,  'Pendidikan Agama Islam', 'PAI'),
+  (5,  'PKN',                 'PKN'),
+  (6,  'IPA Terpadu',         'IPA'),
+  (7,  'IPS Terpadu',         'IPS'),
+  (8,  'Seni Budaya',         'SB'),
+  (9,  'Penjasorkes',         'PJOK'),
+  (10, 'Prakarya',            'PKWU'),
+  (11, 'Fisika',              'FIS'),
+  (12, 'Kimia',               'KIM'),
+  (13, 'Biologi',             'BIO'),
+  (14, 'Ekonomi',             'EKO'),
+  (15, 'Sejarah',             'SJRH'),
+  (16, 'Geografi',            'GEO'),
+  (17, 'Sosiologi',           'SOS'),
+  (18, 'Bahasa Arab',         'ARAB'),
+  (19, 'Qur''an Hadits',      'QH'),
+  (20, 'Akidah Akhlak',       'AA'),
+  (21, 'Fiqih',               'FIQ'),
+  (22, 'SKI',                 'SKI');
 
 -- Guru
 INSERT OR IGNORE INTO guru (id, nip, nama, jenis_kelamin, no_hp, jabatan, status_aktif) VALUES

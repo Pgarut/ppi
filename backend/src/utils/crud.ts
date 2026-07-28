@@ -36,13 +36,13 @@ export async function list(env: Env, cfg: CrudConfig, url: URL, user: UserPayloa
     }
   }
 
-  // Support filter params: ?jabatan=wali_kelas
+  // Support filter params: ?jabatan=wali_kelas (uses LIKE for comma-separated multi-value fields)
   for (const key of cfg.filterFields || []) {
     const val = url.searchParams.get(key);
     if (val) {
       const prefix = where ? ' AND' : 'WHERE';
-      where += `${prefix} ${key} = ?`;
-      bindings.push(val);
+      where += `${prefix} ${key} LIKE ?`;
+      bindings.push(`%${val}%`);
     }
   }
 

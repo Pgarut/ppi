@@ -32,26 +32,6 @@ class AdminService {
     await ApiClient.delete('/admin/$resource/$id');
   }
 
-  static Future<Map<String, dynamic>> getUsers({int page = 1, int perPage = 20, String? search}) async {
-    final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
-    if (search != null && search.isNotEmpty) params['search'] = search;
-    final res = await ApiClient.get('/admin/users', queryParams: params);
-    return res['data'] as Map<String, dynamic>;
-  }
-
-  static Future<Map<String, dynamic>> createUser(Map<String, dynamic> body) async {
-    final res = await ApiClient.post('/admin/users', body: body);
-    return res['data'] as Map<String, dynamic>;
-  }
-
-  static Future<void> updateUser(int id, Map<String, dynamic> body) async {
-    await ApiClient.put('/admin/users/$id', body: body);
-  }
-
-  static Future<void> deleteUser(int id) async {
-    await ApiClient.delete('/admin/users/$id');
-  }
-
   static Future<List<dynamic>> getHakAkses() async {
     final res = await ApiClient.get('/admin/hak-akses');
     return res['data'] as List<dynamic>;
@@ -97,6 +77,21 @@ class AdminService {
     return res['data'] as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> getAnalisisAbsensi({String? tanggalMulai, String? tanggalSelesai, String? kelasId}) async {
+    final params = <String, String>{};
+    if (tanggalMulai != null) params['tanggal_mulai'] = tanggalMulai;
+    if (tanggalSelesai != null) params['tanggal_selesai'] = tanggalSelesai;
+    if (kelasId != null) params['kelas_id'] = kelasId;
+    final res = await ApiClient.get('/admin/absensi/analisis', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getAuditAbsensi({int page = 1, int perPage = 20}) async {
+    final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
+    final res = await ApiClient.get('/admin/absensi/audit', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
+  }
+
   static Future<Map<String, dynamic>> getRekapAbsensi({String? tanggalMulai, String? tanggalSelesai, String? kelasId}) async {
     final params = <String, String>{};
     if (tanggalMulai != null) params['tanggal_mulai'] = tanggalMulai;
@@ -122,6 +117,20 @@ class AdminService {
     await ApiClient.put('/admin/nilai/$id/validasi');
   }
 
+  static Future<Map<String, dynamic>> getAnalisisNilai({required String semesterId, String? kelasId, String? jenis}) async {
+    final params = <String, String>{'semester_id': semesterId};
+    if (kelasId != null) params['kelas_id'] = kelasId;
+    if (jenis != null) params['jenis'] = jenis;
+    final res = await ApiClient.get('/admin/nilai/analisis', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getAuditNilai({int page = 1, int perPage = 20}) async {
+    final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
+    final res = await ApiClient.get('/admin/nilai/audit', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
+  }
+
   // ── Rapor ──
   static Future<Map<String, dynamic>> getRapor({int page = 1, int perPage = 20, String? kelasId, String? semesterId, String? statusKirim}) async {
     final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
@@ -140,6 +149,34 @@ class AdminService {
     final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
     final res = await ApiClient.get('/admin/rapor/arsip', queryParams: params);
     return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getAnalisisRapor({required String semesterId, String? kelasId}) async {
+    final params = <String, String>{'semester_id': semesterId};
+    if (kelasId != null) params['kelas_id'] = kelasId;
+    final res = await ApiClient.get('/admin/rapor/analisis', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getReferensi() async {
+    final res = await ApiClient.get('/referensi');
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getAuditRapor({int page = 1, int perPage = 20}) async {
+    final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
+    final res = await ApiClient.get('/admin/rapor/audit', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  // ── Profil Sekolah ──
+  static Future<Map<String, dynamic>> getProfil() async {
+    final res = await ApiClient.get('/admin/profil');
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<void> updateProfil(Map<String, String> body) async {
+    await ApiClient.put('/admin/profil', body: body);
   }
 
   // ── Pengaturan Tampilan Login ──

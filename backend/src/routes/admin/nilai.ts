@@ -60,5 +60,90 @@ export async function handleAdminNilai(request: Request, env: Env, user: UserPay
     return success({ id, status_validasi: 'tervalidasi' });
   }
 
+  // GET /api/admin/nilai/analisis - analisis nilai
+  if (subPath === '/analisis' && request.method === 'GET') {
+    const semesterId = url.searchParams.get('semester_id') || '';
+    const kelasId = url.searchParams.get('kelas_id') || '';
+    const jenis = url.searchParams.get('jenis') || '';
+
+    if (!semesterId) return badRequest('semester_id wajib diisi');
+
+    let filter = '';
+    const bindings: unknown[] = [parseInt(semesterId)];
+    if (kelasId) { filter += ' AND n.kelas_id = ?'; bindings.push(parseInt(kelasId)); }
+    if (jenis) { filter += ' AND n.jenis = ?'; bindings.push(jenis); }
+
+    // Per mapel
+    const perMapel = await env.DB.prepare(
+      `SELECT mp.nama as mapel_nama,
+              ROUND(AVG(n.nilai), 2) as avg_nilai,
+              COUNT(*) as count
+       FROM nilai n
+       LEFT JOIN mata_pelajaran mp ON n.mata_pelajaran_id = mp.id
+       WHERE n.semester_id = ?${filter}
+       GROUP BY n.mata_pelajaran_id
+       ORDER BY avg_nilai DESC`
+    ).bind(...bindings).all();
+
+    // Per kelas
+    const perKelas = await env.DB.prepare(
+      `SELECT k.nama as kelas_nama,
+              ROUND(AVG(n.nilai), 2) as avg_nilai,
+              COUNT(*) as count,
+              COUNT(DISTINCT n.siswa_id) as jumlah_siswa
+       FROM nilai n
+       LEFT JOIN kelas k ON n.kelas_id = k.id
+       WHERE n.semester_id = ?${filter}
+       GROUP BY n.kelas_id
+       ORDER BY k.nama`
+    ).bind(...bindings).all();
+
+    // Per jenis
+    const perJenis = await env.DB.prepare(
+      `SELECT n.jenis,
+              ROUND(AVG(n.nilai), 2) as avg_nilai,
+              COUNT(*) as count
+       FROM nilai n
+       WHERE n.semester_id = ?${filter}
+       GROUP BY n.jenis
+       ORDER BY n.jenis`
+    ).bind(...bindings).all();
+
+    // Overview
+    const overview = await env.DB.prepare(
+      `SELECT COUNT(*) as total_entries,
+              COUNT(DISTINCT n.siswa_id) as total_siswa,
+              COUNT(DISTINCT n.mata_pelajaran_id) as total_mapel,
+              ROUND(AVG(n.nilai), 2) as rata_rata,
+              MAX(n.nilai) as nilai_tertinggi,
+              MIN(n.nilai) as nilai_terendah
+       FROM nilai n
+       WHERE n.semester_id = ?${filter}`
+    ).bind(...bindings).first();
+
+    return success({ per_mapel: perMapel.results, per_kelas: perKelas.results, per_jenis: perJenis.results, overview });
+  }
+
+  // GET /api/admin/nilai/audit - audit trail nilai
+  if (subPath === '/audit' && request.method === 'GET') {
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
+    const perPage = Math.min(100, parseInt(url.searchParams.get('per_page') || '20'));
+    const offset = (page - 1) * perPage;
+
+    const total = (await env.DB.prepare(
+      "SELECT COUNT(*) as total FROM log_aktivitas WHERE modul = 'nilai'"
+    ).first<{ total: number }>())?.total || 0;
+
+    const rows = await env.DB.prepare(
+      `SELECT la.*, u.username
+       FROM log_aktivitas la
+       LEFT JOIN users u ON la.user_id = u.id
+       WHERE la.modul = 'nilai'
+       ORDER BY la.created_at DESC LIMIT ? OFFSET ?`
+    ).bind(perPage, offset).all();
+
+    return success({ items: rows.results, pagination: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) } });
+  }
+
   return badRequest('Endpoint tidak dikenal');
 }

@@ -84,10 +84,16 @@ CREATE TABLE ruangan (
 );
 
 CREATE TABLE mata_pelajaran (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    nama    TEXT NOT NULL,
-    kode    TEXT UNIQUE,
-    jenjang TEXT CHECK (jenjang IN ('MTs','MA','Keduanya'))
+    id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    nama TEXT NOT NULL,
+    kode TEXT UNIQUE
+);
+
+CREATE TABLE mapel_kelas (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    mata_pelajaran_id INTEGER NOT NULL REFERENCES mata_pelajaran(id) ON DELETE CASCADE,
+    kelas_id          INTEGER NOT NULL REFERENCES kelas(id) ON DELETE CASCADE,
+    UNIQUE(mata_pelajaran_id, kelas_id)
 );
 
 CREATE TABLE guru (
@@ -97,12 +103,23 @@ CREATE TABLE guru (
     jenis_kelamin   TEXT CHECK (jenis_kelamin IN ('L','P')),
     no_hp           TEXT,
     email           TEXT,
-    jabatan         TEXT CHECK (jabatan IN (
-                        'guru_mapel','wali_kelas','guru_bk',
-                        'wakil_kurikulum','kepala_sekolah'
-                    )),
+    jabatan         TEXT,
     status_aktif    INTEGER NOT NULL DEFAULT 1,
     created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE guru_mapel (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    guru_id           INTEGER NOT NULL REFERENCES guru(id) ON DELETE CASCADE,
+    mata_pelajaran_id INTEGER NOT NULL REFERENCES mata_pelajaran(id) ON DELETE CASCADE,
+    UNIQUE(guru_id, mata_pelajaran_id)
+);
+
+CREATE TABLE guru_kelas (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    guru_id  INTEGER NOT NULL REFERENCES guru(id) ON DELETE CASCADE,
+    kelas_id INTEGER NOT NULL REFERENCES kelas(id) ON DELETE CASCADE,
+    UNIQUE(guru_id, kelas_id)
 );
 
 CREATE TABLE kelas (

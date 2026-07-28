@@ -85,5 +85,81 @@ export async function handleAdminRapor(request: Request, env: Env, user: UserPay
     return success({ items: rows.results, pagination: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) } });
   }
 
+  // GET /api/admin/rapor/analisis - analisis rapor
+  if (subPath === '/analisis' && request.method === 'GET') {
+    const semesterId = url.searchParams.get('semester_id') || '';
+    const kelasId = url.searchParams.get('kelas_id') || '';
+
+    if (!semesterId) return badRequest('semester_id wajib diisi');
+
+    let filterKelas = '';
+    const bindings: unknown[] = [parseInt(semesterId)];
+    if (kelasId) { filterKelas = ' AND nr.kelas_id = ?'; bindings.push(parseInt(kelasId)); }
+
+    // Per mapel
+    const perMapel = await env.DB.prepare(
+      `SELECT mp.nama as mapel_nama,
+              ROUND(AVG(nr.nilai_akhir), 2) as avg_nilai,
+              COUNT(*) as count,
+              SUM(CASE WHEN nr.predikat = 'A' THEN 1 ELSE 0 END) as predikat_a,
+              SUM(CASE WHEN nr.predikat = 'B' THEN 1 ELSE 0 END) as predikat_b,
+              SUM(CASE WHEN nr.predikat = 'C' THEN 1 ELSE 0 END) as predikat_c,
+              SUM(CASE WHEN nr.predikat = 'D' THEN 1 ELSE 0 END) as predikat_d
+       FROM nilai_rapor nr
+       LEFT JOIN mata_pelajaran mp ON nr.mata_pelajaran_id = mp.id
+       WHERE nr.semester_id = ?${filterKelas}
+       GROUP BY nr.mata_pelajaran_id
+       ORDER BY avg_nilai DESC`
+    ).bind(...bindings).all();
+
+    // Per kelas
+    const perKelas = await env.DB.prepare(
+      `SELECT k.nama as kelas_nama,
+              ROUND(AVG(nr.nilai_akhir), 2) as avg_nilai,
+              COUNT(*) as count,
+              COUNT(DISTINCT nr.siswa_id) as jumlah_siswa
+       FROM nilai_rapor nr
+       LEFT JOIN kelas k ON nr.kelas_id = k.id
+       WHERE nr.semester_id = ?${filterKelas}
+       GROUP BY nr.kelas_id
+       ORDER BY k.nama`
+    ).bind(...bindings).all();
+
+    // Overview
+    const overview = await env.DB.prepare(
+      `SELECT COUNT(*) as total_entries,
+              COUNT(DISTINCT nr.siswa_id) as total_siswa,
+              COUNT(DISTINCT nr.mata_pelajaran_id) as total_mapel,
+              ROUND(AVG(nr.nilai_akhir), 2) as rata_rata,
+              MAX(nr.nilai_akhir) as nilai_tertinggi,
+              MIN(nr.nilai_akhir) as nilai_terendah
+       FROM nilai_rapor nr
+       WHERE nr.semester_id = ?${filterKelas}`
+    ).bind(...bindings).first();
+
+    return success({ per_mapel: perMapel.results, per_kelas: perKelas.results, overview });
+  }
+
+  // GET /api/admin/rapor/audit - audit trail rapor
+  if (subPath === '/audit' && request.method === 'GET') {
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
+    const perPage = Math.min(100, parseInt(url.searchParams.get('per_page') || '20'));
+    const offset = (page - 1) * perPage;
+
+    const total = (await env.DB.prepare(
+      "SELECT COUNT(*) as total FROM log_aktivitas WHERE modul = 'rapor'"
+    ).first<{ total: number }>())?.total || 0;
+
+    const rows = await env.DB.prepare(
+      `SELECT la.*, u.username
+       FROM log_aktivitas la
+       LEFT JOIN users u ON la.user_id = u.id
+       WHERE la.modul = 'rapor'
+       ORDER BY la.created_at DESC LIMIT ? OFFSET ?`
+    ).bind(perPage, offset).all();
+
+    return success({ items: rows.results, pagination: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) } });
+  }
+
   return badRequest('Endpoint tidak dikenal');
 }

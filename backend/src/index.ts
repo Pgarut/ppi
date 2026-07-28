@@ -3,10 +3,10 @@ import { authMiddleware, generateToken, generateRefreshToken, verifyRefreshToken
 import { generalRateLimit, bruteForceCheck, bruteForceRecordFailure, bruteForceRecordSuccess } from './middleware/rate_limit';
 import { Env, Role, UserPayload } from './types';
 import { json, success, error, unauthorized, cors, setCorsOrigin, resolveCorsOrigin } from './utils/response';
-import { handleAdminMasterData } from './routes/admin/master_data';
+import { handleAdminMasterData, handleMapelKelas, handleGuruMapelAmpu, handleGuruKelasAmpu, handleWaliKelasList, handleGuruBKList, handleSiswaTemplate, handleSiswaPreview, handleSiswaBulk, handleMapelTemplate, handleMapelPreview, handleMapelBulk, handleGuruTemplate, handleGuruPreview, handleGuruBulk } from './routes/admin/master_data';
 import { handleAdminUsers, handleHakAkses } from './routes/admin/users';
 import { handleBackup, handleRestore, handleLogAktivitas } from './routes/admin/system';
-import { handlePengaturanTampilan } from './routes/admin/pengaturan_tampilan';
+import { handlePengaturanTampilan, handleProfilSekolah } from './routes/admin/pengaturan_tampilan';
 import { handleDashboard } from './routes/admin/dashboard';
 import { handleAdminAbsensi } from './routes/admin/absensi';
 import { handleAdminNilai } from './routes/admin/nilai';
@@ -81,10 +81,64 @@ export default {
 
         const subPath = pathParts.slice(2).join('/');
 
+        // Mapel bulk endpoints (before master CRUD to avoid capture)
+        if (subPath === 'mata-pelajaran/template' && request.method === 'GET') {
+          return handleMapelTemplate(request, env);
+        }
+        if (subPath === 'mata-pelajaran/preview' && request.method === 'POST') {
+          return handleMapelPreview(request, env);
+        }
+        if (subPath === 'mata-pelajaran/bulk' && request.method === 'POST') {
+          return handleMapelBulk(request, env, user);
+        }
+
+        // Guru bulk endpoints (before master CRUD to avoid capture)
+        if (subPath === 'guru/template' && request.method === 'GET') {
+          return handleGuruTemplate(request, env);
+        }
+        if (subPath === 'guru/preview' && request.method === 'POST') {
+          return handleGuruPreview(request, env);
+        }
+        if (subPath === 'guru/bulk' && request.method === 'POST') {
+          return handleGuruBulk(request, env, user);
+        }
+
+        // Siswa bulk endpoints (before master CRUD to avoid capture)
+        if (subPath === 'siswa/template' && request.method === 'GET') {
+          return handleSiswaTemplate(env);
+        }
+        if (subPath === 'siswa/preview' && request.method === 'POST') {
+          return handleSiswaPreview(request, env);
+        }
+        if (subPath === 'siswa/bulk' && request.method === 'POST') {
+          return handleSiswaBulk(request, env, user);
+        }
+
         // Master data CRUD: /api/admin/:resource or /api/admin/:resource/:id
         const masterResources = ['tahun-ajaran', 'semester', 'jurusan', 'tingkat', 'kelas', 'mata-pelajaran', 'guru', 'siswa', 'ruangan'];
         if (masterResources.includes(pathParts[2] || '')) {
           return handleAdminMasterData(request, env, user, pathParts, url);
+        }
+
+        // Guru associations
+        if (subPath.startsWith('guru-mapel/')) {
+          return handleGuruMapelAmpu(request, env, user, pathParts);
+        }
+        if (subPath.startsWith('guru-kelas/')) {
+          return handleGuruKelasAmpu(request, env, user, pathParts);
+        }
+
+        // Wali Kelas & Guru BK list (read-only)
+        if (subPath === 'wali-kelas') {
+          return handleWaliKelasList(request, env, user);
+        }
+        if (subPath === 'guru-bk-list') {
+          return handleGuruBKList(request, env, user);
+        }
+
+        // Mapel-Kelas association
+        if (subPath.startsWith('mapel-kelas/')) {
+          return handleMapelKelas(request, env, user, pathParts);
         }
 
         // Users & Hak Akses
@@ -100,7 +154,8 @@ export default {
         if (subPath === 'backup') return handleBackup(request, env, user);
         if (subPath === 'restore') return handleRestore(request, env, user);
         if (subPath === 'log-aktivitas') return handleLogAktivitas(request, env, user, url);
-        if (subPath === 'pengaturan-tampilan') return handlePengaturanTampilan(request, env, url);
+        if (subPath === 'profil') return handleProfilSekolah(request, env, user);
+        if (subPath === 'pengaturan-tampilan') return handlePengaturanTampilan(request, env, user, url);
 
         // Absensi, Nilai, Rapor monitoring
         if (subPath.startsWith('absensi')) {
