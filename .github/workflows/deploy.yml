@@ -91,4 +91,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy build/web --project-name=ppi-frontend
+          command: pages deploy frontend/build/web --project-name=ppi-frontend
