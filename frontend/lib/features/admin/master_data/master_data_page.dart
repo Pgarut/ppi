@@ -510,8 +510,8 @@ class _MasterDataPageState extends State<MasterDataPage> {
                     Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('Jabatan', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[700])),
                       const SizedBox(height: 4),
-                      ...['Guru Mapel', 'Wali Kelas', 'Kepala Sekolah', 'Wakil Kurikulum', 'Guru BK'].map((j) {
-                        final val = j == 'Guru Mapel' ? 'guru_mapel' : j == 'Wali Kelas' ? 'wali_kelas' : j == 'Kepala Sekolah' ? 'kepala_sekolah' : j == 'Wakil Kurikulum' ? 'wakil_kurikulum' : 'guru_bk';
+                      ...['Guru Mapel', 'Wali Kelas', 'Kepala Madrasah', 'Wakil Kurikulum', 'Guru BK'].map((j) {
+                        final val = j == 'Guru Mapel' ? 'guru_mapel' : j == 'Wali Kelas' ? 'wali_kelas' : j == 'Kepala Madrasah' ? 'kepala_sekolah' : j == 'Wakil Kurikulum' ? 'wakil_kurikulum' : 'guru_bk';
                         return CheckboxListTile(
                           dense: true, contentPadding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
                           title: Text(j, style: const TextStyle(fontSize: 14)),

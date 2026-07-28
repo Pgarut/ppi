@@ -95,7 +95,7 @@
 
 ---
 
-## Role: Kepala Sekolah
+## Role: Kepala Madrasah
 **Login:** kepsek / kepsek123
 
 | # | Skenario | Hasil |

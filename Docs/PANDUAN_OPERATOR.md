@@ -7,7 +7,7 @@ Buka aplikasi di browser, lalu login dengan akun yang sudah disediakan:
 | Role | Username | Password Default |
 |------|----------|------------------|
 | Admin | admin | admin123 |
-| Kepala Sekolah | kepsek | kepsek123 |
+| Kepala Madrasah | kepsek | kepsek123 |
 | Wakil Kurikulum | wakil_kurikulum | wk123 |
 | Guru Mapel / Wali Kelas | guru | guru123 |
 | Guru BK | guru_bk | bk123 |

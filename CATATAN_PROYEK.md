@@ -4,7 +4,7 @@
 
 **Aplikasi:** Sistem Informasi Madrasah PPI  
 **Stack:** Flutter (Frontend Web + Mobile) + Cloudflare Workers (Backend) + D1 Database (SQLite)  
-**Role:** Admin, Kepala Sekolah, Wakil Kurikulum, Guru Mapel/Wali Kelas, Guru BK  
+**Role:** Admin, Kepala Madrasah, Wakil Kurikulum, Guru Mapel/Wali Kelas, Guru BK  
 **Target Platform:** Web (responsif mobile+desktop)  
 **Warna Tema:** Hijau (#2E7D32), Kuning (#FDD835), Putih
 
@@ -101,7 +101,7 @@ backend/
 - Pengaduan: lihat semua (filter status), update status + tindak lanjut
 - Laporan: statistik dashboard, bulanan, rekap kasus per kategori
 
-**Kepala Sekolah:**
+**Kepala Madrasah:**
 - Dashboard: statistik (siswa/guru/kelas/mapel), jadwal per hari, rekap absensi, distribusi nilai
 - Laporan: 4 jenis (jadwal, absensi, nilai, rapor) — view only
 
@@ -220,7 +220,7 @@ Frontend: http://localhost: (lihat output flutter run)
 | 4 | Penjadwalan + Auto Scheduling | ✅ |
 | 5 | Modul Guru Mapel / Wali Kelas | ✅ |
 | 6 | Modul Guru BK | ✅ |
-| 7 | Dashboard Kepala Sekolah | ✅ |
+| 7 | Dashboard Kepala Madrasah | ✅ |
 | 8 | Tema Hijau-Kuning-Putih | ✅ |
 | - | Dokumentasi | ✅ |
 
