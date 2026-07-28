@@ -65,7 +65,7 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru> {
                 TabBar(
                   labelColor: Colors.teal,
                   tabs: const [
-                    Tab(icon: Icon(Icons.people), text: 'Data Siswa'),
+                    Tab(icon: Icon(Icons.people), text: 'Data Santri'),
                     Tab(icon: Icon(Icons.checklist), text: 'Rekap Absensi'),
                     Tab(icon: Icon(Icons.grading), text: 'Rekap Nilai'),
                   ],

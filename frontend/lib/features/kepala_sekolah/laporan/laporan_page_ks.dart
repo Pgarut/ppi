@@ -131,7 +131,7 @@ class _LaporanPageKSState extends State<LaporanPageKS> {
       children: [
         DataTable(
           columns: const [
-            DataColumn(label: Text('Mapel')), DataColumn(label: Text('Guru')),
+            DataColumn(label: Text('Mapel')), DataColumn(label: Text('Asatidz')),
             DataColumn(label: Text('Kelas')), DataColumn(label: Text('Hari')),
             DataColumn(label: Text('JP')), DataColumn(label: Text('Ruangan')),
           ],
@@ -199,7 +199,7 @@ class _LaporanPageKSState extends State<LaporanPageKS> {
       children: [
         DataTable(
           columns: const [
-            DataColumn(label: Text('NIS')), DataColumn(label: Text('Siswa')),
+            DataColumn(label: Text('NIS')), DataColumn(label: Text('Santri')),
             DataColumn(label: Text('Mapel')), DataColumn(label: Text('Nilai')),
             DataColumn(label: Text('Predikat')), DataColumn(label: Text('Catatan')),
           ],

@@ -36,8 +36,8 @@ const configs: Record<string, CrudConfig> = {
   'tingkat': { table: 'tingkat', columns: ['nama', 'jenjang'], label: 'Tingkat', searchFields: ['nama'], timestamp: true },
   'kelas': { table: 'kelas', columns: ['nama', 'tingkat_id', 'jurusan_id', 'wali_kelas_id', 'ruangan_id', 'tahun_ajaran_id'], label: 'Kelas', searchFields: ['nama'], timestamp: true },
   'mata-pelajaran': { table: 'mata_pelajaran', columns: ['nama', 'kode'], label: 'Mata Pelajaran', searchFields: ['nama', 'kode'], timestamp: true },
-  'guru': { table: 'guru', columns: ['nip', 'nama', 'jenis_kelamin', 'jabatan', 'status_aktif'], label: 'Guru', searchFields: ['nama', 'nip'], filterFields: ['jabatan'], timestamp: true },
-  'siswa': { table: 'siswa', columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'status'], label: 'Siswa', searchFields: ['nama', 'nis', 'nisn'], timestamp: true },
+  'guru': { table: 'guru', columns: ['nip', 'nama', 'jenis_kelamin', 'jabatan', 'status_aktif'], label: 'Asatidz', searchFields: ['nama', 'nip'], filterFields: ['jabatan'], timestamp: true },
+  'siswa': { table: 'siswa', columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'status'], label: 'Santri', searchFields: ['nama', 'nis', 'nisn'], timestamp: true },
   'ruangan': { table: 'ruangan', columns: ['nama', 'kapasitas'], label: 'Ruangan', searchFields: ['nama'], timestamp: true },
 };
 
@@ -102,7 +102,7 @@ export async function handleGuruMapelAmpu(request: Request, env: Env, user: User
 
   if (pathParts.length < 5) return badRequest('URL tidak valid');
   const id = parseInt(pathParts[3]);
-  if (!id) return badRequest('ID guru diperlukan');
+  if (!id) return badRequest('ID asatidz diperlukan');
 
   if (request.method === 'GET') {
     const rows = await env.DB.prepare(
@@ -117,7 +117,7 @@ export async function handleGuruMapelAmpu(request: Request, env: Env, user: User
     if (!Array.isArray(mapelIds)) return badRequest('Field mapel_ids harus array');
 
     const existing = await env.DB.prepare('SELECT id FROM guru WHERE id = ?').bind(id).first();
-    if (!existing) return notFound('Guru');
+    if (!existing) return notFound('Asatidz');
 
     await env.DB.prepare('DELETE FROM guru_mapel WHERE guru_id = ?').bind(id).run();
     for (const mid of mapelIds) {
@@ -137,7 +137,7 @@ export async function handleGuruKelasAmpu(request: Request, env: Env, user: User
 
   if (pathParts.length < 5) return badRequest('URL tidak valid');
   const id = parseInt(pathParts[3]);
-  if (!id) return badRequest('ID guru diperlukan');
+  if (!id) return badRequest('ID asatidz diperlukan');
 
   if (request.method === 'GET') {
     const rows = await env.DB.prepare(
@@ -152,7 +152,7 @@ export async function handleGuruKelasAmpu(request: Request, env: Env, user: User
     if (!Array.isArray(kelasIds)) return badRequest('Field kelas_ids harus array');
 
     const existing = await env.DB.prepare('SELECT id FROM guru WHERE id = ?').bind(id).first();
-    if (!existing) return notFound('Guru');
+    if (!existing) return notFound('Asatidz');
 
     await env.DB.prepare('DELETE FROM guru_kelas WHERE guru_id = ?').bind(id).run();
     for (const kid of kelasIds) {
@@ -488,7 +488,7 @@ export async function handleGuruTemplate(_request: Request, env: Env): Promise<R
   ];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
   ws['!cols'] = [{ wch: 20 }, { wch: 25 }, { wch: 18 }, { wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
-  XLSX.utils.book_append_sheet(wb, ws, 'Data Guru');
+  XLSX.utils.book_append_sheet(wb, ws, 'Data Asatidz');
 
   const refRows: (string | undefined)[][] = [
     ['Jenis Kelamin', 'Jabatan', 'Status Aktif', ''],
@@ -526,11 +526,11 @@ export async function handleGuruPreview(request: Request, env: Env): Promise<Res
     return badRequest('File Excel tidak dapat dibaca');
   }
 
-  const sheet = wb.Sheets['Data Guru'];
-  if (!sheet) return badRequest('Sheet "Data Guru" tidak ditemukan');
+  const sheet = wb.Sheets['Data Asatidz'];
+  if (!sheet) return badRequest('Sheet "Data Asatidz" tidak ditemukan');
 
   const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '' });
-  if (rows.length === 0) return badRequest('Tidak ada data di sheet Data Guru');
+  if (rows.length === 0) return badRequest('Tidak ada data di sheet Data Asatidz');
 
   const validJabatan = new Set(['guru_mapel', 'wali_kelas', 'kepala_sekolah', 'wakil_kurikulum', 'guru_bk']);
   const preview: Record<string, unknown>[] = [];

@@ -162,9 +162,9 @@ class _DashboardPageState extends State<DashboardPage> {
               const SizedBox(height: 24),
               Row(
                 children: [
-                  _buildHeaderChip(Icons.people_outline, '${r['guru'] ?? 0} Guru'),
+                  _buildHeaderChip(Icons.people_outline, '${r['guru'] ?? 0} Asatidz'),
                   const SizedBox(width: 12),
-                  _buildHeaderChip(Icons.person_outline, '${r['siswa'] ?? 0} Siswa'),
+                  _buildHeaderChip(Icons.person_outline, '${r['siswa'] ?? 0} Santri'),
                   const SizedBox(width: 12),
                   _buildHeaderChip(Icons.meeting_room_outlined, '${r['kelas'] ?? 0} Kelas'),
                 ],
@@ -223,8 +223,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildStatGrid(Map<String, dynamic> r) {
     final stats = [
-      _StatItem(Icons.people_outline, 'Guru', '${r['guru'] ?? 0}', _green, _greenBg),
-      _StatItem(Icons.person_outline, 'Siswa', '${r['siswa'] ?? 0}', _yellow, _yellowBg),
+      _StatItem(Icons.people_outline, 'Asatidz', '${r['guru'] ?? 0}', _green, _greenBg),
+      _StatItem(Icons.person_outline, 'Santri', '${r['siswa'] ?? 0}', _yellow, _yellowBg),
       _StatItem(Icons.meeting_room_outlined, 'Kelas', '${r['kelas'] ?? 0}', _greenLight, _greenBg),
       _StatItem(Icons.checklist_outlined, 'Absensi Hari Ini', '${r['absensi_hari_ini'] ?? 0}', _yellow, _yellowBg),
       _StatItem(Icons.grading_outlined, 'Nilai', '${r['nilai'] ?? 0}', _green, _greenBg),
@@ -252,8 +252,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildDetailGrid(Map<String, dynamic> d) {
     final details = [
-      _DetailInfo('Statistik Guru', d['guru'] as Map<String, dynamic>? ?? {}, Icons.people_outline, _green),
-      _DetailInfo('Statistik Siswa', d['siswa'] as Map<String, dynamic>? ?? {}, Icons.person_outline, _yellow),
+      _DetailInfo('Statistik Asatidz', d['guru'] as Map<String, dynamic>? ?? {}, Icons.people_outline, _green),
+      _DetailInfo('Statistik Santri', d['siswa'] as Map<String, dynamic>? ?? {}, Icons.person_outline, _yellow),
       _DetailInfo('Absensi Hari Ini', d['absensi'] as Map<String, dynamic>? ?? {}, Icons.checklist_outlined, _greenLight),
       _DetailInfo('Statistik Nilai', d['nilai'] as Map<String, dynamic>? ?? {}, Icons.grading_outlined, _green),
     ];

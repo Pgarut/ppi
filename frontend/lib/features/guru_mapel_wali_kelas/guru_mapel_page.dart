@@ -20,7 +20,7 @@ class _GuruMapelPageState extends State<GuruMapelPage> {
   @override
   Widget build(BuildContext context) {
     return DashboardShell(
-      title: 'Guru',
+      title: 'Asatidz',
       dashboardBuilder: (context, onFeatureTap, onLogout) => DashboardPageGuru(
         onFeatureTap: onFeatureTap,
         onLogout: onLogout,

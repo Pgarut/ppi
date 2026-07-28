@@ -18,22 +18,22 @@ class BantuanPage extends StatelessWidget {
         _section(
           Icons.storage_outlined,
           'Master Data',
-          'Kelola data utama seperti Tahun Ajaran, Semester, Jurusan, Tingkat, Kelas, Mata Pelajaran, Guru, Siswa, dan Ruangan. Tersedia fitur import Excel untuk input massal.',
+          'Kelola data utama seperti Tahun Ajaran, Semester, Jurusan, Tingkat, Kelas, Mata Pelajaran, Asatidz, Santri, dan Ruangan. Tersedia fitur import Excel untuk input massal.',
         ),
         _section(
           Icons.calendar_today_outlined,
           'Absensi',
-          'Input dan monitoring kehadiran siswa & guru. Rekap absensi harian, analisis, dan audit trail tersedia untuk memantau kedisiplinan.',
+          'Input dan monitoring kehadiran santri & asatidz. Rekap absensi harian, analisis, dan audit trail tersedia untuk memantau kedisiplinan.',
         ),
         _section(
           Icons.grading_outlined,
           'Nilai',
-          'Input nilai siswa (tugas, UTS, UAS), validasi, dan monitoring. Guru menginput, Wakil Kurikulum dan Admin memonitor & memvalidasi.',
+          'Input nilai santri (tugas, UTS, UAS), validasi, dan monitoring. Asatidz menginput, Wakil Kurikulum dan Admin memonitor & memvalidasi.',
         ),
         _section(
           Icons.description_outlined,
           'Rapor',
-          'Cetak rapor siswa per semester. Tersedia fitur arsip dan analisis rapor.',
+          'Cetak rapor santri per semester. Tersedia fitur arsip dan analisis rapor.',
         ),
         _section(
           Icons.schedule_outlined,

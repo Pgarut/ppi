@@ -173,7 +173,7 @@ class _AbsensiInputFormState extends State<_AbsensiInputForm> {
                 if (d != null) _tanggalCtl.text = d.toIso8601String().substring(0, 10);
               },
             )),
-            ElevatedButton(onPressed: _loadSiswa, child: const Text('Muat Siswa')),
+            ElevatedButton(onPressed: _loadSiswa, child: const Text('Muat Santri')),
           ],
         ),
         const SizedBox(height: 16),
@@ -282,7 +282,7 @@ class _RiwayatAbsensiState extends State<_RiwayatAbsensi> {
           DataTable(
             columns: const [
               DataColumn(label: Text('Tanggal')),
-              DataColumn(label: Text('Siswa')),
+              DataColumn(label: Text('Santri')),
               DataColumn(label: Text('Kelas')),
               DataColumn(label: Text('Mapel')),
               DataColumn(label: Text('Status')),

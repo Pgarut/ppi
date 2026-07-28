@@ -39,8 +39,8 @@ class _AbsensiPageWKState extends State<AbsensiPageWK> with SingleTickerProvider
           unselectedLabelColor: Colors.grey[600],
           indicatorColor: Colors.green[800],
           tabs: const [
-            Tab(text: 'Guru'),
-            Tab(text: 'Siswa'),
+            Tab(text: 'Asatidz'),
+            Tab(text: 'Santri'),
             Tab(text: 'Rekap'),
           ],
         ),
@@ -150,7 +150,7 @@ class _TabGuruState extends State<_TabGuru> {
           DataTable(
             columns: const [
               DataColumn(label: Text('NIP')),
-              DataColumn(label: Text('Nama Guru')),
+              DataColumn(label: Text('Nama Asatidz')),
               DataColumn(label: Text('Tanggal')),
               DataColumn(label: Text('Status')),
               DataColumn(label: Text('Keterangan')),
@@ -477,11 +477,11 @@ class _TabRekapState extends State<_TabRekap> {
         else if (_rekap == null)
           const Center(child: Padding(padding: EdgeInsets.all(32), child: Text('Pilih filter dan klik Tampilkan')))
         else ...[
-          Text('Rekap Absensi Siswa', style: Theme.of(context).textTheme.titleMedium),
+          Text('Rekap Absensi Santri', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           _buildRekapTable(_rekap!['siswa'] as Map<String, dynamic>? ?? {}, _rekap!['total_siswa'] as int? ?? 0),
           const SizedBox(height: 24),
-          Text('Rekap Absensi Guru', style: Theme.of(context).textTheme.titleMedium),
+          Text('Rekap Absensi Asatidz', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           _buildRekapTable(_rekap!['guru'] as Map<String, dynamic>? ?? {}, _rekap!['total_guru'] as int? ?? 0),
         ],

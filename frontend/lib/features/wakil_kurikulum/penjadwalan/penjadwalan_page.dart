@@ -378,7 +378,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
               ),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
-                value: selectedGuru, decoration: const InputDecoration(labelText: 'Guru', border: OutlineInputBorder()),
+                value: selectedGuru, decoration: const InputDecoration(labelText: 'Asatidz', border: OutlineInputBorder()),
                 items: guru.map((g) => DropdownMenuItem(value: '${g['id']}', child: Text('${g['nama']}'))).toList(),
                 onChanged: (v) { selectedGuru = v; setD(() {}); },
               ),
@@ -481,7 +481,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         builder: (ctx, setD) => AlertDialog(
           title: const Text('Tambah Distribusi'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            DropdownButtonFormField<String>(decoration: const InputDecoration(labelText: 'Guru', border: OutlineInputBorder()),
+            DropdownButtonFormField<String>(decoration: const InputDecoration(labelText: 'Asatidz', border: OutlineInputBorder()),
               items: guru.map((x) => DropdownMenuItem(value: '${x['id']}', child: Text('${x['nama']}'))).toList(),
               onChanged: (v) { g = v; setD(() {}); }),
             const SizedBox(height: 10),

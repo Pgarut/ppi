@@ -69,7 +69,7 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Pengaduan Siswa', style: Theme.of(context).textTheme.headlineSmall),
+        Text('Pengaduan Santri', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 16),
         Card(
           child: Padding(
@@ -83,7 +83,7 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
                   spacing: 16, runSpacing: 12,
                   children: [
                     SizedBox(width: 250, child: DropdownButtonFormField<int>(
-                      decoration: const InputDecoration(labelText: 'Siswa', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(labelText: 'Santri', border: OutlineInputBorder()),
                       items: _siswa.map((s) => DropdownMenuItem(value: s['id'] as int, child: Text('${s['nis']} - ${s['nama']}'))).toList(),
                       onChanged: (v) => setState(() => _siswaId = v),
                     )),

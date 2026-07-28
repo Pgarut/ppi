@@ -122,7 +122,7 @@ class _NilaiPageGuruState extends State<NilaiPageGuru> {
               items: _jenisList.map((j) => DropdownMenuItem(value: j, child: Text(j))).toList(),
               onChanged: (v) => setState(() => _jenis = v!),
             )),
-            ElevatedButton(onPressed: _loadSiswa, child: const Text('Muat Siswa')),
+            ElevatedButton(onPressed: _loadSiswa, child: const Text('Muat Santri')),
           ],
         ),
         const SizedBox(height: 16),

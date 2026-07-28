@@ -25,13 +25,13 @@ class _MasterDataPageState extends State<MasterDataPage> {
     _TabCfg('Kelas', 'kelas', Icons.meeting_room_outlined, ['nama', 'tingkat_id', 'jurusan_id', 'tahun_ajaran_id'],
         ['Nama', 'Tingkat ID', 'Jurusan ID', 'Thn Ajaran ID']),
     _TabCfg('Mata Pelajaran', 'mata-pelajaran', Icons.book_outlined, ['nama', 'kode'], ['Nama', 'Kode']),
-    _TabCfg('Guru', 'guru', Icons.people_outline, ['nip', 'nama', 'jenis_kelamin', 'jabatan', 'status_aktif'],
+    _TabCfg('Asatidz', 'guru', Icons.people_outline, ['nip', 'nama', 'jenis_kelamin', 'jabatan', 'status_aktif'],
         ['NIP', 'Nama', 'JK', 'Jabatan', 'Status']),
     _TabCfg('Wali Kelas', 'wali-kelas', Icons.supervisor_account_outlined, ['nip', 'nama', 'kelas_nama', 'jumlah_siswa', 'jabatan'],
-        ['NIP', 'Nama Guru', 'Kelas', 'Jml Siswa', 'Jabatan']),
-    _TabCfg('Guru BK', 'guru-bk-list', Icons.psychology_outlined, ['nip', 'nama', 'jabatan'],
-        ['NIP', 'Nama Guru', 'Jabatan']),
-    _TabCfg('Siswa', 'siswa', Icons.person_outline, ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'status'],
+        ['NIP', 'Nama Asatidz', 'Kelas', 'Jml Santri', 'Jabatan']),
+    _TabCfg('Asatidz BK', 'guru-bk-list', Icons.psychology_outlined, ['nip', 'nama', 'jabatan'],
+        ['NIP', 'Nama Asatidz', 'Jabatan']),
+    _TabCfg('Santri', 'siswa', Icons.person_outline, ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'status'],
         ['NIS', 'NISN', 'Nama', 'JK', 'Kelas', 'Status']),
     _TabCfg('Ruangan', 'ruangan', Icons.room_outlined, ['nama', 'kapasitas'], ['Nama', 'Kapasitas']),
   ];
@@ -510,8 +510,8 @@ class _MasterDataPageState extends State<MasterDataPage> {
                     Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('Jabatan', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[700])),
                       const SizedBox(height: 4),
-                      ...['Guru Mapel', 'Wali Kelas', 'Kepala Madrasah', 'Wakil Kurikulum', 'Guru BK'].map((j) {
-                        final val = j == 'Guru Mapel' ? 'guru_mapel' : j == 'Wali Kelas' ? 'wali_kelas' : j == 'Kepala Madrasah' ? 'kepala_sekolah' : j == 'Wakil Kurikulum' ? 'wakil_kurikulum' : 'guru_bk';
+                      ...['Asatidz Mapel', 'Wali Kelas', 'Kepala Madrasah', 'Wakil Kurikulum', 'Asatidz BK'].map((j) {
+                        final val = j == 'Asatidz Mapel' ? 'guru_mapel' : j == 'Wali Kelas' ? 'wali_kelas' : j == 'Kepala Madrasah' ? 'kepala_sekolah' : j == 'Wakil Kurikulum' ? 'wakil_kurikulum' : 'guru_bk';
                         return CheckboxListTile(
                           dense: true, contentPadding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
                           title: Text(j, style: const TextStyle(fontSize: 14)),
@@ -998,7 +998,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Preview Data Guru (${rows.length} baris)'),
+        title: Text('Preview Data Asatidz (${rows.length} baris)'),
         content: SizedBox(
           width: 700,
           child: SingleChildScrollView(

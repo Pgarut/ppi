@@ -47,10 +47,10 @@ class _BKPageKSState extends State<BKPageKS> {
         Text('Bakat & Minat per Jenis', style: Theme.of(context).textTheme.titleMedium),
         ...bakatMinat.map((b) {
           final m = b as Map<String, dynamic>;
-          return Card(child: ListTile(title: Text(m['jenis'] ?? ''), subtitle: Text('${m['siswa']} siswa'), trailing: Text('${m['total']}')));
+          return Card(child: ListTile(title: Text(m['jenis'] ?? ''), subtitle: Text('${m['siswa']} santri'), trailing: Text('${m['total']}')));
         }),
         const SizedBox(height: 16),
-        Text('Siswa dengan Pelanggaran Terbanyak', style: Theme.of(context).textTheme.titleMedium),
+        Text('Santri dengan Pelanggaran Terbanyak', style: Theme.of(context).textTheme.titleMedium),
         ...siswaBermasalah.map((s) {
           final m = s as Map<String, dynamic>;
           return Card(child: ListTile(title: Text(m['siswa_nama'] ?? ''), subtitle: Text('${m['kelas_nama']} - ${m['nis']}'), trailing: Text('${m['total_pengaduan']} kasus')));

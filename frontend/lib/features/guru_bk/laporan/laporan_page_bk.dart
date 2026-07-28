@@ -137,7 +137,7 @@ class _LaporanPageBKState extends State<LaporanPageBK>
         child: ListTile(
           leading: Icon(r['kategori'] == 'kasus' ? Icons.gavel : Icons.warning, color: Colors.red),
           title: Text(r['kategori']?.toString() ?? ''),
-          subtitle: Text('Siswa terlibat: ${r['siswa_terlibat'] ?? 0}'),
+          subtitle: Text('Santri terlibat: ${r['siswa_terlibat'] ?? 0}'),
           trailing: Text('${r['total'] ?? 0}', style: Theme.of(context).textTheme.titleMedium),
         ),
       )).toList(),

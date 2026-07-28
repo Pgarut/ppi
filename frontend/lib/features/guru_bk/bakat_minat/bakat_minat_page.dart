@@ -158,7 +158,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
             final siswa = snap.data ?? _siswaList;
             return DropdownButtonFormField<String>(
               value: selectedSiswaId,
-              decoration: const InputDecoration(labelText: 'Siswa', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'Santri', border: OutlineInputBorder()),
               items: siswa.map((s) => DropdownMenuItem(
                 value: s['id'].toString(),
                 child: Text(s['nama']?.toString() ?? ''),
@@ -231,7 +231,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
                 children: [
                   DropdownButtonFormField<String>(
                     value: siswaId,
-                    decoration: const InputDecoration(labelText: 'Siswa', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(labelText: 'Santri', border: OutlineInputBorder()),
                     items: _siswaList.map((s) => DropdownMenuItem(
                       value: s['id'].toString(),
                       child: Text(s['nama']?.toString() ?? ''),

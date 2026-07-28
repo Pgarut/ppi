@@ -138,7 +138,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
          AND ((jam_mulai <= ? AND jam_selesai > ?) OR (jam_mulai < ? AND jam_selesai >= ?))`
       ).bind(guru_id, hari, semester_id, jam_mulai, jam_mulai, jam_selesai, jam_selesai).first();
 
-      if (bentrokGuru) return badRequest('BENTROK: Guru sudah memiliki jadwal di jam tersebut');
+      if (bentrokGuru) return badRequest('BENTROK: Asatidz sudah memiliki jadwal di jam tersebut');
 
       const bentrokKelas = await env.DB.prepare(
         `SELECT id FROM jadwal_pelajaran WHERE kelas_id = ? AND hari = ? AND semester_id = ?

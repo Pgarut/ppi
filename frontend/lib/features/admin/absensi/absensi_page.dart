@@ -47,8 +47,8 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
       appBar: AppBar(title: const Text('Absensi'), automaticallyImplyLeading: false,
         bottom: TabBar(controller: _tabCtrl, onTap: (i) { _page = 1; _load(); }, isScrollable: true,
           tabs: const [
-            Tab(text: 'Guru', icon: Icon(Icons.person_outlined, size: 18)),
-            Tab(text: 'Siswa', icon: Icon(Icons.people_outlined, size: 18)),
+            Tab(text: 'Asatidz', icon: Icon(Icons.person_outlined, size: 18)),
+            Tab(text: 'Santri', icon: Icon(Icons.people_outlined, size: 18)),
             Tab(text: 'Rekap', icon: Icon(Icons.summarize_outlined, size: 18)),
             Tab(text: 'Analisis', icon: Icon(Icons.analytics_outlined, size: 18)),
             Tab(text: 'Audit', icon: Icon(Icons.history, size: 18)),
@@ -89,7 +89,7 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
 
   Widget _buildMonitoringTab(bool isGuru) {
     return Column(children: [
-      _FormCard(title: isGuru ? 'Filter Absensi Guru' : 'Filter Absensi Siswa',
+      _FormCard(title: isGuru ? 'Filter Absensi Asatidz' : 'Filter Absensi Santri',
           icon: isGuru ? Icons.person_outlined : Icons.people_outlined, children: [
         Row(children: [
           Expanded(child: TextField(
@@ -176,10 +176,10 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
       else if (_rekap == null)
         Center(child: Text('Masukkan tanggal untuk melihat rekap.', style: TextStyle(color: Colors.grey[500])))
       else ...[
-        _rekapCard('Absensi Siswa', _rekap!['siswa'] as Map<String, dynamic>? ?? {},
+        _rekapCard('Absensi Santri', _rekap!['siswa'] as Map<String, dynamic>? ?? {},
             _rekap!['total_siswa'] as int? ?? 0, Icons.people_outlined),
         const SizedBox(height: 12),
-        _rekapCard('Absensi Guru', _rekap!['guru'] as Map<String, dynamic>? ?? {},
+        _rekapCard('Absensi Asatidz', _rekap!['guru'] as Map<String, dynamic>? ?? {},
             _rekap!['total_guru'] as int? ?? 0, Icons.person_outlined),
       ],
     ]));
@@ -314,8 +314,8 @@ class _AnalisisAbsensiTabState extends State<_AnalisisAbsensiTab> {
         ]),
         const SizedBox(height: 16),
         Wrap(spacing: 16, runSpacing: 16, children: [
-          _statChip(Icons.people_outlined, 'Entry Siswa', '${o['total_siswa_entry'] ?? 0}', Colors.blue),
-          _statChip(Icons.person_outlined, 'Entry Guru', '${o['total_guru_entry'] ?? 0}', Colors.teal),
+          _statChip(Icons.people_outlined, 'Entry Santri', '${o['total_siswa_entry'] ?? 0}', Colors.blue),
+          _statChip(Icons.person_outlined, 'Entry Asatidz', '${o['total_guru_entry'] ?? 0}', Colors.teal),
         ]),
       ])),
     );
@@ -366,8 +366,8 @@ class _AnalisisAbsensiTabState extends State<_AnalisisAbsensiTab> {
           columnSpacing: 24,
           columns: const [
             DataColumn(label: Text('Status', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Siswa', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
-            DataColumn(label: Text('Guru', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
+            DataColumn(label: Text('Santri', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
+            DataColumn(label: Text('Asatidz', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
           ],
           rows: statuses.map((s) => DataRow(cells: [
             DataCell(Row(children: [
@@ -399,7 +399,7 @@ class _AnalisisAbsensiTabState extends State<_AnalisisAbsensiTab> {
         Row(children: [
           Icon(Icons.school_outlined, size: 20, color: theme.colorScheme.primary),
           const SizedBox(width: 8),
-          const Text('Siswa Per Kelas', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          const Text('Santri Per Kelas', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
         ]),
         const SizedBox(height: 12),
         SingleChildScrollView(scrollDirection: Axis.horizontal, child: DataTable(
@@ -434,7 +434,7 @@ class _AnalisisAbsensiTabState extends State<_AnalisisAbsensiTab> {
         Row(children: [
           Icon(Icons.trending_up, size: 20, color: theme.colorScheme.primary),
           const SizedBox(width: 8),
-          const Text('Tren Bulanan (Siswa)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          const Text('Tren Bulanan (Santri)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
         ]),
         const SizedBox(height: 12),
         SingleChildScrollView(scrollDirection: Axis.horizontal, child: DataTable(

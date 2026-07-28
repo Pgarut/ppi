@@ -131,7 +131,7 @@ class _InputRaporState extends State<_InputRapor> {
           spacing: 16, runSpacing: 12,
           children: [
             SizedBox(width: 200, child: DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Siswa', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'Santri', border: OutlineInputBorder()),
               items: _siswa.map((s) => DropdownMenuItem(value: s['id'] as int, child: Text('${s['nis']} - ${s['nama']}'))).toList(),
               onChanged: (v) => setState(() => _siswaId = v),
             )),
@@ -234,7 +234,7 @@ class _LihatRaporState extends State<_LihatRapor> {
           spacing: 16, runSpacing: 12,
           children: [
             SizedBox(width: 200, child: DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Siswa', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'Santri', border: OutlineInputBorder()),
               items: _siswa.map((s) => DropdownMenuItem(value: s['id'] as int, child: Text('${s['nis']} - ${s['nama']}'))).toList(),
               onChanged: (v) => setState(() => _siswaId = v),
             )),
@@ -255,7 +255,7 @@ class _LihatRaporState extends State<_LihatRapor> {
         else ...[
           DataTable(
             columns: const [
-              DataColumn(label: Text('Siswa')),
+              DataColumn(label: Text('Santri')),
               DataColumn(label: Text('Kelas')),
               DataColumn(label: Text('Mapel')),
               DataColumn(label: Text('Nilai Akhir')),

@@ -5,7 +5,7 @@ export async function handleWaliKelas(request: Request, env: Env, user: UserPayl
   const subPath = pathParts.slice(2).join('/');
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
 
-  if (!user.guru_id) return badRequest('Anda tidak memiliki data guru');
+  if (!user.guru_id) return badRequest('Anda tidak memiliki data asatidz');
 
   // Cari kelas wali
   const waliKelas = await env.DB.prepare(

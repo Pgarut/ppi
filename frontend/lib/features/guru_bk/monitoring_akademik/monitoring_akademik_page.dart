@@ -96,7 +96,7 @@ class _MonitoringAkademikPageState extends State<MonitoringAkademikPage>
       children: [
         DataTable(
           columns: const [
-            DataColumn(label: Text('Siswa')),
+            DataColumn(label: Text('Santri')),
             DataColumn(label: Text('Jenis')),
             DataColumn(label: Text('Rata-rata')),
           ],
@@ -119,7 +119,7 @@ class _MonitoringAkademikPageState extends State<MonitoringAkademikPage>
       children: [
         DataTable(
           columns: const [
-            DataColumn(label: Text('Siswa')),
+            DataColumn(label: Text('Santri')),
             DataColumn(label: Text('Hadir')),
             DataColumn(label: Text('Sakit')),
             DataColumn(label: Text('Izin')),

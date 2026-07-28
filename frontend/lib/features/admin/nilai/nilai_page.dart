@@ -297,7 +297,7 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
         ]),
         const SizedBox(height: 16),
         Wrap(spacing: 16, runSpacing: 16, children: [
-          _statChip(Icons.people_outline, 'Siswa', '${o['total_siswa'] ?? 0}', Colors.blue),
+          _statChip(Icons.people_outline, 'Santri', '${o['total_siswa'] ?? 0}', Colors.blue),
           _statChip(Icons.book_outlined, 'Mapel', '${o['total_mapel'] ?? 0}', Colors.teal),
           _statChip(Icons.trending_up, 'Rata-rata', '${o['rata_rata'] ?? '-'}', Colors.green),
           _statChip(Icons.arrow_upward, 'Tertinggi', '${o['nilai_tertinggi'] ?? '-'}', Colors.orange),
@@ -373,7 +373,7 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
           columns: const [
             DataColumn(label: Text('Kelas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
             DataColumn(label: Text('Rata-rata', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
-            DataColumn(label: Text('Siswa', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
+            DataColumn(label: Text('Santri', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
             DataColumn(label: Text('Entry', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
           ],
           rows: list.map((k) => DataRow(cells: [

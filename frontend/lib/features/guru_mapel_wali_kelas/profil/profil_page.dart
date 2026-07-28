@@ -36,7 +36,7 @@ class _ProfilPageGuruState extends State<ProfilPageGuru> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Profil Guru', style: Theme.of(context).textTheme.headlineSmall),
+        Text('Profil Asatidz', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 24),
         if (_loading)
           const Center(child: CircularProgressIndicator())
@@ -56,7 +56,7 @@ class _ProfilPageGuruState extends State<ProfilPageGuru> {
           const SizedBox(height: 16),
           Text('Data profil belum tersedia', style: TextStyle(color: Colors.grey[600])),
           const SizedBox(height: 8),
-          Text('Gunakan menu Wali Kelas untuk data siswa', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+          Text('Gunakan menu Wali Kelas untuk data santri', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
         ],
       ),
     );

@@ -70,7 +70,7 @@ class _LaporanPageWKState extends State<LaporanPageWK> with SingleTickerProvider
 
   String _formatSubtitle(Map<String, dynamic> d) {
     switch (_jenis) {
-      case 'jadwal': return 'Guru: ${d['guru'] ?? '-'} | Kelas: ${d['kelas'] ?? '-'} | Ruang: ${d['ruangan'] ?? '-'}';
+      case 'jadwal': return 'Asatidz: ${d['guru'] ?? '-'} | Kelas: ${d['kelas'] ?? '-'} | Ruang: ${d['ruangan'] ?? '-'}';
       case 'absensi': return 'Kelas: ${d['kelas_nama'] ?? '-'} | Tgl: ${d['tanggal'] ?? '-'}';
       case 'nilai': return 'Kelas: ${d['kelas_nama'] ?? '-'} | ${d['jenis'] ?? '-'} | ${d['status_validasi'] ?? '-'}';
       case 'rapor': return 'Kelas: ${d['kelas_nama'] ?? '-'} | ${d['predikat'] ?? ''} | ${d['status_kirim'] ?? '-'}';

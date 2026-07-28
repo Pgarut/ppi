@@ -43,7 +43,7 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
           title: const Text('Proses Kenaikan Kelas'),
           content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
             TextField(controller: siswaIdCtrl, keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Siswa ID', border: OutlineInputBorder())),
+                decoration: const InputDecoration(labelText: 'Santri ID', border: OutlineInputBorder())),
             const SizedBox(height: 12),
             TextField(controller: dariKelasCtrl, keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'Dari Kelas ID', border: OutlineInputBorder())),
@@ -158,7 +158,7 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
         title: const Text('Tambah Alumni'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(controller: siswaIdCtrl, keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Siswa ID', border: OutlineInputBorder())),
+              decoration: const InputDecoration(labelText: 'Santri ID', border: OutlineInputBorder())),
           const SizedBox(height: 12),
           TextField(controller: tahunLulusCtrl, decoration: const InputDecoration(labelText: 'Tahun Lulus', border: OutlineInputBorder())),
           const SizedBox(height: 12),

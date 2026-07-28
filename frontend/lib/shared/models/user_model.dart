@@ -40,8 +40,8 @@ class UserModel {
       case 'admin': return 'Admin';
       case 'kepala_sekolah': return 'Kepala Madrasah (Kamad)';
       case 'wakil_kurikulum': return 'Wakil Kurikulum';
-      case 'guru_mapel_wali_kelas': return 'Guru Mapel / Wali Kelas';
-      case 'guru_bk': return 'Guru BK';
+      case 'guru_mapel_wali_kelas': return 'Asatidz Mapel / Wali Kelas';
+      case 'guru_bk': return 'Asatidz BK';
       default: return role;
     }
   }

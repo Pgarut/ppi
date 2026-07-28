@@ -160,7 +160,7 @@ class _KonselingPageState extends State<KonselingPage>
                 children: [
                   DropdownButtonFormField<String>(
                     value: siswaId,
-                    decoration: const InputDecoration(labelText: 'Siswa', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(labelText: 'Santri', border: OutlineInputBorder()),
                     items: _siswaList.map((s) => DropdownMenuItem(
                       value: s['id'].toString(),
                       child: Text(s['nama']?.toString() ?? ''),
@@ -306,7 +306,7 @@ class _KonselingPageState extends State<KonselingPage>
                 children: [
                   DropdownButtonFormField<String>(
                     value: siswaId,
-                    decoration: const InputDecoration(labelText: 'Siswa', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(labelText: 'Santri', border: OutlineInputBorder()),
                     items: _siswaList.map((s) => DropdownMenuItem(
                       value: s['id'].toString(),
                       child: Text(s['nama']?.toString() ?? ''),
