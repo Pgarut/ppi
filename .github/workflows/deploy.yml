@@ -7,7 +7,7 @@ on:
 
 env:
   NODE_VERSION: '22'
-  FLUTTER_VERSION: '3.24'
+  FLUTTER_VERSION: '3.32'
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
 jobs:
