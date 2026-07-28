@@ -23,15 +23,14 @@ vars = { JWT_SECRET = "ppi-madrasah-dev-secret-key-2026", JWT_REFRESH_SECRET = "
 
 # Production environment
 [env.production]
-vars = { JWT_EXPIRES_IN = "8h", CORS_ORIGIN = "https://ppi-frontend.pages.dev,https://ppi-madrasah.com,https://admin.ppi-madrasah.com" }
+vars = { JWT_SECRET = "ppi-madrasah-prod-secret-2026", JWT_REFRESH_SECRET = "ppi-madrasah-refresh-prod-secret-2026", JWT_EXPIRES_IN = "8h", CORS_ORIGIN = "https://ppi-bo8.pages.dev" }
 
 # D1 Database (Production)
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "ppi-db-prod"
-database_id = "2d1498c4-0356-4bf6-9c62-2c3209c26cae"
+database_id = "f4f8e08d-1d77-4cd4-8021-225e88ae233c"
 
 # D1 migrations
 [[migrations]]
 tag = "v1"
-new_directory = "migrations"
