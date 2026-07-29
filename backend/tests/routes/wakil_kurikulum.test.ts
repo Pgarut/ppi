@@ -62,10 +62,16 @@ describe('Wakil Kurikulum Routes', () => {
 
     it('should generate jadwal', async () => {
       const db = makeDb();
+      // Kesiapan guru
       db.all
-        .mockResolvedValueOnce({ results: [{ id: 1, guru_id: 1, mata_pelajaran_id: 1, kelas_id: 1, semester_id: 1, mapel_nama: 'Matematika' }] })
-        .mockResolvedValueOnce({ results: [{ id: 1, nama: 'X-A' }] })
-        .mockResolvedValueOnce({ results: [] })
+        .mockResolvedValueOnce({ results: [{ guru_id: 1, hari_aktif: '["Sabtu","Minggu","Senin","Selasa","Rabu","Kamis"]', jp_max_per_hari: 8, jp_max_per_minggu: 24, guru_nama: 'Guru A' }] })
+        // guru_mapel
+        .mockResolvedValueOnce({ results: [{ guru_id: 1, mata_pelajaran_id: 1 }] })
+        // guru_kelas
+        .mockResolvedValueOnce({ results: [{ guru_id: 1, kelas_id: 1 }] })
+        // mapel_kelas
+        .mockResolvedValueOnce({ results: [{ mata_pelajaran_id: 1, kelas_id: 1 }] })
+        // existing validated
         .mockResolvedValueOnce({ results: [] });
       db.run.mockResolvedValue({ meta: { changes: 1 } });
       const req = makePost('/api/wakil-kurikulum/jadwal/generate', { semester_id: 1 });
@@ -123,19 +129,27 @@ describe('Wakil Kurikulum Routes', () => {
       expect(res.status).toBe(200);
     });
 
-    it('should list distribusi mengajar', async () => {
+    it('should list kesiapan guru', async () => {
       const db = makeDb();
-      db.all.mockResolvedValue({ results: [{ id: 1, guru_nama: 'Guru A', mapel_nama: 'Matematika' }] });
-      const req = makeGet('/api/wakil-kurikulum/distribusi-mengajar');
-      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'distribusi-mengajar'], makeUrl(''));
+      db.all.mockResolvedValue({ results: [{ id: 1, nama: 'Guru A', nip: '123', hari_aktif: '[]', jp_max_per_hari: 8, jp_max_per_minggu: 24, kelas_diampu: '[]', mapel_diampu: '[]' }] });
+      const req = makeGet('/api/wakil-kurikulum/kesiapan?semester_id=1');
+      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'kesiapan'], makeUrl('/api/wakil-kurikulum/kesiapan', 'semester_id=1'));
+      expect(res.status).toBe(200);
+    });
+
+    it('should update kesiapan guru', async () => {
+      const db = makeDb();
+      db.first.mockResolvedValue(null);
+      const req = makePut('/api/wakil-kurikulum/kesiapan/1', { semester_id: 1, hari_aktif: ['Sabtu', 'Senin'], jp_max_per_hari: 8, jp_max_per_minggu: 24 });
+      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'kesiapan', '1'], makeUrl(''));
       expect(res.status).toBe(200);
     });
 
     it('should return beban mengajar', async () => {
       const db = makeDb();
-      db.all.mockResolvedValue({ results: [{ id: 1, nama: 'Guru A', total_mapel: 3 }] });
-      const req = makeGet('/api/wakil-kurikulum/beban-mengajar');
-      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'beban-mengajar'], makeUrl(''));
+      db.all.mockResolvedValue({ results: [{ id: 1, nama: 'Guru A', hari_aktif: '["Sabtu","Senin"]', jp_max_per_hari: 8, jp_max_per_minggu: 24, jp_terisi: 3 }] });
+      const req = makeGet('/api/wakil-kurikulum/beban-mengajar?semester_id=1');
+      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'beban-mengajar'], makeUrl('/api/wakil-kurikulum/beban-mengajar', 'semester_id=1'));
       expect(res.status).toBe(200);
     });
   });

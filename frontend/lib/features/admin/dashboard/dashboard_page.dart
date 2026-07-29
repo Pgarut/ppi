@@ -283,66 +283,66 @@ class _DashboardPageState extends State<DashboardPage> {
       _FeatureItem(Icons.calendar_today_outlined, 'Absensi', 'Monitoring absensi', () => widget.onFeatureTap?.call('absensi')),
       _FeatureItem(Icons.grading_outlined, 'Nilai', 'Monitoring nilai', () => widget.onFeatureTap?.call('nilai')),
       _FeatureItem(Icons.description_outlined, 'Rapor', 'Monitoring rapor', () => widget.onFeatureTap?.call('rapor')),
-      _FeatureItem(Icons.settings_outlined, 'Pengaturan', 'Pengaturan sistem', () => widget.onFeatureTap?.call('pengaturan')),
+      _FeatureItem(Icons.settings_outlined, 'Pengaturan', 'Pengaturan sistem', () => widget.onFeatureTap?.call('pengaturan'), isSecondary: true),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cols = constraints.maxWidth > 900 ? 3 : (constraints.maxWidth > 600 ? 2 : 1);
-        return GridView.builder(
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: cols,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 2.0,
-          ),
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: features.length,
-          itemBuilder: (_, i) => _buildFeatureCard(features[i]),
-        );
-      },
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.0,
+      ),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: features.length,
+      itemBuilder: (_, i) => _buildFeatureCard(features[i]),
     );
   }
 
   Widget _buildFeatureCard(_FeatureItem item) {
+    final gradient = item.isSecondary
+        ? [const Color(0xFFFFF8E1), const Color(0xFFFFE082)]
+        : [const Color(0xFFE8F5E9), const Color(0xFFA5D6A7)];
+    final iconColor = item.isSecondary ? const Color(0xFFE65100) : const Color(0xFF1B5E20);
+    final shadowColor = item.isSecondary ? _yellow : _green;
+
     return Material(
       color: _white,
       borderRadius: BorderRadius.circular(16),
-      elevation: 0,
-      shadowColor: _green.withOpacity(0.1),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: item.onTap,
         child: Container(
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: _green.withOpacity(0.1)),
           ),
-          child: Row(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 48, height: 48,
                 decoration: BoxDecoration(
-                  color: _greenBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(item.icon, color: _green, size: 24),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(item.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _green)),
-                    const SizedBox(height: 2),
-                    Text(item.subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: gradient,
+                  ),
+                  boxShadow: [
+                    BoxShadow(color: shadowColor.withOpacity(0.12), blurRadius: 6, offset: const Offset(0, 2)),
                   ],
                 ),
+                child: Icon(item.icon, color: iconColor, size: 22),
               ),
-              Icon(Icons.chevron_right, color: Colors.grey[400], size: 20),
+              const SizedBox(height: 10),
+              Text(
+                item.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12, color: _green),
+              ),
             ],
           ),
         ),
@@ -365,7 +365,8 @@ class _FeatureItem {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  _FeatureItem(this.icon, this.title, this.subtitle, this.onTap);
+  final bool isSecondary;
+  _FeatureItem(this.icon, this.title, this.subtitle, this.onTap, {this.isSecondary = false});
 }
 
 class _StatItem {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-Future<bool> showConfirmDialog(BuildContext context, {required String title, required String message}) async {
+Future<bool> showConfirmDialog(BuildContext context, {required String title, required String message, String confirmLabel = 'Ya, Hapus'}) async {
   final result = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -8,7 +8,7 @@ Future<bool> showConfirmDialog(BuildContext context, {required String title, req
       content: Text(message),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ya, Hapus')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(confirmLabel)),
       ],
     ),
   );

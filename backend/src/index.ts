@@ -32,6 +32,7 @@ import { handleNilaiKS } from './routes/kepala_sekolah/nilai';
 import { handleRaporKS } from './routes/kepala_sekolah/rapor';
 import { handleBKKS } from './routes/kepala_sekolah/bk';
 import { handleLaporanKS } from './routes/kepala_sekolah/laporan';
+import { handleHealth } from './routes/health';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -48,6 +49,11 @@ export default {
       // General rate limit
       const rateLimitResponse = await generalRateLimit(request, env);
       if (rateLimitResponse) return rateLimitResponse;
+
+      // Health check (no auth required)
+      if (path === '/api/health' && request.method === 'GET') {
+        return handleHealth(env);
+      }
 
       // Auth routes (no auth required)
       if (path === '/api/auth/login' && request.method === 'POST') {
@@ -176,7 +182,7 @@ export default {
         const subPath = pathParts.slice(2).join('/');
 
         if (subPath === 'dashboard') return handleDashboardWK(env);
-        if (subPath.startsWith('jp-slots') || subPath.startsWith('referensi') || subPath.startsWith('jadwal') || subPath.startsWith('jadwal-per-kelas') || subPath.startsWith('distribusi') || subPath.startsWith('beban') || subPath.startsWith('jadwal-guru') || subPath.startsWith('jadwal-kelas')) {
+        if (subPath.startsWith('kesiapan') || subPath.startsWith('jp-slots') || subPath.startsWith('referensi') || subPath.startsWith('jadwal') || subPath.startsWith('jadwal-per-kelas') || subPath.startsWith('beban') || subPath.startsWith('jadwal-guru') || subPath.startsWith('jadwal-kelas') || subPath.startsWith('wali-kelas')) {
           return handlePenjadwalan(request, env, user, pathParts, url);
         }
         if (subPath.startsWith('bobot-nilai') || subPath.startsWith('monitoring-nilai') || subPath.startsWith('status-pengumpulan')) {
@@ -214,6 +220,12 @@ export default {
         }
         if (subPath.startsWith('data-siswa') || subPath.startsWith('rekap-absensi') || subPath.startsWith('rekap-nilai') || subPath.startsWith('catatan-wali')) {
           return handleWaliKelas(request, env, user, pathParts, url);
+        }
+        if (subPath === 'jadwal' && request.method === 'GET') {
+          return handleJadwalGuru(env, user);
+        }
+        if (subPath === 'profil' && request.method === 'GET') {
+          return handleProfilGuru(env, user);
         }
       }
 
@@ -302,7 +314,7 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
   }
 
   // Login berhasil — reset brute force counter
-  await bruteForceRecordSuccess(username);
+  await bruteForceRecordSuccess(username, env);
 
   const userPayload = { sub: result.id, username: result.username, role: result.role as Role, guru_id: result.guru_id };
   const token = await generateToken(userPayload, env);
@@ -327,15 +339,21 @@ function handleMe(user: { sub: number; username: string; role: string; guru_id: 
 }
 
 async function handleRefresh(request: Request, env: Env): Promise<Response> {
-  let body: { refresh_token?: string };
+  let body: { refresh_token?: string; username?: string };
   try {
     body = await request.json();
   } catch {
     return error('Invalid JSON body', 400);
   }
 
-  const { refresh_token } = body;
+  const { refresh_token, username } = body;
   if (!refresh_token) return error('refresh_token is required', 400);
+
+  // Brute force check untuk refresh token (pakai username jika ada)
+  if (username) {
+    const bfCheck = await bruteForceCheck(username, request, env);
+    if (bfCheck) return bfCheck;
+  }
 
   const payload = await verifyRefreshToken(refresh_token, env);
   if (!payload) return error('Invalid or expired refresh token', 401);
@@ -360,6 +378,36 @@ async function handleRefresh(request: Request, env: Env): Promise<Response> {
     refresh_token: newRefreshToken,
     user: { id: user.id, username: user.username, role: user.role, guru_id: user.guru_id },
   });
+}
+
+async function handleJadwalGuru(env: Env, user: UserPayload): Promise<Response> {
+  const guruId = user.guru_id;
+  if (!guruId) return success([]);
+  const semester = await env.DB.prepare("SELECT id FROM semester WHERE is_aktif = 1 LIMIT 1").first<{ id: number }>();
+  if (!semester) return success([]);
+  const rows = await env.DB.prepare(`
+    SELECT jp.*, mp.nama as mapel_nama, k.nama as kelas_nama, r.nama as ruangan_nama
+    FROM jadwal_pelajaran jp
+    LEFT JOIN mata_pelajaran mp ON jp.mata_pelajaran_id = mp.id
+    LEFT JOIN kelas k ON jp.kelas_id = k.id
+    LEFT JOIN ruangan r ON jp.ruangan_id = r.id
+    WHERE jp.guru_id = ? AND jp.semester_id = ? AND jp.status_validasi = 'tervalidasi'
+    ORDER BY jp.hari, jp.jam_mulai
+  `).bind(guruId, semester.id).all();
+  return success(rows.results);
+}
+
+async function handleProfilGuru(env: Env, user: UserPayload): Promise<Response> {
+  const guruId = user.guru_id;
+  if (!guruId) return success(null);
+
+  const profil = await env.DB.prepare(
+    `SELECT id, nip, nama, jenis_kelamin, tempat_lahir, tanggal_lahir, alamat, no_hp, email, status,
+            jabatan, status_aktif, created_at
+     FROM guru WHERE id = ?`
+  ).bind(guruId).first();
+
+  return success(profil || null);
 }
 
 async function handleDashboardGuru(env: Env, user: UserPayload): Promise<Response> {

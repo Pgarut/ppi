@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import '../../models/user_model.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../core/network/api_client.dart';
+import '../app_utils.dart';
 
 class ProfilPage extends StatefulWidget {
-  const ProfilPage({super.key});
+  final VoidCallback? onLogout;
+  const ProfilPage({super.key, this.onLogout});
 
   @override
   State<ProfilPage> createState() => _ProfilPageState();
@@ -29,7 +31,9 @@ class _ProfilPageState extends State<ProfilPage> {
         final guruRes = await ApiClient.get('/admin/guru/${user!.guruId}');
         _profil = guruRes['data'] as Map<String, dynamic>?;
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) AppUtils.showError(context, 'Gagal memuat profil');
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -38,7 +42,6 @@ class _ProfilPageState extends State<ProfilPage> {
     final user = context.watch<AuthProvider>().user;
     final name = user?.username ?? 'Pengguna';
     final roleDisplay = UserModel.roleDisplayName(user?.role ?? '');
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -47,10 +50,10 @@ class _ProfilPageState extends State<ProfilPage> {
         Center(
           child: Column(
             children: [
-              CircleAvatar(
+              const CircleAvatar(
                 radius: 48,
-                backgroundColor: const Color(0xFF2E7D32).withValues(alpha: 0.15),
-                child: Text(initial, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
+                backgroundColor: Color(0xFFE8F5E9),
+                child: Icon(Icons.person, color: Color(0xFF2E7D32), size: 48),
               ),
               const SizedBox(height: 16),
               Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
@@ -63,10 +66,27 @@ class _ProfilPageState extends State<ProfilPage> {
                 ),
                 child: Text(roleDisplay, style: const TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.w500)),
               ),
+              if (widget.onLogout != null) ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: widget.onLogout,
+                    icon: const Icon(Icons.logout, size: 18),
+                    label: const Text('Keluar'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
         if (_loading)
           const Center(child: CircularProgressIndicator())
         else if (_profil != null)

@@ -108,6 +108,13 @@ export async function create(env: Env, cfg: CrudConfig, body: Record<string, unk
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Database error';
     if (msg.includes('UNIQUE')) {
+      // SQLite format: 'UNIQUE constraint failed: table.column'
+      const colMatch = msg.match(/UNIQUE constraint failed:\s*(\S+\.(\S+))/);
+      const fieldName = colMatch ? colMatch[2] : '';
+      const fieldLabel = fieldName.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+      if (fieldName) {
+        return badRequest(`${cfg.label} dengan ${fieldLabel} tersebut sudah ada`);
+      }
       return badRequest(`${cfg.label} sudah ada (duplikat)`);
     }
     return badRequest(msg);
@@ -154,6 +161,13 @@ export async function update(env: Env, cfg: CrudConfig, id: number, body: Record
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Database error';
     if (msg.includes('UNIQUE')) {
+      // SQLite format: 'UNIQUE constraint failed: table.column'
+      const colMatch = msg.match(/UNIQUE constraint failed:\s*(\S+\.(\S+))/);
+      const fieldName = colMatch ? colMatch[2] : '';
+      const fieldLabel = fieldName.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+      if (fieldName) {
+        return badRequest(`${cfg.label} dengan ${fieldLabel} tersebut sudah ada`);
+      }
       return badRequest(`${cfg.label} sudah ada (duplikat)`);
     }
     return badRequest(msg);

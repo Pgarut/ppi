@@ -10,82 +10,356 @@ class KonselingPage extends StatefulWidget {
 
 class _KonselingPageState extends State<KonselingPage>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  int _tab = 0;
+  late TabController _tabCtrl;
+  late AnimationController _animCtrl;
+  late Animation<double> _fadeAnim;
 
-  // Jadwal
-  List<dynamic> _jadwal = [];
-  bool _jadwalLoading = true;
-
-  // Catatan
-  List<dynamic> _catatan = [];
-  bool _catatanLoading = true;
-
-  // untuk dropdown siswa (cached list)
+  // Tab 1 - Jadwal
+  List<dynamic> _kelasList = [];
   List<dynamic> _siswaList = [];
+  String? _selectedKelasId;
+  bool _siswaLoading = false;
+
+  // Tab 2 - History
+  List<dynamic> _history = [];
+  bool _historyLoading = true;
+  int _historyPage = 1;
+  int _historyTotalPages = 1;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() => _tab = _tabController.index);
-      }
-    });
-    _loadAll();
+    _tabCtrl = TabController(length: 2, vsync: this);
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeInOut);
+    _loadKelas();
+    _loadHistory();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _tabCtrl.dispose();
+    _animCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _loadAll() async {
-    await Future.wait([_loadJadwal(), _loadCatatan()]);
+  Future<void> _loadKelas() async {
+    try {
+      _kelasList = await GuruBKService.getKelasList();
+    } catch (_) {}
   }
 
-  Future<void> _loadJadwal() async {
-    setState(() => _jadwalLoading = true);
+  Future<void> _loadSiswa() async {
+    if (_selectedKelasId == null) return;
+    setState(() => _siswaLoading = true);
     try {
-      final data = await GuruBKService.getJadwalKonseling();
-      _jadwal = data['items'] as List<dynamic>? ?? [];
-    } catch (_) {}
-    setState(() => _jadwalLoading = false);
+      _siswaList = await GuruBKService.getSiswaByKelas(int.parse(_selectedKelasId!));
+    } catch (_) {
+      _siswaList = [];
+    }
+    if (mounted) {
+      setState(() => _siswaLoading = false);
+      _animCtrl.reset();
+      _animCtrl.forward();
+    }
   }
 
-  Future<void> _loadCatatan() async {
-    setState(() => _catatanLoading = true);
+  Future<void> _loadHistory() async {
+    setState(() => _historyLoading = true);
     try {
-      final data = await GuruBKService.getKonseling();
-      _catatan = data['items'] as List<dynamic>? ?? [];
-    } catch (_) {}
-    setState(() => _catatanLoading = false);
+      final data = await GuruBKService.getHistoryKonseling(page: _historyPage);
+      if (!mounted) return;
+      _history = data['items'] as List<dynamic>? ?? [];
+      final pag = data['pagination'] as Map<String, dynamic>?;
+      _historyTotalPages = pag?['total_pages'] as int? ?? 1;
+    } catch (_) {
+      _history = [];
+    }
+    if (mounted) setState(() => _historyLoading = false);
+  }
+
+  Future<void> _showJadwalDialog(Map<String, dynamic> siswa) async {
+    final tanggalCtl = TextEditingController();
+    final jamCtl = TextEditingController();
+    final catatanCtl = TextEditingController();
+    String jenis = 'individu';
+
+    // Pilih hari dalam seminggu
+    String? selectedHari;
+    final hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        String? hari = selectedHari;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.calendar_today, color: Color(0xFF00897B), size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Jadwal Konseling',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Info siswa
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: const Color(0xFF00897B),
+                          child: Text(
+                            (siswa['nama']?.toString() ?? '?').substring(0, 1).toUpperCase(),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(siswa['nama']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              Text('${siswa['nis'] ?? ''} · ${siswa['kelas_nama'] ?? ''}', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Pilih Hari
+                  const Text('Hari', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: hariList.map((h) => ChoiceChip(
+                      label: Text(h, style: const TextStyle(fontSize: 12)),
+                      selected: hari == h,
+                      selectedColor: const Color(0xFF00897B).withOpacity(0.15),
+                      onSelected: (v) => setDialogState(() => hari = h),
+                      visualDensity: VisualDensity.compact,
+                    )).toList(),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Tanggal
+                  TextField(
+                    controller: tanggalCtl,
+                    decoration: const InputDecoration(
+                      labelText: 'Tanggal (YYYY-MM-DD)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.date_range, size: 20),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    ),
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Jam
+                  TextField(
+                    controller: jamCtl,
+                    decoration: const InputDecoration(
+                      labelText: 'Jam (HH:MM)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.access_time, size: 20),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    ),
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Jenis
+                  DropdownButtonFormField<String>(
+                    value: jenis,
+                    decoration: const InputDecoration(
+                      labelText: 'Jenis',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    ),
+                    items: ['individu', 'kelompok', 'online'].map((j) =>
+                      DropdownMenuItem(value: j, child: Text(j, style: const TextStyle(fontSize: 14)))
+                    ).toList(),
+                    onChanged: (v) => setDialogState(() => jenis = v!),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Catatan
+                  TextField(
+                    controller: catatanCtl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Catatan (opsional)',
+                      border: OutlineInputBorder(),
+                      alignLabelWithHint: true,
+                      contentPadding: EdgeInsets.all(12),
+                    ),
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Batal'),
+              ),
+              FilledButton.icon(
+                onPressed: () async {
+                  if (tanggalCtl.text.isEmpty) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(content: Text('Tanggal wajib diisi'), backgroundColor: Colors.red),
+                    );
+                    return;
+                  }
+                  try {
+                    await GuruBKService.createJadwalKonseling({
+                      'siswa_id': siswa['id'],
+                      'tanggal': tanggalCtl.text,
+                      'jam': jamCtl.text,
+                      'jenis': jenis,
+                      'catatan': catatanCtl.text,
+                    });
+                    if (ctx.mounted) Navigator.pop(ctx, true);
+                  } catch (e) {
+                    if (ctx.mounted) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  }
+                },
+                icon: const Icon(Icons.save, size: 18),
+                label: const Text('Simpan'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF00897B),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (saved == true) {
+      _loadSiswa();
+      _loadHistory();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Jadwal konseling tersimpan'),
+            backgroundColor: Color(0xFF00897B),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _selesaikanJadwal(int id) async {
+    try {
+      await GuruBKService.updateJadwalKonseling(id, {'status': 'selesai'});
+      _loadHistory();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Konseling selesai'),
+            backgroundColor: Color(0xFF00897B),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // Header gradient
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          color: Colors.indigo.shade50,
-          child: Text('Konseling', style: Theme.of(context).textTheme.titleLarge),
-        ),
-        Expanded(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF004D40), Color(0xFF00897B)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TabBar(
-                controller: _tabController,
-                labelColor: Colors.indigo,
-                tabs: const [
-                  Tab(icon: Icon(Icons.calendar_month), text: 'Jadwal'),
-                  Tab(icon: Icon(Icons.notes), text: 'Catatan'),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.support_agent_outlined, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'KONSELING',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
-              Expanded(child: _tab == 0 ? _buildJadwal() : _buildCatatan()),
+              const SizedBox(height: 8),
+              TabBar(
+                controller: _tabCtrl,
+                indicatorColor: Colors.white,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white60,
+                tabs: const [
+                  Tab(icon: Icon(Icons.calendar_month, size: 20), text: 'Jadwal'),
+                  Tab(icon: Icon(Icons.history, size: 20), text: 'Catatan'),
+                ],
+                onTap: (i) => setState(() {}),
+              ),
+            ],
+          ),
+        ),
+        // Body
+        Expanded(
+          child: TabBarView(
+            controller: _tabCtrl,
+            children: [
+              _buildJadwalTab(),
+              _buildCatatanTab(),
             ],
           ),
         ),
@@ -93,262 +367,426 @@ class _KonselingPageState extends State<KonselingPage>
     );
   }
 
-  // ── Jadwal Tab ──
-
-  Widget _buildJadwal() {
+  // ─── TAB 1: JADWAL ──────────────────────────────────────
+  Widget _buildJadwalTab() {
     return Column(
       children: [
+        // Pilih Kelas
         Padding(
-          padding: const EdgeInsets.all(12),
-          child: ElevatedButton.icon(
-            icon: const Icon(Icons.add),
-            onPressed: _showFormJadwal,
-            label: const Text('Tambah Jadwal'),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: DropdownButtonFormField<String>(
+            value: _selectedKelasId,
+            decoration: InputDecoration(
+              labelText: 'Pilih Kelas',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              prefixIcon: const Icon(Icons.school, size: 20),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            ),
+            items: _kelasList.map((k) => DropdownMenuItem(
+              value: k['id'].toString(),
+              child: Text(k['nama']?.toString() ?? '', style: const TextStyle(fontSize: 14)),
+            )).toList(),
+            onChanged: (v) {
+              setState(() => _selectedKelasId = v);
+              _loadSiswa();
+            },
           ),
         ),
+        const SizedBox(height: 4),
+        // Informasi jumlah siswa
+        if (_siswaList.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Icon(Icons.people_outline, size: 16, color: Colors.grey.shade500),
+                const SizedBox(width: 6),
+                Text(
+                  '${_siswaList.length} santri',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+                const Spacer(),
+                Text(
+                  'Klik "Jadwalkan" pada kolom Jadwal',
+                  style: TextStyle(color: Colors.grey.shade400, fontSize: 11, fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 4),
+        // Tabel siswa
         Expanded(
-          child: _jadwalLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _jadwal.isEmpty
-                  ? const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('Belum ada jadwal')))
-                  : ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: _jadwal.map((j) => Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          leading: Icon(Icons.event, color: Colors.indigo),
-                          title: Text(j['siswa_nama']?.toString() ?? ''),
-                          subtitle: Text('${j['tanggal'] ?? ''} — ${j['jam'] ?? ''} (${j['jenis'] ?? ''})'),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showFormJadwal(j)),
-                              IconButton(icon: const Icon(Icons.delete, size: 18, color: Colors.red), onPressed: () => _deleteJadwal(j['id'])),
-                            ],
+          child: _siswaLoading
+              ? const Center(child: CircularProgressIndicator(strokeWidth: 3))
+              : _selectedKelasId == null
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.touch_app, size: 48, color: Colors.grey.shade300),
+                          const SizedBox(height: 8),
+                          Text('Pilih kelas untuk melihat santri', style: TextStyle(color: Colors.grey.shade500)),
+                        ],
+                      ),
+                    )
+                  : _siswaList.isEmpty
+                      ? const Center(child: Text('Tidak ada santri di kelas ini'))
+                      : LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isWide = constraints.maxWidth > 600;
+                            if (isWide) return _buildTabelSiswa();
+                            return _buildCardSiswa();
+                          },
+                        ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabelSiswa() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: FadeTransition(
+        opacity: _fadeAnim,
+        child: DataTable(
+          headingRowColor: WidgetStateProperty.all(Colors.teal.shade50),
+          dataRowMinHeight: 44,
+          dataRowMaxHeight: 56,
+          columnSpacing: 12,
+          horizontalMargin: 12,
+          columns: const [
+            DataColumn(label: Text('NIS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+            DataColumn(label: Text('NISN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+            DataColumn(label: Text('Nama Santri', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+            DataColumn(label: Text('Kelas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+            DataColumn(label: Text('Jadwal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+          ],
+          rows: _siswaList.map((s) {
+            final sudahDijadwalkan = s['jadwal_id'] != null;
+            return DataRow(cells: [
+              DataCell(Text(s['nis']?.toString() ?? '', style: const TextStyle(fontSize: 12))),
+              DataCell(Text(s['nisn']?.toString() ?? '-', style: const TextStyle(fontSize: 12))),
+              DataCell(Text(s['nama']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13))),
+              DataCell(Text(s['kelas_nama']?.toString() ?? '', style: const TextStyle(fontSize: 12))),
+              DataCell(
+                sudahDijadwalkan
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${s['jadwal_tanggal'] ?? ''} ${s['jadwal_jam'] ?? ''}',
+                          style: const TextStyle(fontSize: 10, color: Colors.green),
+                        ),
+                      )
+                    : SizedBox(
+                        height: 30,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _showJadwalDialog(s as Map<String, dynamic>),
+                          icon: const Icon(Icons.add, size: 14),
+                          label: const Text('Jadwalkan', style: TextStyle(fontSize: 11)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00897B),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            visualDensity: VisualDensity.compact,
                           ),
                         ),
-                      )).toList(),
-                    ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _showFormJadwal([Map<String, dynamic>? edit]) async {
-    final tanggalCtl = TextEditingController(text: edit?['tanggal']?.toString() ?? '');
-    final jamCtl = TextEditingController(text: edit?['jam']?.toString() ?? '');
-    String? selectedSiswaId = edit?['siswa_id']?.toString();
-    String? selectedJenis = edit?['jenis']?.toString() ?? 'individu';
-
-    if (_siswaList.isEmpty) {
-      try {
-        _siswaList = await GuruBKService.getSiswaList();
-      } catch (_) {}
-    }
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        String? siswaId = selectedSiswaId;
-        String jenis = selectedJenis!;
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) => AlertDialog(
-            title: Text(edit != null ? 'Edit Jadwal' : 'Tambah Jadwal'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: siswaId,
-                    decoration: const InputDecoration(labelText: 'Santri', border: OutlineInputBorder()),
-                    items: _siswaList.map((s) => DropdownMenuItem(
-                      value: s['id'].toString(),
-                      child: Text(s['nama']?.toString() ?? ''),
-                    )).toList(),
-                    onChanged: (v) => setDialogState(() => siswaId = v),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(controller: tanggalCtl, decoration: const InputDecoration(labelText: 'Tanggal (YYYY-MM-DD)', border: OutlineInputBorder())),
-                  const SizedBox(height: 12),
-                  TextField(controller: jamCtl, decoration: const InputDecoration(labelText: 'Jam (HH:MM)', border: OutlineInputBorder())),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: jenis,
-                    decoration: const InputDecoration(labelText: 'Jenis', border: OutlineInputBorder()),
-                    items: ['individu', 'kelompok', 'konsultasi'].map((j) => DropdownMenuItem(value: j, child: Text(j))).toList(),
-                    onChanged: (v) => setDialogState(() => jenis = v!),
-                  ),
-                ],
+                      ),
               ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-              TextButton(onPressed: () async {
-                final body = {
-                  'siswa_id': int.tryParse(siswaId ?? ''),
-                  'tanggal': tanggalCtl.text,
-                  'jam': jamCtl.text,
-                  'jenis': jenis,
-                };
-                try {
-                  if (edit != null) {
-                    await GuruBKService.updateJadwalKonseling(edit['id'], body);
-                  } else {
-                    await GuruBKService.createJadwalKonseling(body);
-                  }
-                  if (ctx.mounted) Navigator.pop(ctx, true);
-                } catch (e) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
-                  }
-                }
-              }, child: const Text('Simpan')),
-            ],
-          ),
-        );
-      },
-    );
-    if (result == true) _loadJadwal();
-  }
-
-  Future<void> _deleteJadwal(int id) async {
-    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('Hapus Jadwal'),
-      content: const Text('Yakin ingin menghapus?'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hapus', style: TextStyle(color: Colors.red))),
-      ],
-    ));
-    if (ok == true) {
-      try {
-        await GuruBKService.deleteJadwalKonseling(id);
-        _loadJadwal();
-      } catch (_) {}
-    }
-  }
-
-  // ── Catatan Tab ──
-
-  Widget _buildCatatan() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: ElevatedButton.icon(
-            icon: const Icon(Icons.add),
-            onPressed: _showFormCatatan,
-            label: const Text('Tambah Catatan'),
-          ),
+            ]);
+          }).toList(),
         ),
-        Expanded(
-          child: _catatanLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _catatan.isEmpty
-                  ? const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('Belum ada catatan')))
-                  : ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: _catatan.map((c) => Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ExpansionTile(
-                          leading: const Icon(Icons.notes, color: Colors.indigo),
-                          title: Text(c['siswa_nama']?.toString() ?? ''),
-                          subtitle: Text(c['tanggal']?.toString() ?? ''),
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Catatan: ${c['catatan'] ?? '-'}'),
-                                  const SizedBox(height: 4),
-                                  Text('Tindak Lanjut: ${c['tindak_lanjut'] ?? '-'}', style: const TextStyle(color: Colors.grey)),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showFormCatatan(c)),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+      ),
+    );
+  }
+
+  Widget _buildCardSiswa() {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        itemCount: _siswaList.length,
+        itemBuilder: (context, i) {
+          final s = _siswaList[i];
+          final sudahDijadwalkan = s['jadwal_id'] != null;
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            elevation: 1,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(s['nama']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${s['nis'] ?? ''} · ${s['kelas_nama'] ?? ''}',
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                         ),
-                      )).toList(),
+                        if (sudahDijadwalkan)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Jadwal: ${s['jadwal_tanggal']} ${s['jadwal_jam'] ?? ''}',
+                              style: const TextStyle(fontSize: 11, color: Colors.green),
+                            ),
+                          ),
+                      ],
                     ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _showFormCatatan([Map<String, dynamic>? edit]) async {
-    final tanggalCtl = TextEditingController(text: edit?['tanggal']?.toString() ?? '');
-    final catatanCtl = TextEditingController(text: edit?['catatan']?.toString() ?? '');
-    final tindakLanjutCtl = TextEditingController(text: edit?['tindak_lanjut']?.toString() ?? '');
-    String? selectedSiswaId = edit?['siswa_id']?.toString();
-
-    if (_siswaList.isEmpty) {
-      try {
-        _siswaList = await GuruBKService.getSiswaList();
-      } catch (_) {}
-    }
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        String? siswaId = selectedSiswaId;
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) => AlertDialog(
-            title: Text(edit != null ? 'Edit Catatan' : 'Tambah Catatan'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: siswaId,
-                    decoration: const InputDecoration(labelText: 'Santri', border: OutlineInputBorder()),
-                    items: _siswaList.map((s) => DropdownMenuItem(
-                      value: s['id'].toString(),
-                      child: Text(s['nama']?.toString() ?? ''),
-                    )).toList(),
-                    onChanged: (v) => setDialogState(() => siswaId = v),
                   ),
-                  const SizedBox(height: 12),
-                  TextField(controller: tanggalCtl, decoration: const InputDecoration(labelText: 'Tanggal (YYYY-MM-DD)', border: OutlineInputBorder())),
-                  const SizedBox(height: 12),
-                  TextField(controller: catatanCtl, maxLines: 3, decoration: const InputDecoration(labelText: 'Catatan', border: OutlineInputBorder())),
-                  const SizedBox(height: 12),
-                  TextField(controller: tindakLanjutCtl, maxLines: 2, decoration: const InputDecoration(labelText: 'Tindak Lanjut', border: OutlineInputBorder())),
+                  jikaTidak(sudahDijadwalkan,
+                    SizedBox(
+                      height: 32,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showJadwalDialog(s as Map<String, dynamic>),
+                        icon: const Icon(Icons.calendar_month, size: 16),
+                        label: const Text('Jadwal', style: TextStyle(fontSize: 12)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00897B),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-              TextButton(onPressed: () async {
-                final body = {
-                  'siswa_id': int.tryParse(siswaId ?? ''),
-                  'tanggal': tanggalCtl.text,
-                  'catatan': catatanCtl.text,
-                  'tindak_lanjut': tindakLanjutCtl.text,
-                };
-                try {
-                  if (edit != null) {
-                    await GuruBKService.updateKonseling(edit['id'], body);
-                  } else {
-                    await GuruBKService.createKonseling(body);
-                  }
-                  if (ctx.mounted) Navigator.pop(ctx, true);
-                } catch (e) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
-                  }
-                }
-              }, child: const Text('Simpan')),
-            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // ─── TAB 2: CATATAN (HISTORY) ───────────────────────────
+  Widget _buildCatatanTab() {
+    if (_historyLoading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 3));
+    }
+
+    if (_history.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey.shade300),
+            const SizedBox(height: 12),
+            Text('Belum ada riwayat konseling', style: TextStyle(color: Colors.grey.shade500)),
+          ],
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 600;
+        return Column(
+          children: [
+            if (_historyTotalPages > 1)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Row(
+                  children: [
+                    Text('Halaman $_historyPage dari $_historyTotalPages',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left, size: 20),
+                      onPressed: _historyPage > 1
+                          ? () { _historyPage--; _loadHistory(); }
+                          : null,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right, size: 20),
+                      onPressed: _historyPage < _historyTotalPages
+                          ? () { _historyPage++; _loadHistory(); }
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: isWide ? _buildTabelHistory() : _buildCardHistory(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTabelHistory() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        headingRowColor: WidgetStateProperty.all(Colors.indigo.shade50),
+        dataRowMinHeight: 44,
+        dataRowMaxHeight: 60,
+        columnSpacing: 12,
+        horizontalMargin: 12,
+        columns: const [
+          DataColumn(label: Text('NIS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+          DataColumn(label: Text('NISN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+          DataColumn(label: Text('Nama Santri', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+          DataColumn(label: Text('Kelas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+          DataColumn(label: Text('Tanggal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+          DataColumn(label: Text('Catatan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+          DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+          DataColumn(label: Text('Aksi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+        ],
+        rows: _history.map((h) {
+          final status = h['status']?.toString() ?? 'dijadwalkan';
+          final catatan = h['catatan']?.toString() ?? h['konseling_tindak_lanjut']?.toString() ?? '-';
+          final statusColor = status == 'selesai' ? Colors.green : status == 'dibatalkan' ? Colors.red : Colors.orange;
+          return DataRow(cells: [
+            DataCell(Text(h['siswa_nis']?.toString() ?? '', style: const TextStyle(fontSize: 12))),
+            DataCell(Text(h['siswa_nisn']?.toString() ?? '-', style: const TextStyle(fontSize: 12))),
+            DataCell(Text(h['siswa_nama']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13))),
+            DataCell(Text(h['kelas_nama']?.toString() ?? '-', style: const TextStyle(fontSize: 12))),
+            DataCell(Text('${h['tanggal'] ?? ''} ${h['jam'] ?? ''}', style: const TextStyle(fontSize: 11))),
+            DataCell(SizedBox(
+              width: 160,
+              child: Text(catatan, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
+            )),
+            DataCell(Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                status == 'dijadwalkan' ? 'Terjadwal' : status == 'selesai' ? 'Selesai' : 'Batal',
+                style: TextStyle(fontSize: 10, color: statusColor, fontWeight: FontWeight.bold),
+              ),
+            )),
+            DataCell(
+              status == 'dijadwalkan'
+                  ? SizedBox(
+                      height: 30,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _selesaikanJadwal(h['id']),
+                        icon: const Icon(Icons.check, size: 14),
+                        label: const Text('Selesai', style: TextStyle(fontSize: 11)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00897B),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ]);
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildCardHistory() {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+      itemCount: _history.length,
+      itemBuilder: (context, i) {
+        final h = _history[i];
+        final status = h['status']?.toString() ?? 'dijadwalkan';
+        final catatan = h['catatan']?.toString() ?? h['konseling_tindak_lanjut']?.toString() ?? '-';
+        final statusColor = status == 'selesai' ? Colors.green : status == 'dibatalkan' ? Colors.red : Colors.orange;
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          elevation: 1,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: statusColor.withOpacity(0.15),
+                      child: Icon(
+                        status == 'selesai' ? Icons.check_circle : Icons.schedule,
+                        size: 18,
+                        color: statusColor,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(h['siswa_nama']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          Text(
+                            '${h['siswa_nis'] ?? ''} · ${h['kelas_nama'] ?? ''}',
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        status == 'dijadwalkan' ? 'Terjadwal' : status == 'selesai' ? 'Selesai' : 'Batal',
+                        style: TextStyle(fontSize: 10, color: statusColor, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text('${h['tanggal'] ?? ''} ${h['jam'] ?? ''}',
+                    style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(catatan, style: const TextStyle(fontSize: 12)),
+                ),
+                if (status == 'dijadwalkan') ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _selesaikanJadwal(h['id']),
+                      icon: const Icon(Icons.check, size: 16),
+                      label: const Text('Selesai', style: TextStyle(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00897B),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         );
       },
     );
-    if (result == true) _loadCatatan();
+  }
+
+  // Helper widget untuk conditional rendering
+  Widget jikaTidak(bool kondisi, Widget widget) {
+    return kondisi ? const SizedBox.shrink() : widget;
   }
 }

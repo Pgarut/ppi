@@ -41,8 +41,40 @@ export async function handleRestore(request: Request, env: Env, user: UserPayloa
   if (request.method !== 'POST') return badRequest('Method tidak didukung');
 
   try {
-    const body = await request.json() as { data?: Record<string, unknown[]> };
+    const body = await request.json() as { data?: Record<string, unknown[]>; dumped_at?: string };
     if (!body.data) return badRequest('Body harus berisi field `data`');
+
+    // Validasi: pastikan data adalah object dengan array
+    if (typeof body.data !== 'object' || Array.isArray(body.data)) {
+      return badRequest('Format data tidak valid: data harus berupa object dengan key nama tabel');
+    }
+
+    // Validasi: periksa apakah ada tabel yang dikenal
+    const validTables = [
+      'users', 'hak_akses_modul', 'log_aktivitas',
+      'tahun_ajaran', 'semester', 'jurusan', 'tingkat', 'ruangan',
+      'mata_pelajaran', 'guru', 'kelas', 'siswa', 'guru_mata_pelajaran',
+      'jadwal_pelajaran', 'absensi_guru', 'absensi_siswa',
+      'bobot_nilai', 'nilai', 'nilai_rapor', 'rapor_arsip',
+      'pengaduan', 'jadwal_konseling', 'konseling', 'bakat_minat',
+      'kenaikan_kelas', 'alumni', 'pengaturan', 'rate_limits',
+    ];
+    const invalidTables = Object.keys(body.data).filter(t => !validTables.includes(t));
+    if (invalidTables.length > 0) {
+      return badRequest(`Tabel tidak dikenal: ${invalidTables.join(', ')}`);
+    }
+
+    // Validasi: pastikan setiap entry adalah array of objects
+    for (const [table, rows] of Object.entries(body.data)) {
+      if (!Array.isArray(rows)) {
+        return badRequest(`Data untuk tabel '${table}' harus berupa array`);
+      }
+      for (let i = 0; i < rows.length; i++) {
+        if (typeof rows[i] !== 'object' || rows[i] === null || Array.isArray(rows[i])) {
+          return badRequest(`Baris ke-${i + 1} di tabel '${table}' tidak valid: harus berupa object`);
+        }
+      }
+    }
 
     const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
 

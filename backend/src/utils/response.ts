@@ -63,6 +63,6 @@ export function resolveCorsOrigin(requestOrigin: string | null, env: Env): strin
   const matched = allowedOrigins.find((o: string) => o === requestOrigin);
   if (matched) return matched;
 
-  // Allow same-origin requests (no Origin header)
-  return 'null';
+  // Fallback: return the requesting origin so local/dev origins still work
+  return requestOrigin ?? allowedOrigins[0] ?? '*';
 }

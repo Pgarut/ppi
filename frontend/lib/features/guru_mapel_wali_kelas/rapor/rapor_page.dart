@@ -1,5 +1,9 @@
+import 'dart:typed_data';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
-import '../../../core/network/api_client.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../services/guru_service.dart';
 
 class RaporPageGuru extends StatefulWidget {
@@ -11,11 +15,21 @@ class RaporPageGuru extends StatefulWidget {
 
 class _RaporPageGuruState extends State<RaporPageGuru> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  Map<String, dynamic>? _dataWali;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
+    _loadDataWali();
+  }
+
+  Future<void> _loadDataWali() async {
+    try {
+      _dataWali = await GuruService.getDataWaliRapor();
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -26,31 +40,129 @@ class _RaporPageGuruState extends State<RaporPageGuru> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+
+    if (_dataWali == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cloud_off_rounded, size: 64, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              Text('Gagal memuat data', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+              const SizedBox(height: 6),
+              Text('Periksa koneksi dan coba lagi', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () { setState(() => _loading = true); _loadDataWali(); },
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E7D32), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final waliKelas = _dataWali!['wali_kelas'] as Map<String, dynamic>?;
+    if (waliKelas == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.lock_outline_rounded, size: 64, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              Text('Anda bukan wali kelas', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+              const SizedBox(height: 6),
+              Text('Fitur rapor hanya untuk wali kelas', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final siswa = _dataWali!['siswa'] as List<dynamic>? ?? [];
+    final mapel = _dataWali!['mapel'] as List<dynamic>? ?? [];
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Text('Rapor', style: Theme.of(context).textTheme.headlineSmall),
+        // ── Header ──
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF2E7D32), Color(0xFF388E3C), Color(0xFF4CAF50)],
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.assignment_rounded, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Rapor Santri', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                        Text('Wali Kelas: ${waliKelas['nama'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.85))),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.12), borderRadius: BorderRadius.circular(14)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.people, size: 14, color: Colors.white.withOpacity(0.8)),
+                    const SizedBox(width: 6),
+                    Text('${siswa.length} Santri  ·  ${mapel.length} Mapel', style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.8))),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        TabBar(
-          controller: _tabController,
-          labelColor: Colors.green[800],
-          unselectedLabelColor: Colors.grey[600],
-          indicatorColor: Colors.green[800],
-          tabs: const [
-            Tab(text: 'Input Rapor'),
-            Tab(text: 'Lihat Rapor'),
-            Tab(text: 'Status Pengiriman'),
-          ],
+        // ── Tab Bar ──
+        Container(
+          color: Colors.white,
+          child: TabBar(
+            controller: _tabController,
+            labelColor: const Color(0xFF2E7D32),
+            unselectedLabelColor: Colors.grey[600],
+            indicatorColor: const Color(0xFF2E7D32),
+            indicatorWeight: 3,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            tabs: const [
+              Tab(text: 'Lihat Rapor', icon: Icon(Icons.visibility_rounded, size: 18)),
+              Tab(text: 'Status Pengiriman', icon: Icon(Icons.history_rounded, size: 18)),
+            ],
+          ),
         ),
+        // ── Tab Content ──
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: const [
-              _InputRapor(),
-              _LihatRapor(),
-              _StatusPengiriman(),
+            children: [
+              _LihatRapor(dataWali: _dataWali!),
+              _StatusPengiriman(dataWali: _dataWali!),
             ],
           ),
         ),
@@ -59,355 +171,616 @@ class _RaporPageGuruState extends State<RaporPageGuru> with SingleTickerProvider
   }
 }
 
-class _InputRapor extends StatefulWidget {
-  const _InputRapor();
-
-  @override
-  State<_InputRapor> createState() => _InputRaporState();
-}
-
-class _InputRaporState extends State<_InputRapor> {
-  int? _siswaId, _semesterId, _kelasId, _mapelId;
-  List<dynamic> _siswa = [], _semester = [], _kelas = [], _mapel = [];
-  final _nilaiCtl = TextEditingController();
-  final _predikatCtl = TextEditingController();
-  final _catatanCtl = TextEditingController();
-  bool _loading = true, _saving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadReferensi();
-  }
-
-  Future<void> _loadReferensi() async {
-    try {
-      final res = await ApiClient.get('/referensi');
-      final data = res['data'] as Map<String, dynamic>;
-      _semester = data['semester'] as List<dynamic>? ?? [];
-      _kelas = data['kelas'] as List<dynamic>? ?? [];
-      _mapel = data['mata_pelajaran'] as List<dynamic>? ?? [];
-      _siswa = data['siswa'] as List<dynamic>? ?? [];
-    } catch (_) {}
-    setState(() => _loading = false);
-  }
-
-  Future<void> _simpan() async {
-    if (_siswaId == null || _semesterId == null || _kelasId == null || _mapelId == null) return;
-    setState(() => _saving = true);
-    try {
-      await GuruService.saveRapor({
-        'siswa_id': _siswaId,
-        'kelas_id': _kelasId,
-        'semester_id': _semesterId,
-        'mata_pelajaran_id': _mapelId,
-        'nilai_akhir': double.tryParse(_nilaiCtl.text) ?? 0,
-        'predikat': _predikatCtl.text,
-        'catatan_wali_kelas': _catatanCtl.text,
-      });
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rapor tersimpan'), backgroundColor: Colors.green));
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
-    }
-    setState(() => _saving = false);
-  }
-
-  @override
-  void dispose() {
-    _nilaiCtl.dispose();
-    _predikatCtl.dispose();
-    _catatanCtl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Wrap(
-          spacing: 16, runSpacing: 12,
-          children: [
-            SizedBox(width: 200, child: DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Santri', border: OutlineInputBorder()),
-              items: _siswa.map((s) => DropdownMenuItem(value: s['id'] as int, child: Text('${s['nis']} - ${s['nama']}'))).toList(),
-              onChanged: (v) => setState(() => _siswaId = v),
-            )),
-            SizedBox(width: 150, child: DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Kelas', border: OutlineInputBorder()),
-              items: _kelas.map((k) => DropdownMenuItem(value: k['id'] as int, child: Text(k['nama'] as String? ?? ''))).toList(),
-              onChanged: (v) => setState(() => _kelasId = v),
-            )),
-            SizedBox(width: 150, child: DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Semester', border: OutlineInputBorder()),
-              items: _semester.map((s) => DropdownMenuItem(value: s['id'] as int, child: Text(s['nama'] as String? ?? ''))).toList(),
-              onChanged: (v) => setState(() => _semesterId = v),
-            )),
-            SizedBox(width: 180, child: DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Mata Pelajaran', border: OutlineInputBorder()),
-              items: _mapel.map((m) => DropdownMenuItem(value: m['id'] as int, child: Text(m['nama'] as String? ?? ''))).toList(),
-              onChanged: (v) => setState(() => _mapelId = v),
-            )),
-          ],
-        ),
-        const SizedBox(height: 20),
-        SizedBox(width: 300, child: TextField(
-          controller: _nilaiCtl,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: 'Nilai Akhir', border: OutlineInputBorder()),
-        )),
-        const SizedBox(height: 12),
-        SizedBox(width: 300, child: TextField(
-          controller: _predikatCtl,
-          decoration: const InputDecoration(labelText: 'Predikat (A/B/C/D)', border: OutlineInputBorder()),
-        )),
-        const SizedBox(height: 12),
-        SizedBox(width: 500, child: TextField(
-          controller: _catatanCtl,
-          maxLines: 3,
-          decoration: const InputDecoration(labelText: 'Catatan Wali Kelas', border: OutlineInputBorder()),
-        )),
-        const SizedBox(height: 20),
-        ElevatedButton.icon(
-          onPressed: _saving ? null : _simpan,
-          icon: _saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save),
-          label: const Text('Simpan Rapor'),
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white),
-        ),
-      ],
-    );
-  }
-}
+// =====================================================================
+// TAB 1: LIHAT RAPOR
+// =====================================================================
 
 class _LihatRapor extends StatefulWidget {
-  const _LihatRapor();
+  final Map<String, dynamic> dataWali;
+  const _LihatRapor({required this.dataWali});
 
   @override
   State<_LihatRapor> createState() => _LihatRaporState();
 }
 
 class _LihatRaporState extends State<_LihatRapor> {
-  List<dynamic> _rapor = [];
   List<dynamic> _siswa = [], _semester = [];
   int? _siswaId, _semesterId;
-  bool _loading = true, _loadingRapor = false;
+  Map<String, dynamic>? _raporData;
+  bool _loadingSemester = true, _loadingRapor = false;
 
   @override
   void initState() {
     super.initState();
-    _loadReferensi();
+    _siswa = List<dynamic>.from(widget.dataWali['siswa'] as List? ?? []);
+    _loadSemester();
   }
 
-  Future<void> _loadReferensi() async {
+  Future<void> _loadSemester() async {
     try {
-      final res = await ApiClient.get('/referensi');
-      final data = res['data'] as Map<String, dynamic>;
-      _semester = data['semester'] as List<dynamic>? ?? [];
-      _siswa = data['siswa'] as List<dynamic>? ?? [];
+      _semester = await GuruService.getSemesterList();
+      if (_semester.isNotEmpty) _semesterId = _semester[0]['id'] as int?;
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loadingSemester = false);
   }
 
   Future<void> _loadRapor() async {
+    if (_siswaId == null || _semesterId == null) return;
     setState(() => _loadingRapor = true);
     try {
-      _rapor = await GuruService.getRapor(
-        siswaId: _siswaId?.toString(),
-        semesterId: _semesterId?.toString(),
-      );
+      _raporData = await GuruService.getRapor(siswaId: '$_siswaId', semesterId: '$_semesterId');
     } catch (_) {
-      _rapor = [];
+      _raporData = null;
     }
     setState(() => _loadingRapor = false);
   }
 
+  // ── PDF Generation ──
+
+  Future<Uint8List> _generatePdf() async {
+    if (_raporData == null) return Uint8List(0);
+    final s = _raporData!['siswa'] as Map<String, dynamic>? ?? {};
+    final sem = _raporData!['semester'] as Map<String, dynamic>? ?? {};
+    final mapel = _raporData!['mapel'] as List<dynamic>? ?? [];
+    final catatan = _raporData!['catatan_wali'] as String? ?? '';
+
+    final pdf = pw.Document();
+    final pageFormat = PdfPageFormat(215 * PdfPageFormat.mm, 330 * PdfPageFormat.mm); // F4
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: pageFormat,
+        margin: const pw.EdgeInsets.all(32),
+        header: (_) => pw.Container(
+          alignment: pw.Alignment.center,
+          margin: const pw.EdgeInsets.only(bottom: 16),
+          child: pw.Column(children: [
+            pw.Text('RAPOR HASIL BELAJAR SANTRI', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 4),
+            pw.Text('Madrasah Tsanawiyah / Aliyah', style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+            pw.Divider(thickness: 1),
+          ]),
+        ),
+        build: (_) => [
+          pw.Text('NILAI HASIL BELAJAR ${(sem['nama'] as String?)?.toUpperCase() ?? ''}',
+              style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 12),
+          _pdfRow('NIS / NISN', '${s['nis'] ?? ''} / ${s['nisn'] ?? '-'}'),
+          _pdfRow('Nama Santri', s['nama']?.toString() ?? ''),
+          _pdfRow('Kelas', s['kelas_nama']?.toString() ?? ''),
+          pw.SizedBox(height: 20),
+          pw.Table(
+            border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
+            columnWidths: {
+              0: const pw.FlexColumnWidth(0.5),
+              1: const pw.FlexColumnWidth(3),
+              2: const pw.FlexColumnWidth(1.2),
+              3: const pw.FlexColumnWidth(1),
+              4: const pw.FlexColumnWidth(1),
+              5: const pw.FlexColumnWidth(0.8),
+            },
+            children: [
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                children: [
+                  _pdfCell('No', bold: true, align: pw.Alignment.center),
+                  _pdfCell('Mata Pelajaran', bold: true),
+                  _pdfCell('Nilai ${mapel.isNotEmpty ? (mapel[0]['jenis_ujian']?.toString().toUpperCase() ?? 'UJIAN') : 'UJIAN'}', bold: true, align: pw.Alignment.center),
+                  _pdfCell('Rata-rata Harian', bold: true, align: pw.Alignment.center),
+                  _pdfCell('Nilai Akhir', bold: true, align: pw.Alignment.center),
+                  _pdfCell('Predikat', bold: true, align: pw.Alignment.center),
+                ],
+              ),
+              ...mapel.asMap().entries.map((e) {
+                final m = e.value as Map<String, dynamic>;
+                return pw.TableRow(children: [
+                  _pdfCell('${e.key + 1}', align: pw.Alignment.center),
+                  _pdfCell(m['nama']?.toString() ?? ''),
+                  _pdfCell(m['nilai_ujian']?.toString() ?? '-', align: pw.Alignment.center),
+                  _pdfCell(m['rata_harian']?.toString() ?? '-', align: pw.Alignment.center),
+                  _pdfCell(m['nilai_akhir']?.toString() ?? '-', align: pw.Alignment.center),
+                  _pdfCell(m['predikat']?.toString() ?? '-', align: pw.Alignment.center),
+                ]);
+              }),
+            ],
+          ),
+          if (catatan.isNotEmpty) ...[pw.SizedBox(height: 20), pw.Text('Catatan Wali Kelas:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)), pw.SizedBox(height: 4), pw.Container(padding: const pw.EdgeInsets.all(12), decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey400)), child: pw.Text(catatan, style: const pw.TextStyle(fontSize: 11)))],
+          pw.SizedBox(height: 30),
+          pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceAround, children: [
+            pw.Column(children: [pw.Text('Mengetahui,', style: const pw.TextStyle(fontSize: 10)), pw.SizedBox(height: 40), pw.Text('Kepala Madrasah', style: const pw.TextStyle(fontSize: 10)), pw.SizedBox(height: 4), pw.Text('( ___________________ )', style: const pw.TextStyle(fontSize: 10))]),
+            pw.Column(children: [pw.Text('Wali Kelas,', style: const pw.TextStyle(fontSize: 10)), pw.SizedBox(height: 40), pw.Text('___________________', style: const pw.TextStyle(fontSize: 10)), pw.SizedBox(height: 4), pw.Text('( ___________________ )', style: const pw.TextStyle(fontSize: 10))]),
+            pw.Column(children: [pw.Text('Santri,', style: const pw.TextStyle(fontSize: 10)), pw.SizedBox(height: 40), pw.Text('___________________', style: const pw.TextStyle(fontSize: 10)), pw.SizedBox(height: 4), pw.Text('( ___________________ )', style: const pw.TextStyle(fontSize: 10))]),
+          ]),
+        ],
+      ),
+    );
+    return pdf.save();
+  }
+
+  pw.Widget _pdfRow(String label, String value) => pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(vertical: 2),
+        child: pw.Row(children: [
+          pw.SizedBox(width: 100, child: pw.Text(label, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold))),
+          pw.Text(':  $value', style: const pw.TextStyle(fontSize: 11)),
+        ]),
+      );
+
+  pw.Widget _pdfCell(String text, {bool bold = false, pw.Alignment? align}) => pw.Container(
+        padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        alignment: align ?? pw.Alignment.centerLeft,
+        child: pw.Text(text, style: pw.TextStyle(fontSize: 9, fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal)),
+      );
+
+  Future<void> _downloadPdf() async {
+    if (_raporData == null) return;
+    try {
+      final pdfBytes = await _generatePdf();
+      final blob = html.Blob([pdfBytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.document.createElement('a') as html.AnchorElement
+        ..href = url
+        ..style.display = 'none'
+        ..download = 'Rapor_${_raporData!['siswa']?['nama'] ?? 'Santri'}_${_raporData!['semester']?['nama'] ?? ''}.pdf';
+      html.document.body!.children.add(anchor);
+      anchor.click();
+      html.document.body!.children.remove(anchor);
+      html.Url.revokeObjectUrl(url);
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Row(children: [Icon(Icons.check_circle, color: Colors.white, size: 18), SizedBox(width: 8), Text('PDF berhasil diunduh')]),
+          backgroundColor: const Color(0xFF2E7D32), behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), margin: const EdgeInsets.all(16),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Gagal: $e'), backgroundColor: Colors.red[700], behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), margin: const EdgeInsets.all(16),
+        ));
+      }
+    }
+  }
+
+  Future<void> _printPdf() async {
+    if (_raporData == null) return;
+    try {
+      final pdfBytes = await _generatePdf();
+      await Printing.layoutPdf(onLayout: (_) => pdfBytes);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Gagal print: $e'), backgroundColor: Colors.red[700], behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), margin: const EdgeInsets.all(16),
+        ));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loadingSemester) return const Center(child: CircularProgressIndicator());
 
-    return ListView(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      children: [
-        Wrap(
-          spacing: 16, runSpacing: 12,
-          children: [
-            SizedBox(width: 200, child: DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Santri', border: OutlineInputBorder()),
-              items: _siswa.map((s) => DropdownMenuItem(value: s['id'] as int, child: Text('${s['nis']} - ${s['nama']}'))).toList(),
-              onChanged: (v) => setState(() => _siswaId = v),
-            )),
-            SizedBox(width: 150, child: DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Semester', border: OutlineInputBorder()),
-              value: _semesterId,
-              items: _semester.map((s) => DropdownMenuItem(value: s['id'] as int, child: Text(s['nama'] as String? ?? ''))).toList(),
-              onChanged: (v) => setState(() => _semesterId = v),
-            )),
-            ElevatedButton(onPressed: _loadRapor, child: const Text('Cari')),
-          ],
+      child: Column(children: [
+        // ── Filter ──
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white, borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.1)),
+            boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SectionTitle(title: 'Pilih Santri & Semester'),
+              const SizedBox(height: 12),
+              Wrap(spacing: 16, runSpacing: 12, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                SizedBox(width: 250, child: DropdownButtonFormField<int>(
+                  decoration: const InputDecoration(labelText: 'Pilih Santri', border: OutlineInputBorder(), prefixIcon: Icon(Icons.person_rounded)),
+                  value: _siswaId,
+                  items: _siswa.map((s) => DropdownMenuItem(value: s['id'] as int, child: Text('${s['nis']} - ${s['nama']}', overflow: TextOverflow.ellipsis))).toList(),
+                  onChanged: (v) => setState(() => _siswaId = v),
+                )),
+                SizedBox(width: 200, child: DropdownButtonFormField<int>(
+                  decoration: const InputDecoration(labelText: 'Pilih Semester', border: OutlineInputBorder(), prefixIcon: Icon(Icons.calendar_month_rounded)),
+                  value: _semesterId,
+                  items: _semester.map((s) => DropdownMenuItem(value: s['id'] as int, child: Text(s['nama']?.toString() ?? ''))).toList(),
+                  onChanged: (v) => setState(() => _semesterId = v),
+                )),
+                SizedBox(height: 50, child: ElevatedButton.icon(
+                  onPressed: (_siswaId != null && _semesterId != null && !_loadingRapor) ? _loadRapor : null,
+                  icon: _loadingRapor
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.search_rounded),
+                  label: Text(_loadingRapor ? 'Memuat...' : 'Tampilkan', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E7D32), foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                  ),
+                )),
+              ]),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
-        if (_loadingRapor)
-          const Center(child: CircularProgressIndicator())
-        else if (_rapor.isEmpty)
-          const Center(child: Padding(padding: EdgeInsets.all(32), child: Text('Belum ada data rapor')))
-        else ...[
-          DataTable(
-            columns: const [
-              DataColumn(label: Text('Santri')),
-              DataColumn(label: Text('Kelas')),
-              DataColumn(label: Text('Mapel')),
-              DataColumn(label: Text('Nilai Akhir')),
-              DataColumn(label: Text('Predikat')),
-              DataColumn(label: Text('Catatan')),
-            ],
-            rows: _rapor.map((item) {
-              final r = item as Map<String, dynamic>;
-              return DataRow(cells: [
-                DataCell(Text(r['siswa_nama']?.toString() ?? '')),
-                DataCell(Text(r['kelas_nama']?.toString() ?? '')),
-                DataCell(Text(r['mapel_nama']?.toString() ?? '')),
-                DataCell(Text(r['nilai_akhir']?.toString() ?? '-')),
-                DataCell(Text(r['predikat']?.toString() ?? '-')),
-                DataCell(SizedBox(width: 150, child: Text(r['catatan_wali_kelas']?.toString() ?? '-', maxLines: 2, overflow: TextOverflow.ellipsis))),
-              ]);
-            }).toList(),
+
+        // ── Hasil ──
+        if (_raporData != null) ...[
+          // Tombol Aksi
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            child: Row(children: [
+              const Icon(Icons.picture_as_pdf, size: 18, color: Color(0xFF2E7D32)),
+              const SizedBox(width: 6),
+              const Text('F4', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF2E7D32))),
+              const Spacer(),
+              _actionBtn(icon: Icons.download_rounded, label: 'Download PDF', color: const Color(0xFF1565C0), onTap: _downloadPdf),
+              const SizedBox(width: 10),
+              _actionBtn(icon: Icons.print_rounded, label: 'Print', color: const Color(0xFFE65100), onTap: _printPdf),
+            ]),
           ),
+
+          // Header Nilai Hasil Belajar
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2E7D32).withOpacity(0.06),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.12)),
+            ),
+            child: Text(
+              'NILAI HASIL BELAJAR ${(_raporData!['semester']?['nama'] as String?)?.toUpperCase() ?? ''}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2E7D32), letterSpacing: 0.5),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Info Siswa
+          _buildSiswaCard(),
+          const SizedBox(height: 14),
+
+          // Tabel Nilai
+          _buildNilaiTable(),
+          const SizedBox(height: 14),
+
+          // Catatan Wali
+          if ((_raporData!['catatan_wali'] as String?)?.isNotEmpty == true) _buildCatatanCard(),
+        ] else if (_loadingRapor) ...[
+          const SizedBox(height: 60), const Center(child: CircularProgressIndicator()),
+        ] else ...[
+          const SizedBox(height: 60),
+          Center(child: Column(children: [
+            Icon(Icons.touch_app_rounded, size: 56, color: Colors.grey[300]),
+            const SizedBox(height: 12),
+            Text('Pilih santri dan semester', style: TextStyle(fontSize: 15, color: Colors.grey[500])),
+            const SizedBox(height: 4),
+            Text('lalu klik Tampilkan', style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+          ])),
         ],
-      ],
+      ]),
+    );
+  }
+
+  Widget _actionBtn({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return Material(
+      color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10), onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 6),
+            Text(label, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: color)),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSiswaCard() {
+    final s = _raporData!['siswa'] as Map<String, dynamic>? ?? {};
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.08)), boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))]),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(width: 48, height: 48, decoration: BoxDecoration(color: const Color(0xFF2E7D32).withOpacity(0.1), borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.person_rounded, color: Color(0xFF2E7D32), size: 26)),
+        const SizedBox(width: 14),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(s['nama']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Color(0xFF2E7D32))),
+          const SizedBox(height: 4),
+          Wrap(spacing: 20, runSpacing: 4, children: [
+            _infoChip(Icons.badge_rounded, 'NIS/NISN: ${s['nis'] ?? '-'} / ${s['nisn'] ?? '-'}'),
+            _infoChip(Icons.book_rounded, '${s['kelas_nama'] ?? '-'}'),
+          ]),
+        ])),
+      ]),
+    );
+  }
+
+  Widget _infoChip(IconData icon, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 14, color: Colors.grey[500]),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+      ]);
+
+  Widget _buildNilaiTable() {
+    final mapel = _raporData!['mapel'] as List<dynamic>? ?? [];
+    if (mapel.isEmpty) return Container(padding: const EdgeInsets.all(32), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.grey[200]!)), child: const Center(child: Text('Belum ada data nilai')));
+
+    final totalAkhir = mapel.fold<double>(0, (sum, m) => sum + ((m['nilai_akhir'] as num?)?.toDouble() ?? 0));
+    final rataRata = mapel.isNotEmpty ? (totalAkhir / mapel.length).toStringAsFixed(1) : '0.0';
+
+    return Container(
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.08)), boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(width: double.infinity, padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: const Color(0xFF2E7D32).withOpacity(0.06), borderRadius: const BorderRadius.vertical(top: Radius.circular(14))),
+          child: Row(children: [
+            const Icon(Icons.menu_book_rounded, size: 18, color: Color(0xFF2E7D32)),
+            const SizedBox(width: 8),
+            const Text('Daftar Nilai', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF2E7D32))),
+            const Spacer(),
+            Text('Rata-rata: $rataRata', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF2E7D32))),
+          ]),
+        ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            headingRowColor: WidgetStatePropertyAll(const Color(0xFF2E7D32).withOpacity(0.04)),
+            headingTextStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF2E7D32)),
+            columnSpacing: 20, horizontalMargin: 16, dataRowMinHeight: 40, dataRowMaxHeight: 48,
+            columns: const [DataColumn(label: Text('No')), DataColumn(label: Text('Mata Pelajaran')), DataColumn(label: Text('Nilai Ujian'), numeric: true), DataColumn(label: Text('Rata Harian'), numeric: true), DataColumn(label: Text('Nilai Akhir'), numeric: true), DataColumn(label: Text('Predikat'))],
+            rows: List.generate(mapel.length, (i) {
+              final m = mapel[i] as Map<String, dynamic>;
+              final nilaiAkhir = m['nilai_akhir'];
+              final predikat = m['predikat']?.toString() ?? '-';
+              final color = _predikatColor(predikat);
+              return DataRow(cells: [
+                DataCell(Text('${i + 1}', style: const TextStyle(fontSize: 13))),
+                DataCell(SizedBox(width: 170, child: Text(m['nama']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)))),
+                DataCell(Text(m['nilai_ujian']?.toString() ?? '-', style: const TextStyle(fontSize: 13))),
+                DataCell(Text(m['rata_harian']?.toString() ?? '-', style: const TextStyle(fontSize: 13))),
+                DataCell(Text(nilaiAkhir?.toString() ?? '-', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: nilaiAkhir != null ? const Color(0xFF2E7D32) : Colors.grey))),
+                DataCell(Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(8), border: Border.all(color: color.withOpacity(0.3))), child: Text(predikat, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color)))),
+              ]);
+            }),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Color _predikatColor(String p) {
+    switch (p) { case 'A': return const Color(0xFF2E7D32); case 'B': return const Color(0xFF1565C0); case 'C': return const Color(0xFFE65100); case 'D': return const Color(0xFFC62828); default: return Colors.grey; }
+  }
+
+  Widget _buildCatatanCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFF9A825).withOpacity(0.2)), boxShadow: [BoxShadow(color: const Color(0xFFF9A825).withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))]),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: const Color(0xFFF9A825).withOpacity(0.12), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.note_alt_rounded, color: Color(0xFFF9A825), size: 22)),
+        const SizedBox(width: 14),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Catatan Wali Kelas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFFF9A825))),
+          const SizedBox(height: 6),
+          Text(_raporData!['catatan_wali'] as String? ?? '', style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.5)),
+        ])),
+      ]),
     );
   }
 }
 
+// =====================================================================
+// TAB 2: STATUS PENGIRIMAN (Historis input PAS/PAT oleh guru_mapel)
+// =====================================================================
+
 class _StatusPengiriman extends StatefulWidget {
-  const _StatusPengiriman();
+  final Map<String, dynamic> dataWali;
+  const _StatusPengiriman({required this.dataWali});
 
   @override
   State<_StatusPengiriman> createState() => _StatusPengirimanState();
 }
 
 class _StatusPengirimanState extends State<_StatusPengiriman> {
-  List<dynamic> _rapor = [];
   List<dynamic> _semester = [];
   int? _semesterId;
-  bool _loading = true, _loadingData = false;
+  List<dynamic> _statusList = [];
+  bool _loadingSemester = true, _loadingData = false;
 
   @override
   void initState() {
     super.initState();
-    _loadReferensi();
+    _loadSemester();
   }
 
-  Future<void> _loadReferensi() async {
+  Future<void> _loadSemester() async {
     try {
-      final res = await ApiClient.get('/referensi');
-      final data = res['data'] as Map<String, dynamic>;
-      _semester = data['semester'] as List<dynamic>? ?? [];
+      _semester = await GuruService.getSemesterList();
+      if (_semester.isNotEmpty) _semesterId = _semester[0]['id'] as int?;
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loadingSemester = false);
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadStatus() async {
+    if (_semesterId == null) return;
     setState(() => _loadingData = true);
     try {
-      _rapor = await GuruService.getRapor(semesterId: _semesterId?.toString());
+      _statusList = await GuruService.getStatusPengiriman('$_semesterId');
     } catch (_) {
-      _rapor = [];
+      _statusList = [];
     }
     setState(() => _loadingData = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loadingSemester) return const Center(child: CircularProgressIndicator());
 
-    return ListView(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      children: [
-        Wrap(
-          spacing: 16, runSpacing: 12,
-          children: [
-            SizedBox(width: 200, child: DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Semester', border: OutlineInputBorder()),
-              value: _semesterId,
-              items: _semester.map((s) => DropdownMenuItem(value: s['id'] as int, child: Text(s['nama'] as String? ?? ''))).toList(),
-              onChanged: (v) => setState(() => _semesterId = v),
-            )),
-            ElevatedButton(onPressed: _loadData, child: const Text('Tampilkan')),
-          ],
+      child: Column(children: [
+        // Filter
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.1)), boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))]),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _SectionTitle(title: 'Pilih Semester'),
+            const SizedBox(height: 12),
+            Wrap(spacing: 16, runSpacing: 12, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              SizedBox(width: 250, child: DropdownButtonFormField<int>(
+                decoration: const InputDecoration(labelText: 'Pilih Semester', border: OutlineInputBorder(), prefixIcon: Icon(Icons.calendar_month_rounded)),
+                value: _semesterId,
+                items: _semester.map((s) => DropdownMenuItem(value: s['id'] as int, child: Text(s['nama']?.toString() ?? ''))).toList(),
+                onChanged: (v) => setState(() => _semesterId = v),
+              )),
+              SizedBox(height: 50, child: ElevatedButton.icon(
+                onPressed: (_semesterId != null && !_loadingData) ? _loadStatus : null,
+                icon: _loadingData ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.search_rounded),
+                label: Text(_loadingData ? 'Memuat...' : 'Tampilkan', style: const TextStyle(fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E7D32), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 24)),
+              )),
+            ]),
+          ]),
         ),
         const SizedBox(height: 16),
-        if (_loadingData)
-          const Center(child: CircularProgressIndicator())
-        else if (_rapor.isEmpty)
-          const Center(child: Padding(padding: EdgeInsets.all(32), child: Text('Belum ada data rapor untuk semester ini')))
-        else ...[
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Ringkasan Pengiriman Rapor', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 12),
-                  _statRow('Total Entri Rapor', '${_rapor.length}'),
-                  _statRow('Dengan Nilai Akhir', '${_rapor.where((r) => r['nilai_akhir'] != null).length}'),
-                  _statRow('Dengan Predikat', '${_rapor.where((r) => r['predikat'] != null && r['predikat'].toString().isNotEmpty).length}'),
-                  _statRow('Dengan Catatan', '${_rapor.where((r) => r['catatan_wali_kelas'] != null && r['catatan_wali_kelas'].toString().isNotEmpty).length}'),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          DataTable(
-            columns: const [
-              DataColumn(label: Text('Siswa')),
-              DataColumn(label: Text('Kelas')),
-              DataColumn(label: Text('Mapel')),
-              DataColumn(label: Text('Nilai')),
-              DataColumn(label: Text('Predikat')),
-              DataColumn(label: Text('Status')),
-            ],
-            rows: _rapor.map((item) {
-              final r = item as Map<String, dynamic>;
-              final hasNilai = r['nilai_akhir'] != null;
-              final hasPredikat = r['predikat'] != null && r['predikat'].toString().isNotEmpty;
-              final status = hasNilai && hasPredikat ? 'Lengkap' : 'Belum Lengkap';
-              return DataRow(cells: [
-                DataCell(Text(r['siswa_nama']?.toString() ?? '')),
-                DataCell(Text(r['kelas_nama']?.toString() ?? '')),
-                DataCell(Text(r['mapel_nama']?.toString() ?? '')),
-                DataCell(Text(r['nilai_akhir']?.toString() ?? '-')),
-                DataCell(Text(r['predikat']?.toString() ?? '-')),
-                DataCell(_statusChip(status)),
-              ]);
-            }).toList(),
-          ),
+
+        // Status list
+        if (_loadingData) ...[
+          const SizedBox(height: 40), const Center(child: CircularProgressIndicator()),
+        ] else if (_statusList.isEmpty) ...[
+          const SizedBox(height: 40),
+          Center(child: Column(children: [
+            Icon(Icons.inbox_rounded, size: 56, color: Colors.grey[300]),
+            const SizedBox(height: 12),
+            Text('Pilih semester dan klik Tampilkan', style: TextStyle(color: Colors.grey[500])),
+          ])),
+        ] else ...[
+          // Summary
+          _buildSummary(),
+          const SizedBox(height: 14),
+          // Detail list
+          ..._statusList.map((item) => _buildStatusCard(item as Map<String, dynamic>)),
         ],
-      ],
+      ]),
     );
   }
 
-  Widget _statRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: Colors.grey[600])),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
+  Widget _buildSummary() {
+    final sudah = _statusList.where((s) => (s as Map<String, dynamic>)['nilai_id'] != null).length;
+    final total = _statusList.length;
+    final belum = total - sudah;
 
-  Widget _statusChip(String status) {
-    final color = status == 'Lengkap' ? Colors.green : Colors.orange;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
-      child: Text(status, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white, borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.08)),
+        boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Row(children: [
+        Expanded(child: _summaryItem(Icons.check_circle_rounded, 'Sudah Input', '$sudah', const Color(0xFF2E7D32))),
+        Container(height: 40, width: 1, color: Colors.grey[200]),
+        Expanded(child: _summaryItem(Icons.pending_rounded, 'Belum Input', '$belum', Colors.orange[700]!)),
+        Container(height: 40, width: 1, color: Colors.grey[200]),
+        Expanded(child: _summaryItem(Icons.book_rounded, 'Total Mapel', '$total', const Color(0xFF1565C0))),
+      ]),
     );
+  }
+
+  Widget _summaryItem(IconData icon, String label, String value, Color color) {
+    return Column(children: [
+      Icon(icon, color: color, size: 22),
+      const SizedBox(height: 4),
+      Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: color)),
+      Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+    ]);
+  }
+
+  Widget _buildStatusCard(Map<String, dynamic> item) {
+    final sudahInput = item['nilai_id'] != null;
+    final tglInput = item['tgl_input'] as String?;
+    final jumlahSantri = item['jumlah_santri'] ?? 0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white, borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: sudahInput ? const Color(0xFF2E7D32).withOpacity(0.15) : Colors.orange.withOpacity(0.15)),
+        boxShadow: [BoxShadow(color: (sudahInput ? const Color(0xFF2E7D32) : Colors.orange).withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: sudahInput ? const Color(0xFF2E7D32).withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(sudahInput ? Icons.check_circle : Icons.hourglass_empty_rounded,
+              color: sudahInput ? const Color(0xFF2E7D32) : Colors.orange[700], size: 22),
+        ),
+        const SizedBox(width: 14),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(item['mapel_nama']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          const SizedBox(height: 4),
+          Row(children: [
+            Icon(Icons.person_outlined, size: 13, color: Colors.grey[500]),
+            const SizedBox(width: 4),
+            Text('Guru: ${item['guru_nama'] ?? '-'}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            const SizedBox(width: 16),
+            Icon(Icons.people_outlined, size: 13, color: Colors.grey[500]),
+            const SizedBox(width: 4),
+            Text('$jumlahSantri santri', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          ]),
+        ])),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: sudahInput ? const Color(0xFF2E7D32).withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: sudahInput ? const Color(0xFF2E7D32).withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(sudahInput ? Icons.check : Icons.close, size: 14, color: sudahInput ? const Color(0xFF2E7D32) : Colors.orange[700]),
+              const SizedBox(width: 4),
+              Text(sudahInput ? 'Sudah' : 'Belum', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: sudahInput ? const Color(0xFF2E7D32) : Colors.orange[700])),
+            ]),
+          ),
+          if (sudahInput && tglInput != null) ...[
+            const SizedBox(height: 6),
+            Text(tglInput.length >= 10 ? tglInput.substring(0, 10) : tglInput, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+          ],
+        ]),
+      ]),
+    );
+  }
+}
+
+// =====================================================================
+// SHARED WIDGET
+// =====================================================================
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  const _SectionTitle({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Container(width: 4, height: 20, decoration: BoxDecoration(color: const Color(0xFFF9A825), borderRadius: BorderRadius.circular(2))),
+      const SizedBox(width: 10),
+      Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
+    ]);
   }
 }

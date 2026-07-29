@@ -31,27 +31,61 @@ function makePost(path: string, body: unknown): Request {
 }
 
 describe('BK Konseling Routes', () => {
-  it('should list jadwal konseling', async () => {
+  it('should list jadwal konseling with pagination', async () => {
     const db = makeDb();
+    db.first.mockResolvedValue({ total: 1 });
     db.all.mockResolvedValue({ results: [{ id: 1, siswa_nama: 'Siswa A', tanggal: '2026-07-27' }] });
     const req = makeGet('/api/guru-bk/jadwal-konseling');
     const res = await handleKonselingBK(req, db, bkUser, ['api', 'guru-bk', 'jadwal-konseling'], makeUrl(''));
     expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.items).toHaveLength(1);
+    expect(body.data.pagination).toBeDefined();
   });
 
-  it('should create jadwal konseling', async () => {
+  it('should return siswa per kelas', async () => {
     const db = makeDb();
-    const req = makePost('/api/guru-bk/jadwal-konseling', { siswa_id: 1, tanggal: '2026-07-28', jam: '09:00', jenis: 'individu' });
+    db.all.mockResolvedValue({ results: [{ id: 1, nis: '123', nama: 'Siswa A', kelas_nama: 'X-A' }] });
+    const req = makeGet('/api/guru-bk/jadwal-konseling/siswa?kelas_id=1');
+    const res = await handleKonselingBK(req, db, bkUser, ['api', 'guru-bk', 'jadwal-konseling', 'siswa'], makeUrl('/api/guru-bk/jadwal-konseling/siswa', 'kelas_id=1'));
+    expect(res.status).toBe(200);
+  });
+
+  it('should return history konseling with pagination', async () => {
+    const db = makeDb();
+    db.first.mockResolvedValue({ total: 2 });
+    db.all.mockResolvedValue({ results: [{ id: 1, siswa_nama: 'Siswa A', catatan: 'Test' }] });
+    const req = makeGet('/api/guru-bk/jadwal-konseling/history');
+    const res = await handleKonselingBK(req, db, bkUser, ['api', 'guru-bk', 'jadwal-konseling', 'history'], makeUrl(''));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.items).toHaveLength(1);
+  });
+
+  it('should create jadwal konseling with optional catatan', async () => {
+    const db = makeDb();
+    const req = makePost('/api/guru-bk/jadwal-konseling', { siswa_id: 1, tanggal: '2026-07-28', jam: '09:00', jenis: 'individu', catatan: 'Tes awal' });
     const res = await handleKonselingBK(req, db, bkUser, ['api', 'guru-bk', 'jadwal-konseling'], makeUrl(''));
     expect(res.status).toBe(201);
   });
 
-  it('should list konseling sessions', async () => {
+  it('should reject invalid jenis konseling', async () => {
     const db = makeDb();
+    db.run.mockResolvedValue({ meta: { last_row_id: 1, changes: 1 } });
+    const req = makePost('/api/guru-bk/jadwal-konseling', { siswa_id: 1, tanggal: '2026-07-28', jenis: 'konsultasi' });
+    const res = await handleKonselingBK(req, db, bkUser, ['api', 'guru-bk', 'jadwal-konseling'], makeUrl(''));
+    expect(res.status).toBe(400);
+  });
+
+  it('should list konseling sessions with pagination', async () => {
+    const db = makeDb();
+    db.first.mockResolvedValue({ total: 1 });
     db.all.mockResolvedValue({ results: [{ id: 1, siswa_nama: 'Siswa A', catatan: 'Tes' }] });
     const req = makeGet('/api/guru-bk/konseling');
     const res = await handleKonselingBK(req, db, bkUser, ['api', 'guru-bk', 'konseling'], makeUrl(''));
     expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.items).toHaveLength(1);
   });
 
   it('should list bakat minat', async () => {
@@ -64,28 +98,32 @@ describe('BK Konseling Routes', () => {
 });
 
 describe('BK Monitoring Routes', () => {
-  it('should return monitoring nilai', async () => {
+  it('should return monitoring absensi per student', async () => {
     const db = makeDb();
-    db.all.mockResolvedValue({ results: [{ jenis: 'harian', rata_rata: 80 }] });
-    const req = makeGet('/api/guru-bk/monitoring/nilai');
-    const res = await handleMonitoringBK(req, db, makeUrl('/api/guru-bk/monitoring/nilai'));
-    expect(res.status).toBe(200);
-  });
-
-  it('should return monitoring absensi', async () => {
-    const db = makeDb();
-    db.all.mockResolvedValue({ results: [{ status: 'hadir', jumlah: 20 }] });
+    db.all.mockResolvedValue({ results: [{ id: 1, siswa_nama: 'Siswa A', hadir: 20, izin: 1, sakit: 2, alpa: 0 }] });
     const req = makeGet('/api/guru-bk/monitoring/absensi');
     const res = await handleMonitoringBK(req, db, makeUrl('/api/guru-bk/monitoring/absensi'));
     expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data[0].hadir).toBe(20);
   });
 
-  it('should return monitoring pelanggaran', async () => {
+  it('should return monitoring absensi filtered by kelas', async () => {
     const db = makeDb();
-    db.all.mockResolvedValue({ results: [{ kategori: 'perilaku', jumlah: 3 }] });
+    db.all.mockResolvedValue({ results: [{ id: 1, siswa_nama: 'Siswa A', hadir: 15 }] });
+    const req = makeGet('/api/guru-bk/monitoring/absensi?kelas_id=1');
+    const res = await handleMonitoringBK(req, db, makeUrl('/api/guru-bk/monitoring/absensi', 'kelas_id=1'));
+    expect(res.status).toBe(200);
+  });
+
+  it('should return monitoring pelanggaran per student', async () => {
+    const db = makeDb();
+    db.all.mockResolvedValue({ results: [{ siswa_id: 1, siswa_nama: 'Siswa A', total_pelanggaran: 3, terakhir_dilaporkan: '2026-07-27' }] });
     const req = makeGet('/api/guru-bk/monitoring/pelanggaran');
     const res = await handleMonitoringBK(req, db, makeUrl('/api/guru-bk/monitoring/pelanggaran'));
     expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data[0].total_pelanggaran).toBe(3);
   });
 });
 

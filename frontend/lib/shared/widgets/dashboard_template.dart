@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import '../models/user_model.dart';
 import '../../features/auth/providers/auth_provider.dart';
 
@@ -15,8 +14,8 @@ class StatItem {
 class FeatureItem {
   final String label, key, desc;
   final IconData icon;
-  final Color color;
-  const FeatureItem(this.label, this.key, this.icon, this.desc, this.color);
+  final bool isSecondary;
+  const FeatureItem(this.label, this.key, this.icon, this.desc, {this.isSecondary = false});
 }
 
 class DashboardTemplate extends StatelessWidget {
@@ -68,26 +67,21 @@ class _Header extends StatelessWidget {
     final user = context.watch<AuthProvider>().user;
     final name = user?.username ?? 'Pengguna';
     final roleDisplay = UserModel.roleDisplayName(user?.role ?? '');
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-    final today = DateFormat('EEEE, d MMMM yyyy', 'id').format(DateTime.now());
-    final hour = DateTime.now().hour;
-    final greeting = hour < 10 ? 'Selamat Pagi' : hour < 15 ? 'Selamat Siang' : hour < 18 ? 'Selamat Sore' : 'Selamat Malam';
 
     return Row(
       children: [
-        CircleAvatar(
-          radius: 26,
-          backgroundColor: const Color(0xFF2E7D32),
-          child: Text(initial, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+        const CircleAvatar(
+          radius: 24,
+          backgroundColor: Color(0xFFE8F5E9),
+          child: Icon(Icons.person, color: Color(0xFF2E7D32), size: 26),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('$greeting, $name', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               Text(roleDisplay, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-              Text(today, style: TextStyle(color: Colors.grey[400], fontSize: 11)),
             ],
           ),
         ),
@@ -175,23 +169,17 @@ class _FeatureGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (features.isEmpty) return const SizedBox.shrink();
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final cols = w > 1100 ? 4 : (w > 700 ? 3 : 2);
-        return GridView.builder(
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: cols,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.1,
-          ),
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: features.length,
-          itemBuilder: (_, i) => _FeatureCard(item: features[i], onTap: onFeatureTap),
-        );
-      },
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.0,
+      ),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: features.length,
+      itemBuilder: (_, i) => _FeatureCard(item: features[i], onTap: onFeatureTap),
     );
   }
 }
@@ -214,22 +202,41 @@ class _FeatureCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.grey[200]!),
           ),
-          padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 48, height: 48,
                 decoration: BoxDecoration(
-                  color: item.color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: item.isSecondary
+                        ? [const Color(0xFFFFF8E1), const Color(0xFFFFE082)]
+                        : [const Color(0xFFE8F5E9), const Color(0xFFA5D6A7)],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (item.isSecondary ? const Color(0xFFF9A825) : const Color(0xFF2E7D32))
+                          .withValues(alpha: 0.12),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: Icon(item.icon, color: item.color, size: 28),
+                child: Icon(item.icon, size: 22,
+                    color: item.isSecondary ? const Color(0xFFE65100) : const Color(0xFF1B5E20)),
               ),
-              const Spacer(),
-              Text(item.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-              const SizedBox(height: 2),
-              Text(item.desc, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(item.label,
+                    style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
             ],
           ),
         ),

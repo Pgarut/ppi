@@ -7,6 +7,7 @@ import { handleAdminAbsensi } from '../../../src/routes/admin/absensi';
 import { handleAdminNilai } from '../../../src/routes/admin/nilai';
 import { handleAdminRapor } from '../../../src/routes/admin/rapor';
 import { handlePengaturanTampilan } from '../../../src/routes/admin/pengaturan_tampilan';
+import { handleHealth } from '../../../src/routes/health';
 
 function makeDb() {
   const first = vi.fn();
@@ -336,6 +337,43 @@ describe('Admin Routes', () => {
       const req = makePut('/api/admin/pengaturan-tampilan', { hero_title: 'Test', logo_url: 'logo.png' });
       const res = await handlePengaturanTampilan(req, db, makeUrl('/api/admin/pengaturan-tampilan'));
       expect(res.status).toBe(200);
+    });
+  });
+
+  describe('Health Check', () => {
+    it('should return ok when DB is connected', async () => {
+      const db = makeDb();
+      db.first.mockResolvedValue({ ok: 1 });
+
+      const res = await handleHealth(db);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.status).toBe('ok');
+      expect(body.data.database).toBe('connected');
+      expect(body.data).toHaveProperty('timestamp');
+      expect(body.data).toHaveProperty('version');
+    });
+
+    it('should return degraded when DB query fails', async () => {
+      const db = makeDb();
+      db.first.mockRejectedValue(new Error('DB connection failed'));
+
+      const res = await handleHealth(db);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.status).toBe('degraded');
+      expect(body.data.database).toBe('disconnected');
+    });
+
+    it('should return degraded when DB returns unexpected result', async () => {
+      const db = makeDb();
+      db.first.mockResolvedValue(null);
+
+      const res = await handleHealth(db);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.status).toBe('degraded');
+      expect(body.data.database).toBe('error');
     });
   });
 });

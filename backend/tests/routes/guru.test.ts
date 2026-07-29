@@ -67,8 +67,8 @@ describe('Guru Mapel / Wali Kelas Routes', () => {
       db.all
         .mockResolvedValueOnce({ results: [{ id: 1, nis: '123', nama: 'Siswa A' }] })
         .mockResolvedValueOnce({ results: [] });
-      const req = makeGet('/api/guru/siswa-per-kelas?kelas_id=1');
-      const res = await handleAbsensiGuru(req, db, guruUser, ['api', 'guru', 'siswa-per-kelas'], makeUrl('/api/guru/siswa-per-kelas', 'kelas_id=1'));
+      const req = makeGet('/api/guru/absensi/siswa-per-kelas?kelas_id=1');
+      const res = await handleAbsensiGuru(req, db, guruUser, ['api', 'guru', 'absensi', 'siswa-per-kelas'], makeUrl('/api/guru/absensi/siswa-per-kelas', 'kelas_id=1'));
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.data.siswa).toHaveLength(1);
@@ -76,6 +76,27 @@ describe('Guru Mapel / Wali Kelas Routes', () => {
   });
 
   describe('Nilai', () => {
+    it('should return assignments for nilai dropdown', async () => {
+      const db = makeDb();
+      db.first.mockResolvedValue({ id: 1, nama: 'Semester 1' });
+      db.all.mockResolvedValue({ results: [{ mata_pelajaran_id: 1, mapel_nama: 'Matematika', kelas_id: 1, kelas_nama: '7A' }] });
+      const req = makeGet('/api/guru/nilai/assignments');
+      const res = await handleNilaiGuru(req, db, guruUser, ['api', 'guru', 'nilai', 'assignments'], makeUrl('/api/guru/nilai/assignments'));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data).toHaveLength(1);
+    });
+
+    it('should return active semester with jenis list', async () => {
+      const db = makeDb();
+      db.first.mockResolvedValue({ id: 1, nama: 'Semester 1' });
+      const req = makeGet('/api/guru/nilai/semester-aktif');
+      const res = await handleNilaiGuru(req, db, guruUser, ['api', 'guru', 'nilai', 'semester-aktif'], makeUrl('/api/guru/nilai/semester-aktif'));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.jenis_list).toEqual(['harian', 'pts1', 'pas']);
+    });
+
     it('should list nilai guru', async () => {
       const db = makeDb();
       db.first.mockResolvedValue({ total: 3 });
@@ -87,14 +108,16 @@ describe('Guru Mapel / Wali Kelas Routes', () => {
 
     it('should input nilai', async () => {
       const db = makeDb();
+      db.first.mockResolvedValueOnce({ nama: 'Semester 1' });
       const req = makePost('/api/guru/nilai', { siswa_id: 1, mata_pelajaran_id: 1, kelas_id: 1, semester_id: 1, jenis: 'harian', nilai: 85 });
       const res = await handleNilaiGuru(req, db, guruUser, ['api', 'guru', 'nilai'], makeUrl(''));
       expect(res.status).toBe(201);
     });
 
-    it('should reject invalid jenis nilai', async () => {
+    it('should reject invalid jenis nilai for semester', async () => {
       const db = makeDb();
-      const req = makePost('/api/guru/nilai', { siswa_id: 1, mata_pelajaran_id: 1, kelas_id: 1, semester_id: 1, jenis: 'invalid', nilai: 85 });
+      db.first.mockResolvedValueOnce({ nama: 'Semester 1' });
+      const req = makePost('/api/guru/nilai', { siswa_id: 1, mata_pelajaran_id: 1, kelas_id: 1, semester_id: 1, jenis: 'pts2', nilai: 85 });
       const res = await handleNilaiGuru(req, db, guruUser, ['api', 'guru', 'nilai'], makeUrl(''));
       expect(res.status).toBe(400);
     });
@@ -120,43 +143,98 @@ describe('Guru Mapel / Wali Kelas Routes', () => {
       db.all
         .mockResolvedValueOnce({ results: [{ id: 1, nis: '123', nama: 'Siswa A' }] })
         .mockResolvedValueOnce({ results: [] });
-      const req = makeGet('/api/guru/siswa-per-kelas?kelas_id=1&mata_pelajaran_id=1&semester_id=1');
-      const res = await handleNilaiGuru(req, db, guruUser, ['api', 'guru', 'siswa-per-kelas'], makeUrl('/api/guru/siswa-per-kelas', 'kelas_id=1&mata_pelajaran_id=1&semester_id=1'));
+      const req = makeGet('/api/guru/nilai/siswa-per-kelas?kelas_id=1&mata_pelajaran_id=1&semester_id=1');
+      const res = await handleNilaiGuru(req, db, guruUser, ['api', 'guru', 'nilai', 'siswa-per-kelas'], makeUrl('/api/guru/nilai/siswa-per-kelas', 'kelas_id=1&mata_pelajaran_id=1&semester_id=1'));
       expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.siswa).toHaveLength(1);
     });
 
     it('should input nilai massal', async () => {
       const db = makeDb();
-      db.first.mockResolvedValue(null);
-      const req = makePost('/api/guru/nilai-massal', { kelas_id: 1, mata_pelajaran_id: 1, semester_id: 1, jenis: 'harian', entries: [{ siswa_id: 1, nilai: 85 }, { siswa_id: 2, nilai: 90 }] });
-      const res = await handleNilaiGuru(req, db, guruUser, ['api', 'guru', 'nilai-massal'], makeUrl(''));
+      db.first
+        .mockResolvedValueOnce({ nama: 'Semester 1' })
+        .mockResolvedValueOnce(null);
+      const req = makePost('/api/guru/nilai/nilai-massal', { kelas_id: 1, mata_pelajaran_id: 1, semester_id: 1, jenis: 'harian', entries: [{ siswa_id: 1, nilai: 85 }, { siswa_id: 2, nilai: 90 }] });
+      const res = await handleNilaiGuru(req, db, guruUser, ['api', 'guru', 'nilai', 'nilai-massal'], makeUrl(''));
       expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.inserted).toBe(2);
     });
   });
 
   describe('Rapor', () => {
-    it('should get rapor', async () => {
-      const db = makeDb();
-      db.all.mockResolvedValue({ results: [{ id: 1, siswa_nama: 'Siswa A', nilai_akhir: 85 }] });
-      const req = makeGet('/api/guru/rapor?siswa_id=1');
-      const res = await handleRaporGuru(req, db, guruUser, ['api', 'guru', 'rapor'], makeUrl('/api/guru/rapor', 'siswa_id=1'));
-      expect(res.status).toBe(200);
-    });
-
-    it('should create rapor', async () => {
+    it('should reject non-wali-kelas user', async () => {
       const db = makeDb();
       db.first.mockResolvedValue(null);
-      const req = makePost('/api/guru/rapor', { siswa_id: 1, kelas_id: 1, semester_id: 1, mata_pelajaran_id: 1, nilai_akhir: 85, predikat: 'A' });
+      const req = makeGet('/api/guru/rapor');
       const res = await handleRaporGuru(req, db, guruUser, ['api', 'guru', 'rapor'], makeUrl(''));
-      expect(res.status).toBe(201);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error.message).toContain('Hanya wali kelas');
     });
 
-    it('should update existing rapor', async () => {
+    it('should check wali kelas status', async () => {
       const db = makeDb();
-      db.first.mockResolvedValue({ id: 1 });
-      const req = makePost('/api/guru/rapor', { siswa_id: 1, kelas_id: 1, semester_id: 1, mata_pelajaran_id: 1, nilai_akhir: 90 });
-      const res = await handleRaporGuru(req, db, guruUser, ['api', 'guru', 'rapor'], makeUrl(''));
+      db.first.mockResolvedValue({ id: 1, nama: '7A' });
+      const req = makeGet('/api/guru/rapor/cek-wali');
+      const res = await handleRaporGuru(req, db, guruUser, ['api', 'guru', 'rapor', 'cek-wali'], makeUrl('/api/guru/rapor/cek-wali'));
       expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.is_wali_kelas).toBe(true);
+    });
+
+    it('should get rapor when wali kelas (aggregate from nilai)', async () => {
+      const db = makeDb();
+      db.first
+        .mockResolvedValueOnce({ id: 1, nama: '7A' })             // getWaliKelas
+        .mockResolvedValueOnce({ id: 1, nis: '123', nisn: null, nama: 'Siswa A', kelas_id: 1 }) // siswa
+        .mockResolvedValueOnce({ id: 1, nama: 'Semester 1' })     // semester
+        .mockResolvedValueOnce(null);                              // catatan wali (null)
+      db.all.mockResolvedValue({
+        results: [
+          { mata_pelajaran_id: 1, mapel_nama: 'Matematika', mapel_kode: 'MTK', jenis: 'harian', nilai: 80 },
+          { mata_pelajaran_id: 1, mapel_nama: 'Matematika', mapel_kode: 'MTK', jenis: 'harian', nilai: 90 },
+          { mata_pelajaran_id: 1, mapel_nama: 'Matematika', mapel_kode: 'MTK', jenis: 'pas', nilai: 85 },
+          { mata_pelajaran_id: 2, mapel_nama: 'IPA', mapel_kode: 'IPA', jenis: 'harian', nilai: 78 },
+          { mata_pelajaran_id: 2, mapel_nama: 'IPA', mapel_kode: 'IPA', jenis: 'pas', nilai: 82 },
+        ],
+      });
+      const req = makeGet('/api/guru/rapor?siswa_id=1&semester_id=1');
+      const res = await handleRaporGuru(req, db, guruUser, ['api', 'guru', 'rapor'], makeUrl('/api/guru/rapor', 'siswa_id=1&semester_id=1'));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.siswa).toBeDefined();
+      expect(body.data.semester).toBeDefined();
+      expect(body.data.mapel).toHaveLength(2);
+      // Matematika: harian [80,90] → rata 85, pas=85, akhir=85*0.6+85*0.4=85
+      expect(body.data.mapel[0].nilai_akhir).toBe(85);
+      // IPA: harian [78] → rata 78, pas=82, akhir=82*0.6+78*0.4=80.4
+      expect(body.data.mapel[1].nilai_akhir).toBe(80.4);
+    });
+
+    it('should reject rapor without siswa_id or semester_id', async () => {
+      const db = makeDb();
+      db.first
+        .mockResolvedValueOnce({ id: 1, nama: '7A' });             // getWaliKelas
+      const req = makeGet('/api/guru/rapor');
+      const res = await handleRaporGuru(req, db, guruUser, ['api', 'guru', 'rapor'], makeUrl(''));
+      expect(res.status).toBe(400);
+    });
+
+    it('should return semester list', async () => {
+      const db = makeDb();
+      db.all.mockResolvedValue({
+        results: [
+          { id: 1, nama: 'Semester 1', tahun_ajaran: '2025/2026' },
+          { id: 2, nama: 'Semester 2', tahun_ajaran: '2025/2026' },
+        ],
+      });
+      const req = makeGet('/api/guru/rapor/semester');
+      const res = await handleRaporGuru(req, db, guruUser, ['api', 'guru', 'rapor', 'semester'], makeUrl('/api/guru/rapor/semester'));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data).toHaveLength(2);
     });
   });
 

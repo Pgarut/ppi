@@ -11,6 +11,7 @@ export async function handlePengaduanBK(request: Request, env: Env, user: UserPa
     const perPage = Math.min(50, parseInt(url.searchParams.get('per_page') || '20'));
     const offset = (page - 1) * perPage;
     const status = url.searchParams.get('status');
+    const kategori = url.searchParams.get('kategori');
 
     let query = `SELECT p.*, s.nama as siswa_nama, s.nis as siswa_nis,
                  g.nama as pelapor_nama
@@ -21,6 +22,7 @@ export async function handlePengaduanBK(request: Request, env: Env, user: UserPa
     const conditions: string[] = [];
 
     if (status) { conditions.push('p.status = ?'); bindings.push(status); }
+    if (kategori) { conditions.push('p.kategori = ?'); bindings.push(kategori); }
 
     if (conditions.length > 0) query += ' WHERE ' + conditions.join(' AND ');
     query += ' ORDER BY p.created_at DESC';
@@ -50,11 +52,17 @@ export async function handlePengaduanBK(request: Request, env: Env, user: UserPa
     const { status } = body;
 
     if (!status) return badRequest('status wajib diisi');
-    const validStatus = ['baru', 'ditindaklanjuti', 'selesai'];
+    const validStatus = ['baru', 'diproses', 'selesai'];
     if (!validStatus.includes(status as string)) return badRequest('Status tidak valid');
 
-    await env.DB.prepare('UPDATE pengaduan SET status = ? WHERE id = ?')
-      .bind(status, id).run();
+    const { tindak_lanjut } = body;
+    if (tindak_lanjut) {
+      await env.DB.prepare('UPDATE pengaduan SET status = ?, tindak_lanjut = ? WHERE id = ?')
+        .bind(status, tindak_lanjut, id).run();
+    } else {
+      await env.DB.prepare('UPDATE pengaduan SET status = ? WHERE id = ?')
+        .bind(status, id).run();
+    }
 
     await env.DB.prepare("INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'pengaduan', ?, ?)")
       .bind(user.sub, `Update pengaduan #${id} -> ${status}`, ip).run();

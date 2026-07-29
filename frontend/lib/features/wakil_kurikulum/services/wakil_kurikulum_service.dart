@@ -59,23 +59,46 @@ class WakilKurikulumService {
     return res['data'] as List<dynamic>;
   }
 
-  static Future<List<dynamic>> getDistribusiMengajar() async {
-    final res = await ApiClient.get('/wakil-kurikulum/distribusi-mengajar');
+  // ── Kesiapan Mengajar Guru ──
+
+  static Future<List<dynamic>> getKesiapan(int semesterId) async {
+    final res = await ApiClient.get('/wakil-kurikulum/kesiapan', queryParams: {'semester_id': '$semesterId'});
     return res['data'] as List<dynamic>;
   }
 
-  static Future<Map<String, dynamic>> createDistribusi(Map<String, dynamic> body) async {
-    final res = await ApiClient.post('/wakil-kurikulum/distribusi-mengajar', body: body);
+  static Future<void> updateKesiapan(int guruId, Map<String, dynamic> body) async {
+    await ApiClient.put('/wakil-kurikulum/kesiapan/$guruId', body: body);
+  }
+
+  static Future<Map<String, dynamic>> batchUpdateKesiapan(Map<String, dynamic> body) async {
+    final res = await ApiClient.put('/wakil-kurikulum/kesiapan', body: body);
     return res['data'] as Map<String, dynamic>;
   }
 
-  static Future<void> deleteDistribusi(int id) async {
-    await ApiClient.delete('/wakil-kurikulum/distribusi-mengajar/$id');
+  // ── Beban Mengajar ──
+
+  static Future<List<dynamic>> getBebanMengajar(int semesterId) async {
+    final res = await ApiClient.get('/wakil-kurikulum/beban-mengajar', queryParams: {'semester_id': '$semesterId'});
+    return res['data'] as List<dynamic>;
   }
 
-  static Future<List<dynamic>> getBebanMengajar() async {
-    final res = await ApiClient.get('/wakil-kurikulum/beban-mengajar');
+  // ── Wali Kelas ──
+
+  static Future<List<dynamic>> getWaliKelas() async {
+    final res = await ApiClient.get('/wakil-kurikulum/wali-kelas');
     return res['data'] as List<dynamic>;
+  }
+
+  // ── Simpan Jadwal (batch) ──
+
+  static Future<Map<String, dynamic>> simpanJadwal(List<Map<String, dynamic>> jadwal) async {
+    final res = await ApiClient.post('/wakil-kurikulum/jadwal/simpan', body: {'jadwal': jadwal});
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> cekBentrok(Map<String, dynamic> data) async {
+    final res = await ApiClient.post('/wakil-kurikulum/jadwal/cek-bentrok', body: data);
+    return res['data'] as Map<String, dynamic>;
   }
 
   static Future<List<dynamic>> getJadwalGuru(String guruId, String semesterId) async {

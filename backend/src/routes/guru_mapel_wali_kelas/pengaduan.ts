@@ -7,21 +7,37 @@ export async function handlePengaduan(request: Request, env: Env, user: UserPayl
 
   // GET daftar pengaduan milik guru ini
   if ((subPath === '' || subPath === 'pengaduan') && request.method === 'GET') {
+    const status = url.searchParams.get('status');
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
     const perPage = Math.min(50, parseInt(url.searchParams.get('per_page') || '20'));
     const offset = (page - 1) * perPage;
 
-    const total = (await env.DB.prepare(
-      'SELECT COUNT(*) as total FROM pengaduan WHERE dilaporkan_oleh = ?'
-    ).bind(user.guru_id).first<{ total: number }>())?.total || 0;
+    let countQuery = 'SELECT COUNT(*) as total FROM pengaduan WHERE dilaporkan_oleh = ?';
+    const bindings: unknown[] = [user.guru_id];
 
-    const rows = await env.DB.prepare(
-      `SELECT p.*, s.nama as siswa_nama
-       FROM pengaduan p LEFT JOIN siswa s ON p.siswa_id = s.id
-       WHERE p.dilaporkan_oleh = ?
-       ORDER BY p.created_at DESC LIMIT ? OFFSET ?`
-    ).bind(user.guru_id, perPage, offset).all();
+    if (status && ['baru', 'diproses', 'selesai'].includes(status)) {
+      countQuery += ' AND status = ?';
+      bindings.push(status);
+    }
 
+    const total = (await env.DB.prepare(countQuery).bind(...bindings).first<{ total: number }>())?.total || 0;
+
+    let dataQuery = `SELECT p.*, s.nama as siswa_nama, s.nis as siswa_nis, s.kelas_id, k.nama as kelas_nama
+       FROM pengaduan p
+       LEFT JOIN siswa s ON p.siswa_id = s.id
+       LEFT JOIN kelas k ON s.kelas_id = k.id
+       WHERE p.dilaporkan_oleh = ?`;
+    const dataBindings: unknown[] = [user.guru_id];
+
+    if (status && ['baru', 'diproses', 'selesai'].includes(status)) {
+      dataQuery += ' AND p.status = ?';
+      dataBindings.push(status);
+    }
+
+    dataQuery += ' ORDER BY p.created_at DESC LIMIT ? OFFSET ?';
+    dataBindings.push(perPage, offset);
+
+    const rows = await env.DB.prepare(dataQuery).bind(...dataBindings).all();
     return success({ items: rows.results, pagination: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) } });
   }
 

@@ -38,6 +38,23 @@ class _DashboardShellState extends State<DashboardShell> {
   }
 
   Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Yakin ingin logout?'),
+        content: const Text('Anda akan keluar dari sistem. Data yang belum disimpan akan hilang.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
     await context.read<AuthProvider>().logout();
     if (context.mounted) Navigator.of(context).pushReplacementNamed('/login');
   }
@@ -58,7 +75,7 @@ class _DashboardShellState extends State<DashboardShell> {
     }
     switch (_shellTab) {
       case 2:
-        return widget.profilePage?.call(context) ?? const ProfilPage();
+        return widget.profilePage?.call(context) ?? ProfilPage(onLogout: _logout);
       default:
         return widget.dashboardBuilder(context, _openFeature, _logout);
     }
@@ -101,14 +118,23 @@ class _DashboardShellState extends State<DashboardShell> {
         duration: const Duration(milliseconds: 200),
         child: KeyedSubtree(key: ValueKey('tab$_shellTab'), child: _currentPage()),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _shellTab,
-        onDestinationSelected: (i) { setState(() { _shellTab = i; _activeFeature = null; }); },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
-          NavigationDestination(icon: Icon(Icons.timeline), label: 'Aktivitas'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profil'),
-        ],
+      bottomNavigationBar: Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(context).colorScheme.copyWith(
+            primary: const Color(0xFF2E7D32),
+            onPrimary: Colors.white,
+          ),
+        ),
+        child: NavigationBar(
+          selectedIndex: _shellTab,
+          onDestinationSelected: (i) { setState(() { _shellTab = i; _activeFeature = null; }); },
+          indicatorColor: const Color(0xFF2E7D32).withValues(alpha: 0.12),
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
+            NavigationDestination(icon: Icon(Icons.timeline), label: 'Aktivitas'),
+            NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profil'),
+          ],
+        ),
       ),
     );
   }
@@ -120,6 +146,8 @@ class _DashboardShellState extends State<DashboardShell> {
           selectedIndex: _shellTab,
           onDestinationSelected: (i) { setState(() { _shellTab = i; _activeFeature = null; }); },
           labelType: NavigationRailLabelType.all,
+          selectedIconTheme: const IconThemeData(color: Color(0xFF2E7D32)),
+          selectedLabelTextStyle: const TextStyle(color: Color(0xFF2E7D32)),
           destinations: const [
             NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Dashboard')),
             NavigationRailDestination(icon: Icon(Icons.timeline), label: Text('Aktivitas')),
@@ -142,9 +170,11 @@ class _DashboardShellState extends State<DashboardShell> {
       children: [
         NavigationRail(
           extended: true,
+          labelType: NavigationRailLabelType.none,
           selectedIndex: _shellTab,
           onDestinationSelected: (i) { setState(() { _shellTab = i; _activeFeature = null; }); },
-          labelType: NavigationRailLabelType.all,
+          selectedIconTheme: const IconThemeData(color: Color(0xFF2E7D32)),
+          selectedLabelTextStyle: const TextStyle(color: Color(0xFF2E7D32)),
           leading: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
             child: Row(children: [

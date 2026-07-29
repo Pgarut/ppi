@@ -50,11 +50,11 @@ describe('Guru BK Routes', () => {
       expect(res.status).toBe(200);
     });
 
-    it('should update status pengaduan', async () => {
+    it('should update status pengaduan with tindak_lanjut', async () => {
       const db = makeDb();
       db.first.mockResolvedValue({ id: 1 });
 
-      const req = makePut('/api/guru-bk/pengaduan/1', { status: 'ditindaklanjuti' });
+      const req = makePut('/api/guru-bk/pengaduan/1', { status: 'diproses', tindak_lanjut: 'Sedang ditangani' });
       const res = await handlePengaduanBK(req, db, bkUser, ['api', 'guru-bk', 'pengaduan', '1'], makeUrl(''));
       expect(res.status).toBe(200);
     });

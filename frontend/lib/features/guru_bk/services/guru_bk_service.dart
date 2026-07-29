@@ -1,9 +1,10 @@
 import '../../../core/network/api_client.dart';
 
 class GuruBKService {
-  static Future<Map<String, dynamic>> getPengaduan({int page = 1, int perPage = 20, String? status}) async {
+  static Future<Map<String, dynamic>> getPengaduan({int page = 1, int perPage = 20, String? status, String? kategori}) async {
     final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
     if (status != null) params['status'] = status;
+    if (kategori != null) params['kategori'] = kategori;
     final res = await ApiClient.get('/guru-bk/pengaduan', queryParams: params);
     return res['data'] as Map<String, dynamic>;
   }
@@ -38,8 +39,9 @@ class GuruBKService {
     return res['data'] as Map<String, dynamic>;
   }
 
-  static Future<void> createJadwalKonseling(Map<String, dynamic> body) async {
-    await ApiClient.post('/guru-bk/jadwal-konseling', body: body);
+  static Future<Map<String, dynamic>> createJadwalKonseling(Map<String, dynamic> body) async {
+    final res = await ApiClient.post('/guru-bk/jadwal-konseling', body: body);
+    return res['data'] as Map<String, dynamic>;
   }
 
   static Future<void> updateJadwalKonseling(int id, Map<String, dynamic> body) async {
@@ -48,6 +50,13 @@ class GuruBKService {
 
   static Future<void> deleteJadwalKonseling(int id) async {
     await ApiClient.delete('/guru-bk/jadwal-konseling/$id');
+  }
+
+  /// History jadwal + catatan (digabung)
+  static Future<Map<String, dynamic>> getHistoryKonseling({int page = 1, int perPage = 20}) async {
+    final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
+    final res = await ApiClient.get('/guru-bk/jadwal-konseling/history', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
   }
 
   static Future<Map<String, dynamic>> getKonseling({int page = 1, int perPage = 20}) async {
@@ -69,21 +78,41 @@ class GuruBKService {
     await ApiClient.put('/guru-bk/konseling/$id', body: body);
   }
 
+  /// Dapatkan daftar kelas utk dropdown
+  static Future<List<dynamic>> getKelasList() async {
+    final res = await ApiClient.get('/referensi');
+    final data = res['data'] as Map<String, dynamic>? ?? {};
+    return data['kelas'] as List<dynamic>? ?? [];
+  }
+
+  /// Dapatkan daftar siswa + status jadwal per kelas
+  static Future<List<dynamic>> getSiswaByKelas(int kelasId) async {
+    final res = await ApiClient.get('/guru-bk/jadwal-konseling/siswa', queryParams: {'kelas_id': '$kelasId'});
+    return res['data'] as List<dynamic>? ?? [];
+  }
+
   // ── Bakat & Minat ──
 
-  static Future<List<dynamic>> getBakatMinat({String? jenis}) async {
+  static Future<List<dynamic>> getBakatMinat({String? kelasId}) async {
     final params = <String, String>{};
-    if (jenis != null) params['jenis'] = jenis;
+    if (kelasId != null) params['kelas_id'] = kelasId;
     final res = await ApiClient.get('/guru-bk/bakat-minat', queryParams: params);
     return res['data'] as List<dynamic>;
   }
 
-  static Future<void> createBakatMinat(Map<String, dynamic> body) async {
-    await ApiClient.post('/guru-bk/bakat-minat', body: body);
+  /// Dapatkan siswa per kelas + status bakat-minat
+  static Future<List<dynamic>> getSiswaBakatMinat(int kelasId) async {
+    final res = await ApiClient.get('/guru-bk/bakat-minat/siswa', queryParams: {'kelas_id': '$kelasId'});
+    return res['data'] as List<dynamic>? ?? [];
   }
 
-  static Future<void> updateBakatMinat(int id, Map<String, dynamic> body) async {
-    await ApiClient.put('/guru-bk/bakat-minat/$id', body: body);
+  /// Simpan data bakat minat (create or update)
+  static Future<void> saveBakatMinat(Map<String, dynamic> body) async {
+    if (body['id'] != null) {
+      await ApiClient.put('/guru-bk/bakat-minat/${body['id']}', body: body);
+    } else {
+      await ApiClient.post('/guru-bk/bakat-minat', body: body);
+    }
   }
 
   static Future<void> deleteBakatMinat(int id) async {
@@ -92,32 +121,20 @@ class GuruBKService {
 
   // ── Monitoring Akademik ──
 
-  static Future<List<dynamic>> getMonitoringNilai({int? siswaId, int? kelasId}) async {
+  /// Monitoring absensi — rekap per santri, filter by kelas_id
+  static Future<List<dynamic>> getMonitoringAbsensi({int? kelasId}) async {
     final params = <String, String>{};
-    if (siswaId != null) params['siswa_id'] = '$siswaId';
-    if (kelasId != null) params['kelas_id'] = '$kelasId';
-    final res = await ApiClient.get('/guru-bk/monitoring/nilai', queryParams: params);
-    return res['data'] as List<dynamic>;
-  }
-
-  static Future<List<dynamic>> getMonitoringAbsensi({int? siswaId, int? kelasId}) async {
-    final params = <String, String>{};
-    if (siswaId != null) params['siswa_id'] = '$siswaId';
     if (kelasId != null) params['kelas_id'] = '$kelasId';
     final res = await ApiClient.get('/guru-bk/monitoring/absensi', queryParams: params);
     return res['data'] as List<dynamic>;
   }
 
-  static Future<List<dynamic>> getMonitoringPelanggaran() async {
-    final res = await ApiClient.get('/guru-bk/monitoring/pelanggaran');
+  /// Monitoring pelanggaran — rekap per santri, filter by kelas_id
+  static Future<List<dynamic>> getMonitoringPelanggaran({int? kelasId}) async {
+    final params = <String, String>{};
+    if (kelasId != null) params['kelas_id'] = '$kelasId';
+    final res = await ApiClient.get('/guru-bk/monitoring/pelanggaran', queryParams: params);
     return res['data'] as List<dynamic>;
-  }
-
-  // ── Referensi ──
-
-  static Future<List<dynamic>> getSiswaList() async {
-    final res = await ApiClient.get('/siswa');
-    return res['data'] as List<dynamic>? ?? [];
   }
 
   // ── Laporan ──
@@ -132,8 +149,9 @@ class GuruBKService {
     return res['data'] as List<dynamic>;
   }
 
-  static Future<List<dynamic>> getLaporanMonitoring() async {
+  /// Monitoring (nilai, absensi, pengaduan) — return Map
+  static Future<Map<String, dynamic>> getLaporanMonitoring() async {
     final res = await ApiClient.get('/guru-bk/laporan/monitoring');
-    return res['data'] as List<dynamic>;
+    return res['data'] as Map<String, dynamic>;
   }
 }

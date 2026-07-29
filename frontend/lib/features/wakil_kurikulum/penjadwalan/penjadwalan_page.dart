@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/wakil_kurikulum_service.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
@@ -19,16 +20,26 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
   String? _filterKelas, _filterSemester;
   bool _jadwalLoading = false;
 
-  // Distribusi
-  List<Map<String, dynamic>> _distribusi = [];
-  List<Map<String, dynamic>> _beban = [];
+  // Kesiapan
+  List<Map<String, dynamic>> _kesiapan = [];
+  bool _kesiapanLoading = false;
 
-  static const _hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  // Wali Kelas
+  List<Map<String, dynamic>> _waliKelas = [];
+  bool _waliKelasLoading = false;
+
+  static const _hariList = ['Sabtu', 'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis'];
 
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 3, vsync: this);
+    _tabCtrl.addListener(() {
+      if (!_tabCtrl.indexIsChanging) {
+        if (_tabCtrl.index == 1) _loadKesiapan();
+        if (_tabCtrl.index == 2) _loadWaliKelas();
+      }
+    });
     _loadRef();
   }
 
@@ -42,8 +53,6 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     } catch (_) {}
     setState(() => _refLoading = false);
     _loadJadwal();
-    _loadDistribusi();
-    _loadBeban();
   }
 
   Future<void> _loadJadwal() async {
@@ -56,19 +65,27 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     if (mounted) setState(() => _jadwalLoading = false);
   }
 
-  Future<void> _loadDistribusi() async {
-    try { _distribusi = (await WakilKurikulumService.getDistribusiMengajar()).cast<Map<String, dynamic>>(); }
-    catch (_) {}
+  Future<void> _loadKesiapan() async {
+    if (_filterSemester == null) return;
+    setState(() => _kesiapanLoading = true);
+    try {
+      _kesiapan = (await WakilKurikulumService.getKesiapan(int.parse(_filterSemester!)))
+          .cast<Map<String, dynamic>>();
+    } catch (_) { _kesiapan = []; }
+    if (mounted) setState(() => _kesiapanLoading = false);
   }
 
-  Future<void> _loadBeban() async {
-    try { _beban = (await WakilKurikulumService.getBebanMengajar()).cast<Map<String, dynamic>>(); }
-    catch (_) {}
+  Future<void> _loadWaliKelas() async {
+    setState(() => _waliKelasLoading = true);
+    try {
+      _waliKelas = (await WakilKurikulumService.getWaliKelas())
+          .cast<Map<String, dynamic>>();
+    } catch (_) { _waliKelas = []; }
+    if (mounted) setState(() => _waliKelasLoading = false);
   }
 
   List<Map<String, dynamic>> _refList(String key) => (_ref?[key] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
-  // ── BUILD ──
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -76,15 +93,15 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         title: const Text('Penjadwalan'),
         automaticallyImplyLeading: false,
         bottom: TabBar(controller: _tabCtrl, tabs: const [
-          Tab(text: 'Jadwal'), Tab(text: 'Distribusi'), Tab(text: 'Beban'),
+          Tab(text: 'Jadwal'), Tab(text: 'Kesiapan'), Tab(text: 'Wali Kelas'),
         ]),
       ),
       body: _refLoading
           ? const Center(child: CircularProgressIndicator())
           : TabBarView(controller: _tabCtrl, children: [
               _buildJadwalTab(),
-              _buildDistribusiTab(),
-              _buildBebanTab(),
+              _buildKesiapanTab(),
+              _buildWaliKelasTab(),
             ]),
     );
   }
@@ -99,41 +116,23 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            DropdownButtonHideUnderline(
-              child: Container(
-                width: 200, padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
-                child: DropdownButton<String>(
-                  value: _filterKelas, hint: const Text('Pilih Kelas', style: TextStyle(fontSize: 13)),
-                  isExpanded: true,
-                  items: kelas.map((k) => DropdownMenuItem(value: '${k['id']}', child: Text('${k['nama']}', style: const TextStyle(fontSize: 13)))).toList(),
-                  onChanged: (v) { setState(() => _filterKelas = v); _loadJadwal(); },
-                ),
-              ),
-            ),
+            _filterDropdown(kelas, _filterKelas, 'Pilih Kelas', (v) {
+              setState(() => _filterKelas = v);
+              _loadJadwal();
+            }, 200),
             const SizedBox(width: 12),
-            DropdownButtonHideUnderline(
-              child: Container(
-                width: 180, padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
-                child: DropdownButton<String>(
-                  value: _filterSemester, hint: const Text('Semester', style: TextStyle(fontSize: 13)),
-                  isExpanded: true,
-                  items: sem.map((s) => DropdownMenuItem(value: '${s['id']}', child: Text('${s['nama']}', style: const TextStyle(fontSize: 13)))).toList(),
-                  onChanged: (v) { setState(() => _filterSemester = v); _loadJadwal(); },
-                ),
-              ),
-            ),
+            _filterDropdown(sem, _filterSemester, 'Semester', (v) {
+              setState(() => _filterSemester = v);
+              _loadJadwal();
+            }, 180),
           ]),
           if (_filterKelas != null && _filterSemester != null) ...[
             const SizedBox(height: 12),
-            Row(children: [
+            Wrap(spacing: 8, runSpacing: 8, children: [
               _ActionBtn(Icons.auto_awesome, 'Generate', Colors.blue, () => _generateJadwal()),
-              const SizedBox(width: 8),
               _ActionBtn(Icons.add, 'Tambah', Colors.green, () => _showFormJadwal()),
-              const SizedBox(width: 8),
               _ActionBtn(Icons.check_circle_outline, 'Validasi Semua', Colors.teal, () => _publikasiJadwal()),
-              const Spacer(),
+              _ActionBtn(Icons.save_outlined, 'Simpan', Colors.indigo, () => _simpanJadwal()),
               _ActionBtn(Icons.undo, 'Reset', Colors.red, () => _resetJadwal()),
             ]),
           ],
@@ -229,7 +228,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         borderRadius: BorderRadius.circular(6),
         child: Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: color.withOpacity(0.9), borderRadius: BorderRadius.circular(6)),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(6)),
           child: Text(mapelNama, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
         ),
       ),
@@ -241,9 +240,9 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         height: 48,
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(mapelNama, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color[800]), overflow: TextOverflow.ellipsis),
@@ -257,7 +256,6 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     for (final jp in _jpSlots) {
       if (jp['mulai'] == mulai && jp['selesai'] == selesai) return jp['kode'] as String;
     }
-    // Fallback: cari berdasarkan jam mulai
     for (final jp in _jpSlots) {
       if (jp['mulai'] == mulai) return jp['kode'] as String;
     }
@@ -286,11 +284,52 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     }
   }
 
+  // ── Simpan Jadwal ──
+  Future<void> _simpanJadwal() async {
+    if (_jadwal.isEmpty) return;
+    try {
+      final data = _jadwal.map((j) => {
+        'id': j['id'] as int,
+        'kelas_id': j['kelas_id'] as int,
+        'mata_pelajaran_id': j['mata_pelajaran_id'] as int,
+        'guru_id': j['guru_id'] as int,
+        'hari': j['hari'] as String,
+        'jam_mulai': j['jam_mulai'] as String,
+        'jam_selesai': j['jam_selesai'] as String,
+        'semester_id': j['semester_id'] as int,
+        if (j['ruangan_id'] != null) 'ruangan_id': j['ruangan_id'] as int,
+      }).toList();
+
+      final res = await WakilKurikulumService.simpanJadwal(data);
+      if (mounted) {
+        final msg = res['errors'] != null
+            ? '${res['saved']} tersimpan, ${(res['errors'] as List).length} error'
+            : '${res['saved']} jadwal tersimpan';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.green),
+        );
+        if (res['errors'] != null) {
+          for (final e in res['errors'] as List) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('$e'), backgroundColor: Colors.red, duration: const Duration(seconds: 3)),
+            );
+          }
+        }
+      }
+      _loadJadwal();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal simpan: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   // ── ACTION BUTTONS ──
   Future<void> _generateJadwal() async {
     if (_filterSemester == null) return;
     final ok = await showConfirmDialog(context, title: 'Generate Jadwal',
-        message: 'Generate otomatis akan menghapus jadwal draft dan membuat ulang berdasarkan distribusi mengajar. Lanjutkan?');
+        message: 'Generate otomatis akan menghapus jadwal draft dan membuat ulang berdasarkan Kesiapan Mengajar Guru dan data dari Admin Master Data. Lanjutkan?',
+        confirmLabel: 'Generate');
     if (!ok) return;
 
     try {
@@ -322,7 +361,8 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
   Future<void> _publikasiJadwal() async {
     if (_filterSemester == null) return;
     final ok = await showConfirmDialog(context, title: 'Publikasi Jadwal',
-        message: 'Validasi SEMUA jadwal draft semester ini? Setelah dipublikasi, jadwal tidak bisa diedit (kecuali direset).');
+        message: 'Validasi SEMUA jadwal draft semester ini? Setelah dipublikasi, jadwal tampil di Guru Mapel.',
+        confirmLabel: 'Publikasi');
     if (!ok) return;
 
     try {
@@ -347,7 +387,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     String? selectedGuru = edit?['guru_id']?.toString();
     String? selectedRuang = edit?['ruangan_id']?.toString();
     String? selectedSemester = edit?['semester_id']?.toString() ?? _filterSemester;
-    String selectedHari = edit?['hari'] ?? 'Senin';
+    String selectedHari = edit?['hari'] ?? 'Sabtu';
 
     final jpKeys = _jpSlots.map((j) => '${j['kode']} (${j['mulai']}-${j['selesai']})').toList();
     String? selectedJp;
@@ -394,7 +434,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
               DropdownButtonFormField<String>(
                 value: selectedHari, decoration: const InputDecoration(labelText: 'Hari', border: OutlineInputBorder()),
                 items: _hariList.map((h) => DropdownMenuItem(value: h, child: Text(h))).toList(),
-                onChanged: (v) { selectedHari = v ?? 'Senin'; setD(() {}); },
+                onChanged: (v) { selectedHari = v ?? 'Sabtu'; setD(() {}); },
               ),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
@@ -430,7 +470,14 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
               };
               try {
                 if (edit != null) { await WakilKurikulumService.updateJadwal(edit['id'] as int, body); }
-                else { await WakilKurikulumService.createJadwal(body); }
+                else {
+                  final cek = await WakilKurikulumService.cekBentrok(body);
+                  if (cek['bentrok'] == true) {
+                    if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('${cek['message']}'), backgroundColor: Colors.red));
+                    return;
+                  }
+                  await WakilKurikulumService.createJadwal(body);
+                }
                 if (ctx.mounted) Navigator.pop(ctx);
                 _loadJadwal();
               } catch (e) { if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Gagal: $e'))); }
@@ -441,106 +488,378 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     );
   }
 
-  // ══════════════════════════════ DISTRIBUSI TAB ══════════════════════════════
-  Widget _buildDistribusiTab() {
+  // ══════════════════════════════ KESIAPAN MENGAJAR TAB ══════════════════════════════
+  Widget _buildKesiapanTab() {
+    final sem = _refList('semester');
+
     return Column(children: [
-      Padding(
+      Container(
         padding: const EdgeInsets.all(16),
-        child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          FilledButton.icon(onPressed: _showFormDistribusi, icon: const Icon(Icons.add, size: 18), label: const Text('Tambah Distribusi')),
+        child: Row(children: [
+          _filterDropdown(sem, _filterSemester, 'Semester', (v) {
+            setState(() => _filterSemester = v);
+            _loadKesiapan();
+          }, 200),
+          const Spacer(),
+          FilledButton.icon(
+            onPressed: _filterSemester != null ? _simpanKesiapan : null,
+            icon: const Icon(Icons.save, size: 18),
+            label: const Text('Simpan Semua'),
+          ),
         ]),
       ),
-      Expanded(child: _distribusi.isEmpty
-          ? Center(child: Text('Belum ada distribusi.', style: TextStyle(color: Colors.grey[500])))
-          : ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _distribusi.length,
-              itemBuilder: (_, i) {
-                final d = _distribusi[i];
-                return Card(child: ListTile(
-                  title: Text('${d['guru_nama'] ?? '-'} — ${d['mapel_nama'] ?? '-'}'),
-                  subtitle: Text('Kelas: ${d['kelas_nama'] ?? '-'} | Semester: ${d['semester_nama'] ?? '-'}'),
-                  trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
-                      onPressed: () => _deleteDistribusi(d['id'] as int)),
-                ));
-              },
-            )),
+      Expanded(child: _kesiapanLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _filterSemester == null
+              ? Center(child: Text('Pilih semester terlebih dahulu', style: TextStyle(color: Colors.grey[500])))
+              : _kesiapan.isEmpty
+                  ? Center(child: Text('Belum ada data kesiapan. Pilih semester dan isi konfigurasi di bawah.', style: TextStyle(color: Colors.grey[500])))
+                  : _buildKesiapanTable()),
     ]);
   }
 
-  Future<void> _showFormDistribusi() async {
-    final guru = _refList('guru');
-    final mapel = _refList('mapel');
-    final kelas = _refList('kelas');
-    final sem = _refList('semester');
-    String? g, m, k, s;
+  Widget _buildKesiapanTable() {
+    final guruList = _kesiapan.map((k) => _KesiapanRowData.fromJson(k)).toList();
 
-    return showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setD) => AlertDialog(
-          title: const Text('Tambah Distribusi'),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            DropdownButtonFormField<String>(decoration: const InputDecoration(labelText: 'Asatidz', border: OutlineInputBorder()),
-              items: guru.map((x) => DropdownMenuItem(value: '${x['id']}', child: Text('${x['nama']}'))).toList(),
-              onChanged: (v) { g = v; setD(() {}); }),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(decoration: const InputDecoration(labelText: 'Mapel', border: OutlineInputBorder()),
-              items: mapel.map((x) => DropdownMenuItem(value: '${x['id']}', child: Text('${x['nama']}'))).toList(),
-              onChanged: (v) { m = v; setD(() {}); }),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(decoration: const InputDecoration(labelText: 'Kelas', border: OutlineInputBorder()),
-              items: kelas.map((x) => DropdownMenuItem(value: '${x['id']}', child: Text('${x['nama']}'))).toList(),
-              onChanged: (v) { k = v; setD(() {}); }),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(decoration: const InputDecoration(labelText: 'Semester', border: OutlineInputBorder()),
-              items: sem.map((x) => DropdownMenuItem(value: '${x['id']}', child: Text('${x['nama']}'))).toList(),
-              onChanged: (v) { s = v; setD(() {}); }),
-          ]),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-            FilledButton(onPressed: () async {
-              try {
-                await WakilKurikulumService.createDistribusi({
-                  'guru_id': int.tryParse(g ?? ''), 'mata_pelajaran_id': int.tryParse(m ?? ''),
-                  'kelas_id': int.tryParse(k ?? ''), 'semester_id': int.tryParse(s ?? ''),
-                });
-                if (ctx.mounted) Navigator.pop(ctx);
-                _loadDistribusi(); _loadBeban();
-              } catch (e) { if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('$e'))); }
-            }, child: const Text('Simpan')),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SingleChildScrollView(
+        child: DataTable(
+          columnSpacing: 12,
+          headingRowHeight: 44,
+          dataRowMinHeight: 52,
+          dataRowMaxHeight: 80,
+          columns: const [
+            DataColumn(label: Text('Guru', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+            DataColumn(label: Text('NIP', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+            DataColumn(label: Text('Hari Aktif', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+            DataColumn(label: Text('JP/Hari', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+            DataColumn(label: Text('JP/Minggu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+            DataColumn(label: Text('Kelas Diampu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+            DataColumn(label: Text('Mapel', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+            DataColumn(label: Text('Kapasitas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
           ],
+          rows: guruList.map((g) {
+            final jpTerisi = g.jpTerisi;
+            final jpMaxMinggu = g.jpMaxMinggu;
+            final persen = jpMaxMinggu > 0 ? jpTerisi / jpMaxMinggu : 0.0;
+            final capColor = persen >= 1.0 ? Colors.red : (persen >= 0.8 ? Colors.orange : Colors.green);
+
+            return DataRow(cells: [
+              DataCell(Text(g.nama, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+              DataCell(Text(g.nip, style: const TextStyle(fontSize: 11))),
+              DataCell(_HariCheckboxRow(
+                nilai: g.hariAktif,
+                onChanged: (v) {
+                  setState(() => g.hariAktif = v);
+                },
+              )),
+              DataCell(SizedBox(
+                width: 60,
+                child: TextFormField(
+                  initialValue: g.jpMaxPerHari.toString(),
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12),
+                  decoration: const InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  onChanged: (v) {
+                    final val = int.tryParse(v);
+                    if (val != null) g.jpMaxPerHari = val;
+                  },
+                ),
+              )),
+              DataCell(SizedBox(
+                width: 60,
+                child: TextFormField(
+                  initialValue: g.jpMaxMinggu.toString(),
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12),
+                  decoration: const InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  onChanged: (v) {
+                    final val = int.tryParse(v);
+                    if (val != null) g.jpMaxMinggu = val;
+                  },
+                ),
+              )),
+              DataCell(ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 180),
+                child: Text(g.kelasDiampu.map((k) => k['kelas_nama'] ?? '').join(', '),
+                    style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis, maxLines: 2),
+              )),
+              DataCell(ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 150),
+                child: Text(g.mapelDiampu.map((m) => m['mapel_nama'] ?? '').join(', '),
+                    style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis, maxLines: 2),
+              )),
+              DataCell(Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$jpTerisi/$jpMaxMinggu JP', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: capColor)),
+                  const SizedBox(height: 2),
+                  SizedBox(
+                    width: 80,
+                    child: LinearProgressIndicator(
+                      value: persen.clamp(0.0, 1.0),
+                      backgroundColor: Colors.grey[200],
+                      color: capColor,
+                    ),
+                  ),
+                  if (persen >= 1.0)
+                    Text('Kelebihan ${jpTerisi - jpMaxMinggu} JP', style: const TextStyle(fontSize: 9, color: Colors.red)),
+                ],
+              )),
+            ]);
+          }).toList(),
         ),
       ),
     );
   }
 
-  Future<void> _deleteDistribusi(int id) async {
-    final ok = await showConfirmDialog(context, title: 'Hapus', message: 'Yakin hapus distribusi?');
-    if (!ok) return;
-    try { await WakilKurikulumService.deleteDistribusi(id); _loadDistribusi(); _loadBeban(); }
-    catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'))); }
+  Future<void> _simpanKesiapan() async {
+    if (_filterSemester == null) return;
+    setState(() => _kesiapanLoading = true);
+    try {
+      final data = _kesiapan.map((k) {
+        final row = _KesiapanRowData.fromJson(k);
+        return {
+          'guru_id': row.guruId,
+          'hari_aktif': row.hariAktif,
+          'jp_max_per_hari': row.jpMaxPerHari,
+          'jp_max_per_minggu': row.jpMaxMinggu,
+        };
+      }).toList();
+
+      await WakilKurikulumService.batchUpdateKesiapan({
+        'semester_id': int.parse(_filterSemester!),
+        'data': data,
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kesiapan berhasil disimpan'), backgroundColor: Colors.green),
+      );
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal simpan: $e'), backgroundColor: Colors.red),
+      );
+    }
+    if (mounted) setState(() => _kesiapanLoading = false);
   }
 
-  // ══════════════════════════════ BEBAN TAB ══════════════════════════════
-  Widget _buildBebanTab() {
-    if (_beban.isEmpty) return Center(child: Text('Belum ada data.', style: TextStyle(color: Colors.grey[500])));
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _beban.length,
-      itemBuilder: (_, i) {
-        final b = _beban[i];
-        return Card(child: ListTile(
-          leading: CircleAvatar(backgroundColor: Colors.blue[50], radius: 20,
-            child: Text('${b['total_mapel'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue))),
-          title: Text(b['nama']?.toString() ?? '-', style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text('NIP: ${b['nip'] ?? '-'}'),
-          trailing: Text('${b['total_mapel'] ?? 0} Mapel', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[700])),
-        ));
-      },
+  // ══════════════════════════════ WALI KELAS TAB ══════════════════════════════
+  Widget _buildWaliKelasTab() {
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(children: [
+          Icon(Icons.people_outline, color: Colors.blueGrey[600], size: 20),
+          const SizedBox(width: 8),
+          Text('Daftar Wali Kelas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.blueGrey[800])),
+          const Spacer(),
+          TextButton.icon(
+            onPressed: _loadWaliKelas,
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('Refresh'),
+          ),
+        ]),
+      ),
+      Expanded(child: _waliKelasLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _waliKelas.isEmpty
+              ? Center(child: Text('Belum ada data wali kelas.', style: TextStyle(color: Colors.grey[500])))
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _waliKelas.length,
+                  itemBuilder: (_, i) {
+                    final w = _waliKelas[i];
+                    final adaKelas = w['kelas_id'] != null;
+                    final jumlahSiswa = w['jumlah_siswa'] as int? ?? 0;
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: adaKelas ? Colors.blue[50] : Colors.grey[100],
+                          radius: 22,
+                          child: Icon(Icons.person, color: adaKelas ? Colors.blue[700] : Colors.grey[400], size: 22),
+                        ),
+                        title: Text(w['nama']?.toString() ?? '-', style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('NIP: ${w['nip'] ?? '-'}'),
+                            if (adaKelas) ...[
+                              const SizedBox(height: 2),
+                              Row(children: [
+                                Icon(Icons.class_outlined, size: 14, color: Colors.grey[500]),
+                                const SizedBox(width: 4),
+                                Text('${w['kelas_nama']}', style: TextStyle(color: Colors.blue[700], fontWeight: FontWeight.w500)),
+                                const SizedBox(width: 12),
+                                Icon(Icons.people_alt_outlined, size: 14, color: Colors.grey[500]),
+                                const SizedBox(width: 4),
+                                Text('$jumlahSiswa Santri', style: TextStyle(color: Colors.grey[600])),
+                              ]),
+                            ],
+                          ],
+                        ),
+                        trailing: adaKelas
+                            ? Icon(Icons.check_circle, color: Colors.green[400], size: 20)
+                            : Icon(Icons.remove_circle_outline, color: Colors.grey[400], size: 20),
+                      ),
+                    );
+                  },
+                )),
+    ]);
+  }
+
+  // ── Shared helpers ──
+
+  Widget _filterDropdown(List<Map<String, dynamic>> items, String? value, String hint, ValueChanged<String?> onChanged, double width) {
+    return SizedBox(
+      width: width,
+      child: DropdownButtonHideUnderline(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
+          child: DropdownButton<String>(
+            value: value,
+            hint: Text(hint, style: const TextStyle(fontSize: 13)),
+            isExpanded: true,
+            items: items.map((e) => DropdownMenuItem(value: '${e['id']}', child: Text('${e['nama']}', style: const TextStyle(fontSize: 13)))).toList(),
+            onChanged: onChanged,
+          ),
+        ),
+      ),
     );
   }
 }
+
+// ── Data class untuk Kesiapan ──
+
+class _KesiapanRowData {
+  final int guruId;
+  final String nama;
+  final String nip;
+  List<String> hariAktif;
+  int jpMaxPerHari;
+  int jpMaxMinggu;
+  final List<Map<String, dynamic>> kelasDiampu;
+  final List<Map<String, dynamic>> mapelDiampu;
+  final int jpTerisi;
+
+  _KesiapanRowData({
+    required this.guruId,
+    required this.nama,
+    required this.nip,
+    required this.hariAktif,
+    required this.jpMaxPerHari,
+    required this.jpMaxMinggu,
+    required this.kelasDiampu,
+    required this.mapelDiampu,
+    required this.jpTerisi,
+  });
+
+  factory _KesiapanRowData.fromJson(Map<String, dynamic> json) {
+    List<String> hariAktif = [];
+    if (json['hari_aktif'] is String) {
+      try {
+        final parsed = json['hari_aktif'] as String;
+        if (parsed.isNotEmpty && parsed != '[]') {
+          hariAktif = (jsonDecode(parsed) as List).cast<String>();
+        }
+      } catch (_) {}
+    } else if (json['hari_aktif'] is List) {
+      hariAktif = (json['hari_aktif'] as List).cast<String>();
+    }
+
+    List<Map<String, dynamic>> kelasDiampu = [];
+    if (json['kelas_diampu'] is String) {
+      try {
+        final parsed = json['kelas_diampu'] as String;
+        if (parsed.isNotEmpty && parsed != '[]') {
+          kelasDiampu = (jsonDecode(parsed) as List).cast<Map<String, dynamic>>();
+        }
+      } catch (_) {}
+    } else if (json['kelas_diampu'] is List) {
+      kelasDiampu = (json['kelas_diampu'] as List).cast<Map<String, dynamic>>();
+    }
+
+    List<Map<String, dynamic>> mapelDiampu = [];
+    if (json['mapel_diampu'] is String) {
+      try {
+        final parsed = json['mapel_diampu'] as String;
+        if (parsed.isNotEmpty && parsed != '[]') {
+          mapelDiampu = (jsonDecode(parsed) as List).cast<Map<String, dynamic>>();
+        }
+      } catch (_) {}
+    } else if (json['mapel_diampu'] is List) {
+      mapelDiampu = (json['mapel_diampu'] as List).cast<Map<String, dynamic>>();
+    }
+
+    return _KesiapanRowData(
+      guruId: json['id'] as int,
+      nama: json['nama']?.toString() ?? '-',
+      nip: json['nip']?.toString() ?? '-',
+      hariAktif: hariAktif,
+      jpMaxPerHari: json['jp_max_per_hari'] as int? ?? 8,
+      jpMaxMinggu: json['jp_max_per_minggu'] as int? ?? 24,
+      kelasDiampu: kelasDiampu,
+      mapelDiampu: mapelDiampu,
+      jpTerisi: json['jp_terisi'] as int? ?? 0,
+    );
+  }
+}
+
+// ── Hari Checkbox Row ──
+
+class _HariCheckboxRow extends StatelessWidget {
+  final List<String> nilai;
+  final ValueChanged<List<String>> onChanged;
+  static const _semuaHari = ['Sabtu', 'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis'];
+
+  const _HariCheckboxRow({required this.nilai, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 210,
+      child: Wrap(
+        spacing: 2,
+        runSpacing: 0,
+        children: _semuaHari.map((hari) {
+          final checked = nilai.contains(hari);
+          return FilterChip(
+            label: Text(hari.substring(0, 2), style: const TextStyle(fontSize: 9)),
+            selected: checked,
+            onSelected: (v) {
+              if (v) {
+                onChanged([...nilai, hari]);
+              } else {
+                onChanged(nilai.where((h) => h != hari).toList());
+              }
+            },
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            labelStyle: TextStyle(fontSize: 9, color: checked ? Colors.white : Colors.grey[700]),
+            selectedColor: Colors.green[700],
+            checkmarkColor: Colors.white,
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+// ── Action Button ──
 
 class _ActionBtn extends StatelessWidget {
   final IconData icon;
@@ -556,7 +875,7 @@ class _ActionBtn extends StatelessWidget {
       style: TextButton.styleFrom(
         foregroundColor: color,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: color.withOpacity(0.3))),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: color.withValues(alpha: 0.3))),
       ),
       icon: Icon(icon, size: 16),
       label: Text(label, style: const TextStyle(fontSize: 12)),

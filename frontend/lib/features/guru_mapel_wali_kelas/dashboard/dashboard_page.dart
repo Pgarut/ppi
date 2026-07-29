@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/widgets/dashboard_template.dart';
+import '../../../../shared/widgets/app_utils.dart';
 import '../services/guru_service.dart';
 
 class DashboardPageGuru extends StatefulWidget {
@@ -14,6 +15,7 @@ class DashboardPageGuru extends StatefulWidget {
 class _DashboardPageGuruState extends State<DashboardPageGuru> {
   Map<String, dynamic>? _stats;
   bool _loading = true;
+  bool _isWaliKelas = false;
 
   @override
   void initState() { super.initState(); _load(); }
@@ -21,13 +23,27 @@ class _DashboardPageGuruState extends State<DashboardPageGuru> {
   Future<void> _load() async {
     try {
       final data = await GuruService.getDashboard();
-      if (mounted) setState(() => _stats = data);
-    } catch (_) {}
+      final wali = await GuruService.cekWaliKelas();
+      if (mounted) setState(() { _stats = data; _isWaliKelas = wali['is_wali_kelas'] == true; });
+    } catch (e) {
+      if (mounted) AppUtils.handleError(context, e, message: 'Gagal memuat dashboard');
+    }
     if (mounted) setState(() => _loading = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    final features = <FeatureItem>[
+      const FeatureItem('Absensi', 'absensi', Icons.checklist_outlined, 'Input & rekap kehadiran'),
+      const FeatureItem('Jadwal', 'jadwal', Icons.calendar_month_outlined, 'Lihat jadwal mengajar'),
+      const FeatureItem('Nilai', 'nilai', Icons.grading_outlined, 'Input & kelola nilai siswa'),
+      if (_isWaliKelas) ...[
+        const FeatureItem('Rapor', 'rapor', Icons.assignment_outlined, 'Cetak rapor siswa'),
+        const FeatureItem('Wali Kelas', 'wali-kelas', Icons.people_outlined, 'Kelola data wali kelas'),
+      ],
+      const FeatureItem('Pengaduan', 'pengaduan', Icons.warning_amber_outlined, 'Lapor & pantau pengaduan', isSecondary: true),
+    ];
+
     return DashboardTemplate(
       loading: _loading,
       stats: [
@@ -36,14 +52,7 @@ class _DashboardPageGuruState extends State<DashboardPageGuru> {
         StatItem(Icons.grading, 'Total Nilai', '${_stats?['total_nilai'] ?? 0}', Colors.orange),
         StatItem(Icons.warning_amber, 'Pengaduan Aktif', '${_stats?['pengaduan_aktif'] ?? 0}', Colors.red),
       ],
-      features: const [
-        FeatureItem('Absensi', 'absensi', Icons.checklist_outlined, 'Input & rekap kehadiran', Color(0xFF1B5E20)),
-        FeatureItem('Jadwal', 'jadwal', Icons.calendar_month_outlined, 'Lihat jadwal mengajar', Color(0xFF2E7D32)),
-        FeatureItem('Nilai', 'nilai', Icons.grading_outlined, 'Input & kelola nilai siswa', Color(0xFF43A047)),
-        FeatureItem('Rapor', 'rapor', Icons.assignment_outlined, 'Cetak rapor siswa', Color(0xFF66BB6A)),
-        FeatureItem('Pengaduan', 'pengaduan', Icons.warning_amber_outlined, 'Lapor & pantau pengaduan', Color(0xFFFDD835)),
-        FeatureItem('Wali Kelas', 'wali-kelas', Icons.people_outlined, 'Kelola data wali kelas', Color(0xFFFFA726)),
-      ],
+      features: features,
       onFeatureTap: widget.onFeatureTap,
       onLogout: widget.onLogout,
     );

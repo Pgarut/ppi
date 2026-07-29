@@ -30,7 +30,9 @@ class AuthService {
       final response = await ApiClient.get('/auth/me');
       final data = response['data'] as Map<String, dynamic>;
       return UserModel.fromJson(data);
-    } catch (_) {
+    } catch (e) {
+      // ignore: avoid_print
+      print('[Auth] Gagal getCurrentUser: $e');
       return null;
     }
   }
