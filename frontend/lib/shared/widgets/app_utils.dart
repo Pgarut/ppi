@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/logging/app_logger.dart';
 
 /// Helper functions for consistent error handling and UX across all pages.
 class AppUtils {
@@ -68,7 +69,7 @@ class AppUtils {
   static void handleError(BuildContext context, dynamic error, {String? message}) {
     final msg = message ?? _formatError(error);
     showError(context, msg);
-    debugPrint('[Error] $msg');
+    AppLogger.error('[Error] $msg');
   }
 
   static String _formatError(dynamic error) {

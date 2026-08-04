@@ -8,9 +8,10 @@ export async function handleBackup(request: Request, env: Env, user: UserPayload
     const tables = [
       'users', 'hak_akses_modul', 'log_aktivitas',
       'tahun_ajaran', 'semester', 'jurusan', 'tingkat', 'ruangan',
-      'mata_pelajaran', 'guru', 'kelas', 'siswa', 'guru_mata_pelajaran',
+      'mata_pelajaran', 'mapel_kelas', 'guru', 'kelas', 'siswa', 'guru_mata_pelajaran',
       'jadwal_pelajaran', 'absensi_guru', 'absensi_siswa',
       'bobot_nilai', 'nilai', 'nilai_rapor', 'rapor_arsip',
+      'materi',
       'pengaduan', 'jadwal_konseling', 'konseling', 'bakat_minat',
       'kenaikan_kelas', 'alumni',
     ];
@@ -53,9 +54,10 @@ export async function handleRestore(request: Request, env: Env, user: UserPayloa
     const validTables = [
       'users', 'hak_akses_modul', 'log_aktivitas',
       'tahun_ajaran', 'semester', 'jurusan', 'tingkat', 'ruangan',
-      'mata_pelajaran', 'guru', 'kelas', 'siswa', 'guru_mata_pelajaran',
+      'mata_pelajaran', 'mapel_kelas', 'guru', 'kelas', 'siswa', 'guru_mata_pelajaran',
       'jadwal_pelajaran', 'absensi_guru', 'absensi_siswa',
       'bobot_nilai', 'nilai', 'nilai_rapor', 'rapor_arsip',
+      'materi',
       'pengaduan', 'jadwal_konseling', 'konseling', 'bakat_minat',
       'kenaikan_kelas', 'alumni', 'pengaturan', 'rate_limits',
     ];

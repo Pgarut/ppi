@@ -1,4 +1,4 @@
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import 'package:flutter/material.dart';
 import '../services/guru_bk_service.dart';
 
@@ -272,7 +272,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.psychology_outlined, color: Colors.white, size: 24),
@@ -370,9 +370,9 @@ class _BakatMinatPageState extends State<BakatMinatPage>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -436,7 +436,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
                       )
                     : IconButton(
                         onPressed: () => _showBMDialog(s as Map<String, dynamic>),
-                        icon: Icon(Icons.add_circle_outline, color: const Color(0xFF00897B), size: 22),
+                        icon: const Icon(Icons.add_circle_outline, color: Color(0xFF00897B), size: 22),
                         tooltip: 'Tambah Bakat & Minat',
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),

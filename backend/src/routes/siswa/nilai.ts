@@ -1,0 +1,107 @@
+import { Env, UserPayload } from '../../types';
+import { success, error } from '../../utils/response';
+
+export async function handleNilai(
+  env: Env,
+  user: UserPayload,
+  url: URL
+): Promise<Response> {
+  const semesterId = url.searchParams.get('semester_id');
+
+  // Ambil semester aktif jika tidak ditentukan
+  let semId = semesterId;
+  if (!semId) {
+    const { results: activeSem } = await env.DB.prepare(
+      'SELECT id FROM semester WHERE is_aktif = 1 LIMIT 1'
+    ).all();
+    if (activeSem.length > 0) semId = String((activeSem[0] as any).id);
+  }
+
+  // Ambil data siswa
+  const { results: siswaData } = await env.DB.prepare(
+    'SELECT kelas_id FROM siswa WHERE id = ?'
+  ).bind(user.siswa_id).all();
+
+  if (siswaData.length === 0) return error('Data siswa tidak ditemukan', 404);
+  const kelasId = (siswaData[0] as any).kelas_id;
+
+  // Query nilai per mata pelajaran
+  let query = `
+    SELECT n.*, mp.nama as mapel_nama, mp.kode as mapel_kode
+    FROM nilai n
+    JOIN mata_pelajaran mp ON n.mata_pelajaran_id = mp.id
+    WHERE n.siswa_id = ? AND n.kelas_id = ?
+  `;
+  const params: any[] = [user.siswa_id, kelasId];
+
+  if (semId) {
+    query += ' AND n.semester_id = ?';
+    params.push(semId);
+  }
+
+  query += ' ORDER BY mp.nama, n.jenis';
+
+  const { results } = await env.DB.prepare(query).bind(...params).all();
+
+  // Group by mata_pelajaran
+  const grouped: Record<string, any[]> = {};
+  for (const n of results as any[]) {
+    if (!grouped[n.mapel_nama]) grouped[n.mapel_nama] = [];
+    grouped[n.mapel_nama].push(n);
+  }
+
+    // Hitung rata-rata per mapel
+    const rekap = Object.entries(grouped).map(([mapel, nilaiList]) => {
+      const bobotMap: Record<string, number> = { harian: 0, tugas: 0, uts: 0, uas: 0, pts1: 0, pas: 0, pts2: 0, pat: 0 };
+      const totalMap: Record<string, number> = { harian: 0, tugas: 0, uts: 0, uas: 0, pts1: 0, pas: 0, pts2: 0, pat: 0 };
+
+      for (const n of nilaiList) {
+        const jenis = n.jenis as string;
+        if (jenis in bobotMap) {
+          bobotMap[jenis] += n.bobot ?? 1;
+          totalMap[jenis] += n.nilai * (n.bobot ?? 1);
+        }
+      }
+
+      const avg = (key: string) => bobotMap[key] > 0 ? totalMap[key] / bobotMap[key] : 0;
+
+      const avgHarian = avg('harian');
+      const avgTugas = avg('tugas');
+      const avgUts = avg('uts');
+      const avgUas = avg('uas');
+      const avgPts1 = avg('pts1');
+      const avgPas = avg('pas');
+      const avgPts2 = avg('pts2');
+      const avgPat = avg('pat');
+
+      // Hitung rata-rata akhir: gunakan jenis yang ada
+      const values = [avgHarian, avgTugas, avgUts, avgUas, avgPts1, avgPas, avgPts2, avgPat].filter(v => v > 0);
+      const avgAkhir = values.length > 0
+        ? Math.round(values.reduce((s, v) => s + v, 0) / values.length * 100) / 100
+        : 0;
+
+      return {
+        mapel_nama: mapel,
+        harian: Math.round(avgHarian * 100) / 100,
+        tugas: Math.round(avgTugas * 100) / 100,
+        uts: Math.round(avgUts * 100) / 100,
+        uas: Math.round(avgUas * 100) / 100,
+        pts1: Math.round(avgPts1 * 100) / 100,
+        pas: Math.round(avgPas * 100) / 100,
+        pts2: Math.round(avgPts2 * 100) / 100,
+        pat: Math.round(avgPat * 100) / 100,
+        rata_rata: avgAkhir,
+      };
+    });
+
+  // Rata-rata keseluruhan
+  const avgKeseluruhan = rekap.length > 0
+    ? Math.round(rekap.reduce((sum, r) => sum + r.rata_rata, 0) / rekap.length * 100) / 100
+    : 0;
+
+  return success({
+    rekap,
+    rata_rata_keseluruhan: avgKeseluruhan,
+    semester_id: semId,
+  });
+}

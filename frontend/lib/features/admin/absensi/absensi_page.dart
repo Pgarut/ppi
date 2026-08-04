@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/common_widgets.dart';
 import '../services/admin_service.dart';
 
 class AbsensiPage extends StatefulWidget {
@@ -65,87 +67,74 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
     );
   }
 
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'hadir': return Colors.green;
-      case 'izin': return Colors.orange;
-      case 'sakit': return Colors.blue;
-      case 'alpa': return Colors.red;
-      default: return Colors.grey;
-    }
-  }
-
-  Widget _buildPagination() {
-    if (_page >= _totalPages) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Center(child: OutlinedButton.icon(
-        onPressed: () { _page++; _load(); },
-        icon: const Icon(Icons.expand_more, size: 18),
-        label: const Text('Muat lebih banyak'),
-      )),
-    );
-  }
-
   Widget _buildMonitoringTab(bool isGuru) {
     return Column(children: [
-      _FormCard(title: isGuru ? 'Filter Absensi Asatidz' : 'Filter Absensi Santri',
-          icon: isGuru ? Icons.person_outlined : Icons.people_outlined, children: [
-        Row(children: [
-          Expanded(child: TextField(
-            decoration: _inpDeco('Tanggal (YYYY-MM-DD)', Icons.calendar_today_outlined),
-            onChanged: (v) { _filterTanggal = v; },
-          )),
-          const SizedBox(width: 12),
-          Expanded(child: DropdownButtonFormField<String>(
-            value: _statusFilter.isEmpty ? null : _statusFilter,
-            isDense: true,
-            decoration: _inpDeco('Status', Icons.filter_alt_outlined),
-            items: ['', 'hadir', 'izin', 'sakit', 'alpa'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
-                child: Text(s.isEmpty ? 'Semua' : s, style: const TextStyle(fontSize: 13)))).toList(),
-            onChanged: (v) { _statusFilter = v ?? ''; },
-          )),
-          const SizedBox(width: 12),
+      Padding(
+        padding: const EdgeInsets.all(16),
+        child: FilterCard(children: [
+          SizedBox(
+            width: 200,
+            child: TextField(
+              decoration: inputDecoration('Tanggal (YYYY-MM-DD)', Icons.calendar_today_outlined),
+              onChanged: (v) { _filterTanggal = v; },
+            ),
+          ),
+          SizedBox(
+            width: 160,
+            child: DropdownButtonFormField<String>(
+              value: _statusFilter.isEmpty ? null : _statusFilter,
+              isDense: true,
+              decoration: inputDecoration('Status', Icons.filter_alt_outlined),
+              items: ['', 'hadir', 'izin', 'sakit', 'alpa'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
+                  child: Text(s.isEmpty ? 'Semua' : s, style: const TextStyle(fontSize: 13)))).toList(),
+              onChanged: (v) { _statusFilter = v ?? ''; },
+            ),
+          ),
           FilledButton.icon(
             onPressed: () { _page = 1; _load(); },
             icon: const Icon(Icons.search, size: 18),
             label: const Text('Cari'),
           ),
         ]),
-      ]),
+      ),
       Expanded(child: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _data.isEmpty
-              ? Center(child: Text('Tidak ada data.', style: TextStyle(color: Colors.grey[500])))
+              ? const EmptyState(message: 'Tidak ada data absensi.')
               : ListView.builder(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), itemCount: _data.length + 1,
                   itemBuilder: (_, i) {
-                    if (i == _data.length) return _buildPagination();
+                    if (i == _data.length) {
+                      if (_page >= _totalPages) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Center(child: OutlinedButton.icon(
+                          onPressed: () { _page++; _load(); },
+                          icon: const Icon(Icons.expand_more, size: 18),
+                          label: const Text('Muat lebih banyak'),
+                        )),
+                      );
+                    }
                     final d = _data[i];
                     final st = d['status'] as String? ?? '';
                     final nama = d[isGuru ? 'guru_nama' : 'siswa_nama'] as String? ?? '-';
                     final subtitle = isGuru
                         ? '${d['tanggal'] ?? '-'} | ${d['jam_masuk'] ?? '-'} - ${d['jam_keluar'] ?? '-'}'
                         : '${d['tanggal'] ?? '-'} | ${d['kelas_nama'] ?? '-'}${d['mapel_nama'] != null ? ' | ${d['mapel_nama']}' : ''}';
+                    final statusColor = AttendanceStatus.colorFor(st);
                     return Card(
                       margin: const EdgeInsets.only(top: 10),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
                       child: Padding(
                         padding: const EdgeInsets.all(14),
                         child: Row(children: [
-                          CircleAvatar(radius: 22, backgroundColor: _statusColor(st).withValues(alpha: 0.12),
-                            child: Text((nama)[0], style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _statusColor(st)))),
+                          CircleAvatar(radius: 22, backgroundColor: statusColor.withValues(alpha: 0.12),
+                            child: Text(nama.isNotEmpty ? nama[0] : '?', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: statusColor))),
                           const SizedBox(width: 14),
                           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(nama, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                            Text(nama, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.grey800)),
                             const SizedBox(height: 4),
-                            Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                            Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.grey500)),
                           ])),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(color: _statusColor(st).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
-                            child: Text(st, style: TextStyle(fontSize: 12, color: _statusColor(st), fontWeight: FontWeight.w600)),
-                          ),
+                          AttendanceStatus.fromString(st),
                         ]),
                       ),
                     );
@@ -156,25 +145,25 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
 
   Widget _buildRekapTab() {
     return SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(children: [
-      _FormCard(title: 'Filter Rekap', icon: Icons.filter_list, children: [
-        Row(children: [
-          Expanded(child: TextField(
-            decoration: _inpDeco('Tanggal Mulai (YYYY-MM-DD)', Icons.date_range_outlined),
+      FilterCard(children: [
+        SizedBox(
+          width: 240,
+          child: TextField(
+            decoration: inputDecoration('Tanggal Mulai (YYYY-MM-DD)', Icons.date_range_outlined),
             onChanged: (v) { _filterTanggal = v; },
-          )),
-          const SizedBox(width: 12),
-          FilledButton.icon(
-            onPressed: () { _page = 1; _load(); },
-            icon: const Icon(Icons.search, size: 18),
-            label: const Text('Tampilkan'),
           ),
-        ]),
+        ),
+        FilledButton.icon(
+          onPressed: () { _page = 1; _load(); },
+          icon: const Icon(Icons.search, size: 18),
+          label: const Text('Tampilkan'),
+        ),
       ]),
       const SizedBox(height: 16),
       if (_loading)
-        const Center(child: CircularProgressIndicator())
+        const Center(child: CircularProgressIndicator(color: AppTheme.primary))
       else if (_rekap == null)
-        Center(child: Text('Masukkan tanggal untuk melihat rekap.', style: TextStyle(color: Colors.grey[500])))
+        const EmptyState(icon: Icons.filter_list_outlined, message: 'Masukkan tanggal untuk melihat rekap.')
       else ...[
         _rekapCard('Absensi Santri', _rekap!['siswa'] as Map<String, dynamic>? ?? {},
             _rekap!['total_siswa'] as int? ?? 0, Icons.people_outlined),
@@ -186,27 +175,28 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
   }
 
   Widget _rekapCard(String title, Map<String, dynamic> data, int total, IconData icon) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-      child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [Icon(icon, size: 20, color: Colors.green[700]), const SizedBox(width: 8),
-          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))]),
-        const SizedBox(height: 12),
+    return DataCard(
+      header: Row(children: [
+        Icon(icon, size: 20, color: AppTheme.primary),
+        const SizedBox(width: 8),
+        Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.grey800)),
+      ]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (data.isEmpty)
-          Text('Belum ada data.', style: TextStyle(fontSize: 13, color: Colors.grey[500]))
+          const EmptyState(icon: Icons.inbox_outlined, message: 'Belum ada data.')
         else
           ...(data.entries.map((e) => Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(children: [
-            Text(e.key, style: const TextStyle(fontSize: 13)),
+            Text(e.key, style: const TextStyle(fontSize: 13, color: AppTheme.grey700)),
             const Spacer(),
-            Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(color: _statusColor(e.key).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-              child: Text('${e.value}', style: TextStyle(fontSize: 12, color: _statusColor(e.key), fontWeight: FontWeight.w600))),
+            StatusBadge(label: '${e.value}', color: AttendanceStatus.colorFor(e.key)),
           ])))),
-        const Divider(height: 20),
-        Row(children: [const Text('Total', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-          const Spacer(), Text('$total', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.green[700]))]),
-      ])),
+        const Divider(height: 20, color: AppTheme.grey200),
+        Row(children: [
+          const Text('Total', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.grey800)),
+          const Spacer(),
+          Text('$total', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.primary)),
+        ]),
+      ]),
     );
   }
 }
@@ -253,137 +243,97 @@ class _AnalisisAbsensiTabState extends State<_AnalisisAbsensiTab> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(children: [
-      _FormCard(title: 'Filter Analisis', icon: Icons.analytics_outlined, children: [
-        Row(children: [
-          Expanded(child: TextField(
+      FilterCard(children: [
+        SizedBox(
+          width: 200,
+          child: TextField(
             controller: _tglMulaiCtrl,
-            decoration: _inpDeco('Tanggal Mulai', Icons.date_range_outlined),
-          )),
-          const SizedBox(width: 12),
-          Expanded(child: TextField(
+            decoration: inputDecoration('Tanggal Mulai', Icons.date_range_outlined),
+          ),
+        ),
+        SizedBox(
+          width: 200,
+          child: TextField(
             controller: _tglSelesaiCtrl,
-            decoration: _inpDeco('Tanggal Selesai', Icons.date_range_outlined, optional: true),
-          )),
-        ]),
-        const SizedBox(height: 12),
-        Row(children: [
-          Expanded(child: DropdownButtonFormField<String>(
+            decoration: inputDecoration('Tanggal Selesai', Icons.date_range_outlined, optional: true),
+          ),
+        ),
+        SizedBox(
+          width: 200,
+          child: DropdownButtonFormField<String>(
             value: _kelasId,
             isDense: true,
-            decoration: _inpDeco('Kelas', Icons.school_outlined, optional: true),
-            items: [DropdownMenuItem<String>(value: null, child: Text('Semua Kelas', style: TextStyle(fontSize: 13))),
+            decoration: inputDecoration('Kelas', Icons.school_outlined, optional: true),
+            items: [const DropdownMenuItem<String>(value: null, child: Text('Semua Kelas', style: TextStyle(fontSize: 13))),
               ..._kelasList.map((k) => DropdownMenuItem(value: '${k['id']}', child: Text('${k['nama']}', style: const TextStyle(fontSize: 13))))],
             onChanged: (v) => setState(() => _kelasId = v),
-          )),
-          const SizedBox(width: 12),
-          FilledButton.icon(
-            onPressed: _loadAnalisis,
-            icon: const Icon(Icons.analytics, size: 18),
-            label: const Text('Analisis'),
           ),
-        ]),
+        ),
+        FilledButton.icon(
+          onPressed: _loadAnalisis,
+          icon: const Icon(Icons.analytics, size: 18),
+          label: const Text('Analisis'),
+        ),
       ]),
       const SizedBox(height: 16),
       if (_loading)
-        const Center(child: CircularProgressIndicator())
+        const Center(child: CircularProgressIndicator(color: AppTheme.primary))
       else if (_analisis != null) ...[
-        _buildOverview(theme),
+        _buildOverview(),
         const SizedBox(height: 16),
-        _buildPerStatus(theme),
+        _buildPerStatus(),
         const SizedBox(height: 16),
-        _buildSiswaPerKelas(theme),
+        _buildSiswaPerKelas(),
         const SizedBox(height: 16),
-        _buildPerBulan(theme),
+        _buildPerBulan(),
       ] else
-        Center(child: Text('Masukkan filter dan klik Analisis.', style: TextStyle(color: Colors.grey[500]))),
+        const EmptyState(icon: Icons.analytics_outlined, message: 'Masukkan filter dan klik Analisis.'),
     ]));
   }
 
-  Widget _buildOverview(ThemeData theme) {
+  Widget _buildOverview() {
     final o = _analisis!['overview'] as Map<String, dynamic>? ?? {};
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-      child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.summarize_outlined, size: 20, color: theme.colorScheme.primary),
-          const SizedBox(width: 8),
-          const Text('Ringkasan', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-        ]),
-        const SizedBox(height: 16),
-        Wrap(spacing: 16, runSpacing: 16, children: [
-          _statChip(Icons.people_outlined, 'Entry Santri', '${o['total_siswa_entry'] ?? 0}', Colors.blue),
-          _statChip(Icons.person_outlined, 'Entry Asatidz', '${o['total_guru_entry'] ?? 0}', Colors.teal),
-        ]),
-      ])),
-    );
-  }
-
-  Widget _statChip(IconData icon, String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10), border: Border.all(color: color.withValues(alpha: 0.2))),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 8),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-          Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-        ]),
+    return DataCard(
+      header: const Row(children: [
+        Icon(Icons.summarize_outlined, size: 20, color: AppTheme.primary),
+        SizedBox(width: 8),
+        Text('Ringkasan', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppTheme.grey800)),
+      ]),
+      child: Wrap(spacing: 16, runSpacing: 16, children: [
+        StatChip(label: 'Entry Santri', value: '${o['total_siswa_entry'] ?? 0}', color: AppTheme.blue),
+        StatChip(label: 'Entry Asatidz', value: '${o['total_guru_entry'] ?? 0}', color: AppTheme.teal),
       ]),
     );
   }
 
-  Color _absStatusColor(String s) {
-    switch (s) {
-      case 'hadir': return Colors.green;
-      case 'izin': return Colors.orange;
-      case 'sakit': return Colors.blue;
-      case 'alpa': return Colors.red;
-      default: return Colors.grey;
-    }
-  }
-
-  Widget _buildPerStatus(ThemeData theme) {
+  Widget _buildPerStatus() {
     final siswa = _analisis!['siswa_per_status'] as Map<String, dynamic>? ?? {};
     final guru = _analisis!['guru_per_status'] as Map<String, dynamic>? ?? {};
     final statuses = ['hadir', 'izin', 'sakit', 'alpa'];
     if (statuses.every((s) => (siswa[s] ?? 0) == 0 && (guru[s] ?? 0) == 0)) return const SizedBox.shrink();
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-      child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.pie_chart_outline, size: 20, color: theme.colorScheme.primary),
-          const SizedBox(width: 8),
-          const Text('Distribusi Status', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-        ]),
-        const SizedBox(height: 12),
-        DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
-          columnSpacing: 24,
-          columns: const [
-            DataColumn(label: Text('Status', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Santri', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
-            DataColumn(label: Text('Asatidz', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
-          ],
-          rows: statuses.map((s) => DataRow(cells: [
-            DataCell(Row(children: [
-              Container(width: 10, height: 10, decoration: BoxDecoration(color: _absStatusColor(s), shape: BoxShape.circle)),
-              const SizedBox(width: 8),
-              Text(s, style: const TextStyle(fontSize: 12)),
-            ])),
-            DataCell(Text('${siswa[s] ?? 0}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _absStatusColor(s)))),
-            DataCell(Text('${guru[s] ?? 0}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _absStatusColor(s)))),
-          ])).toList(),
-        ),
-      ])),
+    return ModernTable(
+      columns: const [
+        DataColumn(label: Text('Status')),
+        DataColumn(label: Text('Santri'), numeric: true),
+        DataColumn(label: Text('Asatidz'), numeric: true),
+      ],
+      rows: statuses.map((s) {
+        final c = AttendanceStatus.colorFor(s);
+        return DataRow(cells: [
+          DataCell(Row(children: [
+            Container(width: 10, height: 10, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+            const SizedBox(width: 8),
+            Text(s, style: const TextStyle(fontSize: 12)),
+          ])),
+          DataCell(Text('${siswa[s] ?? 0}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c))),
+          DataCell(Text('${guru[s] ?? 0}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c))),
+        ]);
+      }).toList(),
     );
   }
 
-  Widget _buildSiswaPerKelas(ThemeData theme) {
+  Widget _buildSiswaPerKelas() {
     final list = (_analisis!['siswa_per_kelas'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
     if (list.isEmpty) return const SizedBox.shrink();
     final kelasGroup = <String, Map<String, int>>{};
@@ -392,72 +342,62 @@ class _AnalisisAbsensiTabState extends State<_AnalisisAbsensiTab> {
       kelasGroup.putIfAbsent(kn, () => {});
       kelasGroup[kn]![item['status'] as String? ?? ''] = (item['count'] as int?) ?? 0;
     }
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-      child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.school_outlined, size: 20, color: theme.colorScheme.primary),
-          const SizedBox(width: 8),
-          const Text('Santri Per Kelas', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-        ]),
-        const SizedBox(height: 12),
-        SingleChildScrollView(scrollDirection: Axis.horizontal, child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
-          columnSpacing: 24,
-          columns: const [
-            DataColumn(label: Text('Kelas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Hadir', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
-            DataColumn(label: Text('Izin', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
-            DataColumn(label: Text('Sakit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
-            DataColumn(label: Text('Alpa', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
-          ],
-          rows: kelasGroup.entries.map((e) => DataRow(cells: [
-            DataCell(Text(e.key, style: const TextStyle(fontSize: 12))),
-            DataCell(Text('${e.value['hadir'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.green))),
-            DataCell(Text('${e.value['izin'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.orange))),
-            DataCell(Text('${e.value['sakit'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.blue))),
-            DataCell(Text('${e.value['alpa'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.red))),
-          ])).toList(),
-        )),
-      ])),
+    return DataCard(
+      header: const Row(children: [
+        Icon(Icons.school_outlined, size: 20, color: AppTheme.primary),
+        SizedBox(width: 8),
+        Text('Santri Per Kelas', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppTheme.grey800)),
+      ]),
+      child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: DataTable(
+        headingRowColor: WidgetStateProperty.all(AppTheme.grey50),
+        columnSpacing: 24,
+        columns: const [
+          DataColumn(label: Text('Kelas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+          DataColumn(label: Text('Hadir', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
+          DataColumn(label: Text('Izin', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
+          DataColumn(label: Text('Sakit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
+          DataColumn(label: Text('Alpa', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
+        ],
+        rows: kelasGroup.entries.map((e) => DataRow(cells: [
+          DataCell(Text(e.key, style: const TextStyle(fontSize: 12))),
+          DataCell(Text('${e.value['hadir'] ?? 0}', style: const TextStyle(fontSize: 12, color: AppTheme.primary))),
+          DataCell(Text('${e.value['izin'] ?? 0}', style: const TextStyle(fontSize: 12, color: AppTheme.orange))),
+          DataCell(Text('${e.value['sakit'] ?? 0}', style: const TextStyle(fontSize: 12, color: AppTheme.blue))),
+          DataCell(Text('${e.value['alpa'] ?? 0}', style: const TextStyle(fontSize: 12, color: AppTheme.error))),
+        ])).toList(),
+      )),
     );
   }
 
-  Widget _buildPerBulan(ThemeData theme) {
+  Widget _buildPerBulan() {
     final list = (_analisis!['per_bulan'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
     if (list.isEmpty) return const SizedBox.shrink();
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-      child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.trending_up, size: 20, color: theme.colorScheme.primary),
-          const SizedBox(width: 8),
-          const Text('Tren Bulanan (Santri)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-        ]),
-        const SizedBox(height: 12),
-        SingleChildScrollView(scrollDirection: Axis.horizontal, child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
-          columnSpacing: 24,
-          columns: const [
-            DataColumn(label: Text('Bulan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Hadir', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
-            DataColumn(label: Text('Izin', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
-            DataColumn(label: Text('Sakit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
-            DataColumn(label: Text('Alpa', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
-            DataColumn(label: Text('Total', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
-          ],
-          rows: list.map((b) => DataRow(cells: [
-            DataCell(Text('${b['bulan'] ?? '-'}', style: const TextStyle(fontSize: 12))),
-            DataCell(Text('${b['hadir'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.green))),
-            DataCell(Text('${b['izin'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.orange))),
-            DataCell(Text('${b['sakit'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.blue))),
-            DataCell(Text('${b['alpa'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.red))),
-            DataCell(Text('${b['total'] ?? 0}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-          ])).toList(),
-        )),
-      ])),
+    return DataCard(
+      header: const Row(children: [
+        Icon(Icons.trending_up, size: 20, color: AppTheme.primary),
+        SizedBox(width: 8),
+        Text('Tren Bulanan (Santri)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppTheme.grey800)),
+      ]),
+      child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: DataTable(
+        headingRowColor: WidgetStateProperty.all(AppTheme.grey50),
+        columnSpacing: 24,
+        columns: const [
+          DataColumn(label: Text('Bulan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+          DataColumn(label: Text('Hadir', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
+          DataColumn(label: Text('Izin', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
+          DataColumn(label: Text('Sakit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
+          DataColumn(label: Text('Alpa', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
+          DataColumn(label: Text('Total', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)), numeric: true),
+        ],
+        rows: list.map((b) => DataRow(cells: [
+          DataCell(Text('${b['bulan'] ?? '-'}', style: const TextStyle(fontSize: 12))),
+          DataCell(Text('${b['hadir'] ?? 0}', style: const TextStyle(fontSize: 12, color: AppTheme.primary))),
+          DataCell(Text('${b['izin'] ?? 0}', style: const TextStyle(fontSize: 12, color: AppTheme.orange))),
+          DataCell(Text('${b['sakit'] ?? 0}', style: const TextStyle(fontSize: 12, color: AppTheme.blue))),
+          DataCell(Text('${b['alpa'] ?? 0}', style: const TextStyle(fontSize: 12, color: AppTheme.error))),
+          DataCell(Text('${b['total'] ?? 0}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+        ])).toList(),
+      )),
     );
   }
 }
@@ -500,23 +440,23 @@ class _AuditAbsensiTabState extends State<_AuditAbsensiTab> {
 
   Color _colorForAksi(String aksi) {
     switch (aksi) {
-      case 'create': return Colors.green;
-      case 'update': return Colors.orange;
-      case 'delete': return Colors.red;
-      case 'hadir': return Colors.green;
-      case 'izin': return Colors.orange;
-      case 'sakit': return Colors.blue;
-      case 'alpa': return Colors.red;
-      default: return Colors.grey;
+      case 'create': return AppTheme.primary;
+      case 'update': return AppTheme.orange;
+      case 'delete': return AppTheme.error;
+      case 'hadir': return AppTheme.primary;
+      case 'izin': return AppTheme.orange;
+      case 'sakit': return AppTheme.blue;
+      case 'alpa': return AppTheme.error;
+      default: return AppTheme.grey400;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return _loading
-        ? const Center(child: CircularProgressIndicator())
+        ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
         : _items.isEmpty
-            ? Center(child: Text('Belum ada aktivitas absensi.', style: TextStyle(color: Colors.grey[500])))
+            ? const EmptyState(icon: Icons.history, message: 'Belum ada aktivitas absensi.')
             : ListView.builder(padding: const EdgeInsets.all(16), itemCount: _items.length + 1,
                 itemBuilder: (_, i) {
                   if (i == _items.length) {
@@ -535,8 +475,6 @@ class _AuditAbsensiTabState extends State<_AuditAbsensiTab> {
                   final c = _colorForAksi(aksi);
                   return Card(
                     margin: const EdgeInsets.only(top: 10),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: Row(children: [
@@ -545,23 +483,19 @@ class _AuditAbsensiTabState extends State<_AuditAbsensiTab> {
                         const SizedBox(width: 14),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Row(children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                              decoration: BoxDecoration(color: c.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
-                              child: Text(aksi, style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
-                            ),
+                            StatusBadge(label: aksi, color: c),
                             const SizedBox(width: 8),
-                            Expanded(child: Text(d['detail'] as String? ?? '', style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+                            Expanded(child: Text(d['detail'] as String? ?? '', style: const TextStyle(fontSize: 13, color: AppTheme.grey700), overflow: TextOverflow.ellipsis)),
                           ]),
                           const SizedBox(height: 4),
                           Row(children: [
-                            Icon(Icons.person_outline, size: 12, color: Colors.grey[500]),
+                            const Icon(Icons.person_outline, size: 12, color: AppTheme.grey400),
                             const SizedBox(width: 4),
-                            Text('${d['username'] ?? '-'}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                            Text('${d['username'] ?? '-'}', style: const TextStyle(fontSize: 11, color: AppTheme.grey500)),
                             const SizedBox(width: 16),
-                            Icon(Icons.access_time, size: 12, color: Colors.grey[500]),
+                            const Icon(Icons.access_time, size: 12, color: AppTheme.grey400),
                             const SizedBox(width: 4),
-                            Text('${d['created_at'] ?? '-'}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                            Text('${d['created_at'] ?? '-'}', style: const TextStyle(fontSize: 11, color: AppTheme.grey500)),
                           ]),
                         ])),
                       ]),
@@ -572,44 +506,7 @@ class _AuditAbsensiTabState extends State<_AuditAbsensiTab> {
   }
 }
 
-// ── Shared Helpers ──
-
-InputDecoration _inpDeco(String label, IconData icon, {bool optional = false}) {
-  return InputDecoration(
-    labelText: label,
-    hintText: optional ? 'Opsional' : null,
-    prefixIcon: Icon(icon),
-    border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-    filled: true,
-    fillColor: const Color(0xFFF8FAFC),
-    isDense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-  );
-}
-
-class _FormCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final List<Widget> children;
-  const _FormCard({required this.title, required this.icon, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 8),
-            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          ]),
-          const SizedBox(height: 16),
-          ...children,
-        ]),
-      ),
-    );
-  }
+// ── Shared Input Decoration ──
+InputDecoration inputDecoration(String label, IconData icon, {bool optional = false}) {
+  return AppInputDecoration.standard(label, icon, optional: optional);
 }

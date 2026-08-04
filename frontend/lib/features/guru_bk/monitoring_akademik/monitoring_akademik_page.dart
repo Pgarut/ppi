@@ -92,7 +92,7 @@ class _MonitoringAkademikPageState extends State<MonitoringAkademikPage>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(Icons.trending_up_outlined, color: Colors.white, size: 24),
@@ -277,7 +277,7 @@ class _MonitoringAkademikPageState extends State<MonitoringAkademikPage>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: ((a['alpa'] as num?)?.toInt() ?? 0) > 3 ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                        color: ((a['alpa'] as num?)?.toInt() ?? 0) > 3 ? Colors.red.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
@@ -317,7 +317,7 @@ class _MonitoringAkademikPageState extends State<MonitoringAkademikPage>
         Icon(icon, color: color, size: 20),
         const SizedBox(height: 2),
         Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
-        Text(label, style: TextStyle(fontSize: 9, color: color.withOpacity(0.7))),
+        Text(label, style: TextStyle(fontSize: 9, color: color.withValues(alpha: 0.7))),
       ],
     );
   }
@@ -397,7 +397,7 @@ class _MonitoringAkademikPageState extends State<MonitoringAkademikPage>
             DataCell(Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text('${p['total_pelanggaran'] ?? 0}x',
@@ -436,7 +436,7 @@ class _MonitoringAkademikPageState extends State<MonitoringAkademikPage>
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(Icons.gavel, color: Colors.red, size: 20),
@@ -455,7 +455,7 @@ class _MonitoringAkademikPageState extends State<MonitoringAkademikPage>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -496,16 +496,16 @@ class _MonitoringAkademikPageState extends State<MonitoringAkademikPage>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Column(
           children: [
             Icon(icon, color: color, size: 20),
             const SizedBox(height: 2),
             Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-            Text(label, style: TextStyle(fontSize: 10, color: color.withOpacity(0.7))),
+            Text(label, style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.7))),
           ],
         ),
       ),

@@ -47,7 +47,7 @@ class _JadwalPageGuruState extends State<JadwalPageGuru> {
 
   Map<String, List<Map<String, dynamic>>> _groupByHari() {
     final grouped = <String, List<Map<String, dynamic>>>{};
-    for (final day in _dayOrder) grouped[day] = [];
+    for (final day in _dayOrder) { grouped[day] = []; }
     for (final item in _jadwal) {
       final j = item as Map<String, dynamic>;
       final hari = j['hari'] as String? ?? '';
@@ -131,9 +131,9 @@ class _JadwalPageGuruState extends State<JadwalPageGuru> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+          color: selected ? const Color(0xFF2E7D32).withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: selected ? const Color(0xFF2E7D32).withOpacity(0.3) : Colors.grey[300]!),
+          border: Border.all(color: selected ? const Color(0xFF2E7D32).withValues(alpha: 0.3) : Colors.grey[300]!),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -282,10 +282,10 @@ class _JadwalPageGuruState extends State<JadwalPageGuru> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: active ? const Color(0xFF2E7D32).withOpacity(0.3) : Colors.grey[200]!,
+          color: active ? const Color(0xFF2E7D32).withValues(alpha: 0.3) : Colors.grey[200]!,
           width: active ? 1.5 : 1,
         ),
-        boxShadow: [BoxShadow(color: (active ? const Color(0xFF2E7D32) : Colors.grey).withOpacity(active ? 0.1 : 0.04), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: (active ? const Color(0xFF2E7D32) : Colors.grey).withValues(alpha: active ? 0.1 : 0.04), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -296,7 +296,7 @@ class _JadwalPageGuruState extends State<JadwalPageGuru> {
               width: 60,
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                color: active ? const Color(0xFF2E7D32).withOpacity(0.08) : Colors.grey[50],
+                color: active ? const Color(0xFF2E7D32).withValues(alpha: 0.08) : Colors.grey[50],
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
@@ -320,7 +320,7 @@ class _JadwalPageGuruState extends State<JadwalPageGuru> {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(color: const Color(0xFF2E7D32).withOpacity(0.06), borderRadius: BorderRadius.circular(6)),
+                        decoration: BoxDecoration(color: const Color(0xFF2E7D32).withValues(alpha: 0.06), borderRadius: BorderRadius.circular(6)),
                         child: Text('Jam ke-$jk${jkEnd != jk ? '-$jkEnd' : ''}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[600])),
                       ),
                       const SizedBox(width: 8),
@@ -380,13 +380,13 @@ class _MapelHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: lightColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.12)),
+        border: Border.all(color: color.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: [
           Container(
             width: 40, height: 40,
-            decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
             child: Icon(Icons.book_rounded, size: 20, color: color),
           ),
           const SizedBox(width: 12),
@@ -395,7 +395,7 @@ class _MapelHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(mapel, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: color)),
-                Text('$total jadwal', style: TextStyle(fontSize: 12, color: color.withOpacity(0.7))),
+                Text('$total jadwal', style: TextStyle(fontSize: 12, color: color.withValues(alpha: 0.7))),
               ],
             ),
           ),
@@ -444,7 +444,7 @@ class _HariHeader extends StatelessWidget {
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(color: const Color(0xFF2E7D32).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: const Color(0xFF2E7D32).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
               child: const Text('Hari Ini', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF2E7D32))),
             ),
           ],

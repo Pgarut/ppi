@@ -1,8 +1,7 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:excel/excel.dart' hide Border;
 import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/guru_service.dart';
 
@@ -34,7 +33,7 @@ class NilaiPageGuru extends StatelessWidget {
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
                           child: const Icon(Icons.grading_rounded, color: Colors.white, size: 28),
                         ),
                         const SizedBox(width: 14),
@@ -124,14 +123,14 @@ class _MenuCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.grey[200]!),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4))],
         ),
         child: Row(
           children: [
             Container(
               width: 56, height: 56,
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [iconColor.withOpacity(0.12), iconColor.withOpacity(0.04)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                gradient: LinearGradient(colors: [iconColor.withValues(alpha: 0.12), iconColor.withValues(alpha: 0.04)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, color: iconColor, size: 28),
@@ -149,7 +148,7 @@ class _MenuCard extends StatelessWidget {
             ),
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: iconColor.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
               child: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: iconColor),
             ),
           ],
@@ -250,8 +249,8 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
       );
       final loaded = data['siswa'] as List<dynamic>? ?? [];
       final existing = data['existing'] as Map<dynamic, dynamic>? ?? {};
-      for (final c in _nilaiCtl.values) c.dispose();
-      for (final f in _focusNodes.values) f.dispose();
+      for (final c in _nilaiCtl.values) { c.dispose(); }
+      for (final f in _focusNodes.values) { f.dispose(); }
       _nilaiCtl = {};
       _focusNodes = {};
       for (int i = 0; i < loaded.length; i++) {
@@ -357,12 +356,10 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
       final fileBytes = excel.encode();
       if (fileBytes == null) throw Exception('Gagal encode Excel');
 
-      final dir = await getTemporaryDirectory();
       final fileName = 'Nilai_${kelasNama!.replaceAll(' ', '_')}_${_jenisLabel(_jenisList.first)}.xlsx';
-      final file = File('${dir.path}/$fileName');
-      await file.writeAsBytes(fileBytes);
+      final xfile = XFile.fromData(Uint8List.fromList(fileBytes), name: fileName, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
-      await Share.shareXFiles([XFile(file.path)], text: 'Template Nilai $kelasNama');
+      await Share.shareXFiles([xfile], text: 'Template Nilai $kelasNama');
 
       if (mounted) _showNotif(context, 'Template Excel $kelasNama siap diunduh');
     } catch (e) {
@@ -456,8 +453,8 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
 
   @override
   void dispose() {
-    for (final c in _nilaiCtl.values) c.dispose();
-    for (final f in _focusNodes.values) f.dispose();
+    for (final c in _nilaiCtl.values) { c.dispose(); }
+    for (final f in _focusNodes.values) { f.dispose(); }
     super.dispose();
   }
 
@@ -488,10 +485,10 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    color: const Color(0xFF2E7D32).withOpacity(0.06),
+                    color: const Color(0xFF2E7D32).withValues(alpha: 0.06),
                     child: Row(
                       children: [
-                        Icon(Icons.school_rounded, size: 16, color: const Color(0xFF2E7D32)),
+                        const Icon(Icons.school_rounded, size: 16, color: Color(0xFF2E7D32)),
                         const SizedBox(width: 8),
                         Text('Semester: $_semesterInfo  •  ${_jenisLabel(_jenis)}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF2E7D32))),
                       ],
@@ -645,9 +642,9 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -670,9 +667,9 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
       ),
@@ -685,9 +682,9 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: filled == total ? const Color(0xFF2E7D32).withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+        color: filled == total ? const Color(0xFF2E7D32).withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: filled == total ? const Color(0xFF2E7D32).withOpacity(0.2) : Colors.orange.withOpacity(0.2)),
+        border: Border.all(color: filled == total ? const Color(0xFF2E7D32).withValues(alpha: 0.2) : Colors.orange.withValues(alpha: 0.2)),
       ),
       child: Text('$filled/$total', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: filled == total ? const Color(0xFF2E7D32) : Colors.orange[800])),
     );
@@ -714,7 +711,7 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
                     ),
                     const SizedBox(height: 12),
                     DataTable(
-                      headingRowColor: WidgetStateProperty.all(const Color(0xFF2E7D32).withOpacity(0.06)),
+                      headingRowColor: WidgetStateProperty.all(const Color(0xFF2E7D32).withValues(alpha: 0.06)),
                       columnSpacing: 20,
                       headingTextStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                       columns: const [
@@ -731,7 +728,7 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
                         final color = _nilaiColor(val);
                         final invalid = val != null && (val < 0 || val > 100);
                         return DataRow(
-                          color: WidgetStateProperty.all(i.isEven ? Colors.transparent : Colors.grey.withOpacity(0.02)),
+                          color: WidgetStateProperty.all(i.isEven ? Colors.transparent : Colors.grey.withValues(alpha: 0.02)),
                           cells: [
                             DataCell(Text('${i + 1}', style: TextStyle(fontSize: 12, color: Colors.grey[500]))),
                             DataCell(Text(s['nis']?.toString() ?? '-', style: TextStyle(fontSize: 13, color: Colors.grey[600]))),
@@ -749,10 +746,10 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
                                     hintText: '0-100',
                                     hintStyle: TextStyle(color: Colors.grey[300], fontSize: 13),
                                     filled: true,
-                                    fillColor: color.withOpacity(0.08),
+                                    fillColor: color.withValues(alpha: 0.08),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(10),
-                                      borderSide: BorderSide(color: invalid ? Colors.red : color.withOpacity(0.3)),
+                                      borderSide: BorderSide(color: invalid ? Colors.red : color.withValues(alpha: 0.3)),
                                     ),
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(10),
@@ -834,7 +831,7 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
                           children: [
                             CircleAvatar(
                               radius: 16,
-                              backgroundColor: color.withOpacity(0.12),
+                              backgroundColor: color.withValues(alpha: 0.12),
                               child: Text('${i + 1}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
                             ),
                             const SizedBox(width: 10),
@@ -858,10 +855,10 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
                                   hintText: '0',
                                   hintStyle: TextStyle(color: Colors.grey[300], fontSize: 13),
                                   filled: true,
-                                  fillColor: color.withOpacity(0.08),
+                                  fillColor: color.withValues(alpha: 0.08),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide(color: invalid ? Colors.red : color.withOpacity(0.3)),
+                                    borderSide: BorderSide(color: invalid ? Colors.red : color.withValues(alpha: 0.3)),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
@@ -932,7 +929,7 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Colors.grey[200]!)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, -4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, -4))],
       ),
       child: SafeArea(
         top: false,
@@ -1054,13 +1051,13 @@ class __RiwayatNilaiPageState extends State<_RiwayatNilaiPage> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(color: Colors.grey[200]!),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
                             ),
                             child: Row(
                               children: [
                                 Container(
                                   width: 48, height: 48,
-                                  decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                                  decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                                   child: Center(child: Text('${nilai.toInt()}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: color))),
                                 ),
                                 const SizedBox(width: 12),
@@ -1076,7 +1073,7 @@ class __RiwayatNilaiPageState extends State<_RiwayatNilaiPage> {
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF1565C0).withOpacity(0.08),
+                                              color: const Color(0xFF1565C0).withValues(alpha: 0.08),
                                               borderRadius: BorderRadius.circular(6),
                                             ),
                                             child: Text(_jenisLabel(n['jenis'] as String? ?? ''), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1565C0))),
@@ -1087,7 +1084,7 @@ class __RiwayatNilaiPageState extends State<_RiwayatNilaiPage> {
                                             const SizedBox(width: 6),
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                              decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                                               child: const Text('Tervalidasi', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.green)),
                                             ),
                                           ],
@@ -1186,7 +1183,7 @@ class __AnalisisNilaiPageState extends State<_AnalisisNilaiPage> {
                         children: [
                           Container(
                             width: 48, height: 48,
-                            decoration: BoxDecoration(color: const Color(0xFFE65100).withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
+                            decoration: BoxDecoration(color: const Color(0xFFE65100).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
                             child: const Icon(Icons.bar_chart_rounded, color: Color(0xFFE65100), size: 24),
                           ),
                           const SizedBox(width: 14),
@@ -1213,7 +1210,7 @@ class __AnalisisNilaiPageState extends State<_AnalisisNilaiPage> {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: color.withOpacity(0.06), borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(12)),
         child: Column(
           children: [
             Icon(icon, color: color, size: 24),
@@ -1258,7 +1255,7 @@ class _FormCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: child,
     );

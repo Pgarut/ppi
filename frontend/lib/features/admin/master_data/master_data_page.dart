@@ -1,10 +1,12 @@
 import 'dart:convert';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/admin_service.dart';
 import '../../../core/network/api_client.dart';
-import '../../../shared/widgets/confirm_dialog.dart';
+import '../../../shared/widgets/app_utils.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/common_widgets.dart';
 
 class MasterDataPage extends StatefulWidget {
   const MasterDataPage({super.key});
@@ -31,8 +33,8 @@ class _MasterDataPageState extends State<MasterDataPage> {
         ['NIP', 'Nama Asatidz', 'Kelas', 'Jml Santri', 'Jabatan']),
     _TabCfg('Asatidz BK', 'guru-bk-list', Icons.psychology_outlined, ['nip', 'nama', 'jabatan'],
         ['NIP', 'Nama Asatidz', 'Jabatan']),
-    _TabCfg('Santri', 'siswa', Icons.person_outline, ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'status'],
-        ['NIS', 'NISN', 'Nama', 'JK', 'Kelas', 'Status']),
+    _TabCfg('Santri', 'siswa', Icons.person_outline, ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'nama_ayah', 'nama_ibu', 'pekerjaan_ayah', 'pekerjaan_ibu', 'whatsapp', 'username', 'password', 'status'],
+        ['NIS', 'NISN', 'Nama', 'JK', 'Kelas', 'Nama Ayah', 'Nama Ibu', 'Pekerjaan Ayah', 'Pekerjaan Ibu', 'WhatsApp', 'Username', 'Password', 'Status']),
     _TabCfg('Ruangan', 'ruangan', Icons.room_outlined, ['nama', 'kapasitas'], ['Nama', 'Kapasitas']),
   ];
 
@@ -42,6 +44,13 @@ class _MasterDataPageState extends State<MasterDataPage> {
   final Map<int, int> _totalPages = {};
   final Map<int, String?> _error = {};
   final Map<int, TextEditingController> _searchCtrl = {};
+
+  // Filter untuk Santri (idx == 9)
+  String? _filterTingkat;
+  String? _filterKelas;
+  List<Map<String, dynamic>> _tingkatList = [];
+  List<Map<String, dynamic>> _kelasList = [];
+  final ValueNotifier<bool> _passwordObscure = ValueNotifier(true);
 
   @override
   void initState() {
@@ -54,12 +63,30 @@ class _MasterDataPageState extends State<MasterDataPage> {
       _searchCtrl[i] = TextEditingController();
     }
     _load(0);
+    _loadSantriFilters();
   }
 
   @override
   void dispose() {
-    for (final c in _searchCtrl.values) c.dispose();
+    for (final c in _searchCtrl.values) { c.dispose(); }
     super.dispose();
+  }
+
+  // Load Tingkat & Kelas untuk filter Santri
+  Future<void> _loadSantriFilters() async {
+    try {
+      final tingkatRes = await AdminService.list('tingkat', perPage: 100);
+      _tingkatList = (tingkatRes['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    } catch (_) {
+      _tingkatList = [];
+    }
+    try {
+      final kelasRes = await AdminService.list('kelas', perPage: 100);
+      _kelasList = (kelasRes['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    } catch (_) {
+      _kelasList = [];
+    }
+    if (mounted) setState(() {});
   }
 
   Future<void> _load(int idx, {bool refresh = false}) async {
@@ -68,55 +95,61 @@ class _MasterDataPageState extends State<MasterDataPage> {
     try {
       if (idx == 7) {
         final res = await ApiClient.get('/admin/wali-kelas');
-        if (mounted) setState(() {
+        if (mounted) { setState(() {
           _data[idx] = (res['data'] as List).cast<Map<String, dynamic>>();
           _totalPages[idx] = 1;
           _loading[idx] = false;
-        });
+        }); }
         return;
       }
       if (idx == 8) {
         final res = await ApiClient.get('/admin/guru-bk-list');
-        if (mounted) setState(() {
+        if (mounted) { setState(() {
           _data[idx] = (res['data'] as List).cast<Map<String, dynamic>>();
           _totalPages[idx] = 1;
           _loading[idx] = false;
-        });
+        }); }
         return;
       }
       final filters = <String, String>{};
+      if (idx == 9) {
+        if (_filterTingkat != null) filters['tingkat_id'] = _filterTingkat!;
+        if (_filterKelas != null) filters['kelas_id'] = _filterKelas!;
+      }
       final res = await AdminService.list(_tabs[idx].resource,
           page: _page[idx]!, perPage: 20, search: _searchCtrl[idx]!.text, filters: filters);
-      if (mounted) setState(() {
+      if (mounted) { setState(() {
         _data[idx] = (res['items'] as List).cast<Map<String, dynamic>>();
         _totalPages[idx] = res['pagination']?['total_pages'] ?? 1;
         _loading[idx] = false;
-      });
+      }); }
     } catch (e) {
       if (mounted) setState(() { _error[idx] = e.toString(); _loading[idx] = false; });
     }
   }
 
-  Future<void> _showForm(int idx, {Map<String, dynamic>? edit}) {
+  Future<void> _showForm(int idx, {Map<String, dynamic>? edit}) async {
     final cfg = _tabs[idx];
+    final formKey = GlobalKey<FormState>();
     final ctrls = <String, TextEditingController>{};
     for (final col in cfg.columns) {
       ctrls[col] = TextEditingController(text: edit?[col]?.toString() ?? '');
     }
+    _passwordObscure.value = true;
 
-    String? _selectedAktif;
+    String? selectedAktif;
     if (idx == 0 || idx == 1) {
       final val = edit?['is_aktif'];
-      _selectedAktif = val == 1 ? 'Aktif' : (val == 0 ? 'Tidak Aktif' : null);
+      selectedAktif = val == 1 ? 'Aktif' : (val == 0 ? 'Tidak Aktif' : null);
     }
 
-    String? _selectedNamaSemester;
+    String? selectedNamaSemester;
     if (idx == 1) {
       final val = edit?['nama'];
-      _selectedNamaSemester = (val == 'Ganjil' || val == 'Genap') ? val : null;
+      selectedNamaSemester = (val == 'Ganjil' || val == 'Genap') ? val : null;
     }
 
-    int? _selectedTaId;
+    int? selectedTaId;
     List<Map<String, dynamic>> taList = _data[0] ?? [];
     if ((idx == 1 || idx == 4) && taList.isEmpty) {
       AdminService.list('tahun-ajaran', page: 1, perPage: 100).then((res) {
@@ -124,11 +157,11 @@ class _MasterDataPageState extends State<MasterDataPage> {
       });
     }
     if ((idx == 1 || idx == 4) && edit != null) {
-      _selectedTaId = int.tryParse(edit['tahun_ajaran_id']?.toString() ?? '');
+      selectedTaId = int.tryParse(edit['tahun_ajaran_id']?.toString() ?? '');
     }
 
-    int? _selectedTingkatId;
-    int? _selectedJurusanId;
+    int? selectedTingkatId;
+    int? selectedJurusanId;
 
     List<Map<String, dynamic>> tingkatList = _data[3] ?? [];
     if (idx == 4 && tingkatList.isEmpty) {
@@ -145,47 +178,59 @@ class _MasterDataPageState extends State<MasterDataPage> {
     }
 
     if (idx == 4 && edit != null) {
-      _selectedTingkatId = int.tryParse(edit['tingkat_id']?.toString() ?? '');
-      _selectedJurusanId = int.tryParse(edit['jurusan_id']?.toString() ?? '');
+      selectedTingkatId = int.tryParse(edit['tingkat_id']?.toString() ?? '');
+      selectedJurusanId = int.tryParse(edit['jurusan_id']?.toString() ?? '');
     }
 
-    Set<int> _selectedKelasIds = {};
+    Set<int> selectedKelasIds = {};
     List<Map<String, dynamic>> kelasList = _data[4] ?? [];
     if ((idx == 5 || idx == 6 || idx == 9) && kelasList.isEmpty) {
-      AdminService.list('kelas', page: 1, perPage: 100).then((res) {
-        if (mounted) setState(() { _data[4] = (res['items'] as List).cast<Map<String, dynamic>>(); });
-      });
+      final res = await AdminService.list('kelas', page: 1, perPage: 100);
+      _data[4] = (res['items'] as List).cast<Map<String, dynamic>>();
+      kelasList = _data[4]!;
     }
     if (idx == 5 && edit != null) {
       AdminService.getById('mata-pelajaran', edit['id'] as int).then((res) {
         final mapelId = res['id'];
         ApiClient.get('/admin/mapel-kelas/$mapelId/kelas').then((r) {
           final ids = (r['data'] as List).cast<int>();
-          if (mounted) setState(() { _selectedKelasIds = ids.toSet(); });
+          if (mounted) setState(() { selectedKelasIds = ids.toSet(); });
         });
       });
     }
 
     // ── Siswa (idx 9) ──
-    String? _selectedSiswaJk;
-    int? _selectedSiswaKelasId;
-    String? _selectedSiswaStatus;
+    String? selectedSiswaJk;
+    int? selectedSiswaKelasId;
+    String? selectedSiswaStatus;
     if (idx == 9) {
       if (edit != null) {
-        _selectedSiswaJk = edit['jenis_kelamin']?.toString();
-        _selectedSiswaKelasId = int.tryParse(edit['kelas_id']?.toString() ?? '');
-        _selectedSiswaStatus = edit['status']?.toString();
+        selectedSiswaJk = edit['jenis_kelamin']?.toString();
+        selectedSiswaKelasId = int.tryParse(edit['kelas_id']?.toString() ?? '');
+        if (selectedSiswaKelasId != null && !kelasList.any((k) => k['id'] == selectedSiswaKelasId)) {
+          selectedSiswaKelasId = null;
+        }
+        final rawStatus = edit['status']?.toString() ?? '';
+        if (rawStatus == 'Aktif' || rawStatus.toLowerCase() == 'aktif') {
+          selectedSiswaStatus = 'Aktif';
+        } else if (rawStatus == 'Tidak Aktif' || rawStatus.toLowerCase() == 'tidak_aktif' || rawStatus.toLowerCase() == 'tidak aktif') {
+          selectedSiswaStatus = 'Tidak Aktif';
+        } else if (rawStatus == 'Pindah' || rawStatus.toLowerCase() == 'pindah') {
+          selectedSiswaStatus = 'Pindah';
+        } else {
+          selectedSiswaStatus = rawStatus.isNotEmpty ? rawStatus : null;
+        }
       }
     }
 
     // ── Guru (idx 6) ──
-    String? _selectedJk;
-    Set<String> _selectedJabatanSet = {};
-    Set<int> _selectedGuruMapelIds = {};
-    Set<int> _selectedGuruKelasIds = {};
-    String? _selectedStatusGuru;
-    final _guruUsernameCtrl = TextEditingController(text: edit?['_username']?.toString() ?? '');
-    final _guruPasswordCtrl = TextEditingController(text: edit?['_password']?.toString() ?? '');
+    String? selectedJk;
+    Set<String> selectedJabatanSet = {};
+    Set<int> selectedGuruMapelIds = {};
+    Set<int> selectedGuruKelasIds = {};
+    String? selectedStatusGuru;
+    final guruUsernameCtrl = TextEditingController(text: edit?['_username']?.toString() ?? '');
+    final guruPasswordCtrl = TextEditingController(text: edit?['_password']?.toString() ?? '');
 
     List<Map<String, dynamic>> mapelList = _data[5] ?? [];
     if (idx == 6) {
@@ -201,28 +246,31 @@ class _MasterDataPageState extends State<MasterDataPage> {
       }
 
       if (edit != null) {
-        _selectedJk = edit['jenis_kelamin']?.toString();
-        _selectedStatusGuru = edit['status_aktif'] == 1 ? 'Aktif' : (edit['status_aktif'] == 0 ? 'Tidak Aktif' : null);
+        selectedJk = edit['jenis_kelamin']?.toString();
+        selectedStatusGuru = edit['status_aktif'] == 1 ? 'Aktif' : (edit['status_aktif'] == 0 ? 'Tidak Aktif' : null);
         final jabatanStr = edit['jabatan']?.toString() ?? '';
-        if (jabatanStr.isNotEmpty) _selectedJabatanSet = jabatanStr.split(',').map((s) => s.trim()).toSet();
+        if (jabatanStr.isNotEmpty) selectedJabatanSet = jabatanStr.split(',').map((s) => s.trim()).toSet();
 
         final gid = edit['id'] as int;
         ApiClient.get('/admin/guru-mapel/$gid/mapel').then((r) {
           final ids = (r['data'] as List).cast<int>();
-          if (mounted) setState(() { _selectedGuruMapelIds = ids.toSet(); });
+          if (mounted) setState(() { selectedGuruMapelIds = ids.toSet(); });
         });
         ApiClient.get('/admin/guru-kelas/$gid/kelas').then((r) {
           final ids = (r['data'] as List).cast<int>();
-          if (mounted) setState(() { _selectedGuruKelasIds = ids.toSet(); });
+          if (mounted) setState(() { selectedGuruKelasIds = ids.toSet(); });
         });
       }
     }
 
+    if (!mounted) return Future.value();
     return showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(edit != null ? 'Edit ${cfg.label}' : 'Tambah ${cfg.label}'),
-        content: SingleChildScrollView(
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -230,92 +278,207 @@ class _MasterDataPageState extends State<MasterDataPage> {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _FormCard(title: 'Data Pribadi', icon: Icons.person_outline, children: [
-                      _FormRow(children: [
-                        Expanded(
-                          child: _ModernField(
-                            controller: ctrls['nis']!,
-                            label: 'NIS',
-                            icon: Icons.badge_outlined,
-                            hint: 'Nomor Induk Santri',
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _ModernField(
-                            controller: ctrls['nisn']!,
-                            label: 'NISN',
-                            icon: Icons.numbers_outlined,
-                            hint: 'Nomor Induk Santri Nasional',
-                            optional: true,
-                          ),
-                        ),
+                    DataCard(
+                      header: Row(children: [
+                        Icon(Icons.person_outline, size: 20, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        const Text('Data Pribadi', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                       ]),
-                      const SizedBox(height: 16),
-                      _ModernField(
-                        controller: ctrls['nama']!,
-                        label: 'Nama Santri',
-                        icon: Icons.text_fields,
-                        hint: 'Nama lengkap santri',
-                      ),
-                      const SizedBox(height: 16),
-                      _FormRow(children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedSiswaJk,
-                            decoration: const InputDecoration(
-                              labelText: 'Jenis Kelamin',
-                              prefixIcon: Icon(Icons.wc_outlined),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                              filled: true,
-                              fillColor: Color(0xFFF8FAFC),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        _FormRow(children: [
+                          Expanded(
+                            child: _ModernField(
+                              controller: ctrls['nis']!,
+                              label: 'NIS',
+                              icon: Icons.badge_outlined,
+                              hint: 'Nomor Induk Santri',
                             ),
-                            items: const [
-                              DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
-                              DropdownMenuItem(value: 'P', child: Text('Perempuan')),
-                            ],
-                            onChanged: (v) => _selectedSiswaJk = v,
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedSiswaStatus,
-                            decoration: const InputDecoration(
-                              labelText: 'Status',
-                              prefixIcon: Icon(Icons.flag_outlined),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                              filled: true,
-                              fillColor: Color(0xFFF8FAFC),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _ModernField(
+                              controller: ctrls['nisn']!,
+                              label: 'NISN',
+                              icon: Icons.numbers_outlined,
+                              hint: 'Nomor Induk Santri Nasional',
+                              optional: true,
                             ),
-                            items: const [
-                              DropdownMenuItem(value: 'Aktif', child: Text('Aktif')),
-                              DropdownMenuItem(value: 'Tidak Aktif', child: Text('Tidak Aktif')),
-                              DropdownMenuItem(value: 'Pindah', child: Text('Pindah')),
-                            ],
-                            onChanged: (v) => _selectedSiswaStatus = v,
                           ),
+                        ]),
+                        const SizedBox(height: 16),
+                        _ModernField(
+                          controller: ctrls['nama']!,
+                          label: 'Nama Santri',
+                          icon: Icons.text_fields,
+                          hint: 'Nama lengkap santri',
                         ),
+                        const SizedBox(height: 16),
+                        _FormRow(children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: selectedSiswaJk,
+                              decoration: const InputDecoration(
+                                labelText: 'Jenis Kelamin',
+                                prefixIcon: Icon(Icons.wc_outlined),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                                filled: true,
+                                fillColor: Colors.white,
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
+                                DropdownMenuItem(value: 'P', child: Text('Perempuan')),
+                              ],
+                              onChanged: (v) => selectedSiswaJk = v,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: selectedSiswaStatus,
+                              decoration: const InputDecoration(
+                                labelText: 'Status',
+                                prefixIcon: Icon(Icons.flag_outlined),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                                filled: true,
+                                fillColor: Colors.white,
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'Aktif', child: Text('Aktif')),
+                                DropdownMenuItem(value: 'Tidak Aktif', child: Text('Tidak Aktif')),
+                                DropdownMenuItem(value: 'Pindah', child: Text('Pindah')),
+                              ],
+                              onChanged: (v) => selectedSiswaStatus = v,
+                            ),
+                          ),
+                        ]),
                       ]),
-                    ]),
+                    ),
                     const SizedBox(height: 16),
-                    _FormCard(title: 'Penempatan Kelas', icon: Icons.meeting_room_outlined, children: [
-                      DropdownButtonFormField<int>(
-                        value: _selectedSiswaKelasId,
+                    DataCard(
+                      header: Row(children: [
+                        Icon(Icons.meeting_room_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        const Text('Penempatan Kelas', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                      ]),
+                      child: DropdownButtonFormField<int>(
+                        value: selectedSiswaKelasId,
                         decoration: const InputDecoration(
                           labelText: 'Kelas',
                           prefixIcon: Icon(Icons.school_outlined),
                           border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
                           filled: true,
-                          fillColor: Color(0xFFF8FAFC),
+                          fillColor: Colors.white,
                         ),
                         items: (kelasList.isEmpty ? [] : kelasList).map((k) => DropdownMenuItem<int>(
                           value: k['id'] as int,
                           child: Text(k['nama']?.toString() ?? ''),
                         )).toList(),
-                        onChanged: (v) => _selectedSiswaKelasId = v,
+                        onChanged: (v) => selectedSiswaKelasId = v,
                       ),
-                    ]),
+                    ),
+                    const SizedBox(height: 16),
+                    DataCard(
+                      header: Row(children: [
+                        Icon(Icons.family_restroom_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        const Text('Data Orang Tua', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                      ]),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        _FormRow(children: [
+                          Expanded(
+                            child: _ModernField(
+                              controller: ctrls['nama_ayah']!,
+                              label: 'Nama Ayah',
+                              icon: Icons.man_outlined,
+                              hint: 'Nama lengkap ayah',
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _ModernField(
+                              controller: ctrls['nama_ibu']!,
+                              label: 'Nama Ibu',
+                              icon: Icons.woman_outlined,
+                              hint: 'Nama lengkap ibu',
+                            ),
+                          ),
+                        ]),
+                        const SizedBox(height: 16),
+                        _FormRow(children: [
+                          Expanded(
+                            child: _ModernField(
+                              controller: ctrls['pekerjaan_ayah']!,
+                              label: 'Pekerjaan Ayah',
+                              icon: Icons.work_outlined,
+                              hint: 'Pekerjaan ayah',
+                              optional: true,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _ModernField(
+                              controller: ctrls['pekerjaan_ibu']!,
+                              label: 'Pekerjaan Ibu',
+                              icon: Icons.work_outlined,
+                              hint: 'Pekerjaan ibu',
+                              optional: true,
+                            ),
+                          ),
+                        ]),
+                        const SizedBox(height: 16),
+                        _ModernField(
+                          controller: ctrls['whatsapp']!,
+                          label: 'Nomor WhatsApp',
+                          icon: Icons.phone_outlined,
+                          hint: '08xxxxxxxxxx',
+                          keyboardType: TextInputType.phone,
+                          optional: true,
+                        ),
+                      ]),
+                    ),
+                    const SizedBox(height: 16),
+                    DataCard(
+                      header: Row(children: [
+                        Icon(Icons.lock_outline, size: 20, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        const Text('Akun Login', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                      ]),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        _ModernField(
+                          controller: ctrls['username']!,
+                          label: 'Username',
+                          icon: Icons.alternate_email,
+                          hint: 'Username untuk login',
+                        ),
+                        const SizedBox(height: 16),
+                        ValueListenableBuilder<bool>(
+                          valueListenable: _passwordObscure,
+                          builder: (_, obscure, __) {
+                            return TextFormField(
+                              controller: ctrls['password'],
+                              obscureText: obscure,
+                              validator: (edit != null)
+                                  ? null
+                                  : (v) => (v == null || v.isEmpty) ? 'Password wajib diisi' : null,
+                              decoration: InputDecoration(
+                                labelText: edit != null ? 'Password (kosongkan jika tidak diubah)' : 'Password',
+                                hintText: edit != null ? '••••••' : 'Masukkan password',
+                                prefixIcon: const Icon(Icons.lock_outline),
+                                suffixIcon: IconButton(
+                                  icon: Icon(obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                                  onPressed: () => _passwordObscure.value = !_passwordObscure.value,
+                                ),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                filled: true,
+                                fillColor: Colors.white,
+                                suffixText: (edit != null) ? 'Opsional' : null,
+                                suffixStyle: const TextStyle(fontSize: 11, color: AppTheme.grey400),
+                              ),
+                            );
+                          },
+                        ),
+                      ]),
+                    ),
                   ],
                 )
               else if (idx == 0)
@@ -329,259 +492,334 @@ class _MasterDataPageState extends State<MasterDataPage> {
                   ]),
                   const SizedBox(height: 16),
                   _DropdownField<String>(
-                    value: _selectedAktif,
+                    value: selectedAktif,
                     label: 'Status',
                     icon: Icons.toggle_on_outlined,
                     items: const [
                       DropdownMenuItem(value: 'Aktif', child: Text('Aktif')),
                       DropdownMenuItem(value: 'Tidak Aktif', child: Text('Tidak Aktif')),
                     ],
-                    onChanged: (v) => _selectedAktif = v,
+                    onChanged: (v) => selectedAktif = v,
                   ),
                 ])
               else if (idx == 1)
                 Column(mainAxisSize: MainAxisSize.min, children: [
-                  _FormCard(title: 'Data Semester', icon: Icons.layers_outlined, children: [
-                    _DropdownField<String>(
-                      value: _selectedNamaSemester,
-                      label: 'Semester',
-                      icon: Icons.numbers,
-                      items: const [
-                        DropdownMenuItem(value: 'Ganjil', child: Text('Ganjil')),
-                        DropdownMenuItem(value: 'Genap', child: Text('Genap')),
-                      ],
-                      onChanged: (v) => _selectedNamaSemester = v,
-                    ),
-                    const SizedBox(height: 16),
-                    _DropdownField<int>(
-                      value: _selectedTaId,
-                      label: 'Tahun Ajaran',
-                      icon: Icons.calendar_month_outlined,
-                      items: (taList.isEmpty ? [] : taList).map((ta) => DropdownMenuItem<int>(
-                        value: ta['id'] as int,
-                        child: Text(ta['nama']?.toString() ?? ''),
-                      )).toList(),
-                      onChanged: (v) => _selectedTaId = v,
-                    ),
-                    const SizedBox(height: 16),
-                    _DropdownField<String>(
-                      value: _selectedAktif,
-                      label: 'Status',
-                      icon: Icons.toggle_on_outlined,
-                      items: const [
-                        DropdownMenuItem(value: 'Aktif', child: Text('Aktif')),
-                        DropdownMenuItem(value: 'Tidak Aktif', child: Text('Tidak Aktif')),
-                      ],
-                      onChanged: (v) => _selectedAktif = v,
-                    ),
-                  ]),
+                  DataCard(
+                    header: Row(children: [
+                      Icon(Icons.layers_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Text('Data Semester', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ]),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      _DropdownField<String>(
+                        value: selectedNamaSemester,
+                        label: 'Semester',
+                        icon: Icons.numbers,
+                        items: const [
+                          DropdownMenuItem(value: 'Ganjil', child: Text('Ganjil')),
+                          DropdownMenuItem(value: 'Genap', child: Text('Genap')),
+                        ],
+                        onChanged: (v) => selectedNamaSemester = v,
+                      ),
+                      const SizedBox(height: 16),
+                      _DropdownField<int>(
+                        value: selectedTaId,
+                        label: 'Tahun Ajaran',
+                        icon: Icons.calendar_month_outlined,
+                        items: (taList.isEmpty ? [] : taList).map((ta) => DropdownMenuItem<int>(
+                          value: ta['id'] as int,
+                          child: Text(ta['nama']?.toString() ?? ''),
+                        )).toList(),
+                        onChanged: (v) => selectedTaId = v,
+                      ),
+                      const SizedBox(height: 16),
+                      _DropdownField<String>(
+                        value: selectedAktif,
+                        label: 'Status',
+                        icon: Icons.toggle_on_outlined,
+                        items: const [
+                          DropdownMenuItem(value: 'Aktif', child: Text('Aktif')),
+                          DropdownMenuItem(value: 'Tidak Aktif', child: Text('Tidak Aktif')),
+                        ],
+                        onChanged: (v) => selectedAktif = v,
+                      ),
+                    ]),
+                  ),
                 ])
               else if (idx == 2)
                 Column(mainAxisSize: MainAxisSize.min, children: [
-                  _FormCard(title: 'Data Jurusan', icon: Icons.category_outlined, children: [
-                    _ModernField(controller: ctrls['nama']!, label: 'Nama Jurusan', icon: Icons.badge_outlined),
-                    const SizedBox(height: 16),
-                    _ModernField(controller: ctrls['kode']!, label: 'Kode Jurusan', icon: Icons.code_outlined, hint: 'Contoh: IPA, IPS, AGAMA'),
-                  ]),
+                  DataCard(
+                    header: Row(children: [
+                      Icon(Icons.category_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Text('Data Jurusan', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ]),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      _ModernField(controller: ctrls['nama']!, label: 'Nama Jurusan', icon: Icons.badge_outlined),
+                      const SizedBox(height: 16),
+                      _ModernField(controller: ctrls['kode']!, label: 'Kode Jurusan', icon: Icons.code_outlined, hint: 'Contoh: IPA, IPS, AGAMA'),
+                    ]),
+                  ),
                 ])
               else if (idx == 3)
                 Column(mainAxisSize: MainAxisSize.min, children: [
-                  _FormCard(title: 'Data Tingkat', icon: Icons.stairs_outlined, children: [
-                    _ModernField(controller: ctrls['nama']!, label: 'Nama Tingkat', icon: Icons.badge_outlined, hint: 'Contoh: X, XI, XII'),
-                    const SizedBox(height: 16),
-                    _ModernField(controller: ctrls['jenjang']!, label: 'Jenjang', icon: Icons.school_outlined, hint: 'Contoh: SMA/SMK/MA'),
-                  ]),
+                  DataCard(
+                    header: Row(children: [
+                      Icon(Icons.stairs_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Text('Data Tingkat', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ]),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      _ModernField(controller: ctrls['nama']!, label: 'Nama Tingkat', icon: Icons.badge_outlined, hint: 'Contoh: X, XI, XII'),
+                      const SizedBox(height: 16),
+                      _ModernField(controller: ctrls['jenjang']!, label: 'Jenjang', icon: Icons.school_outlined, hint: 'Contoh: SMA/SMK/MA'),
+                    ]),
+                  ),
                 ])
               else if (idx == 4)
                 Column(mainAxisSize: MainAxisSize.min, children: [
-                  _FormCard(title: 'Data Kelas', icon: Icons.meeting_room_outlined, children: [
-                    _ModernField(controller: ctrls['nama']!, label: 'Nama Kelas', icon: Icons.badge_outlined, hint: 'Contoh: X IPA 1'),
-                    const SizedBox(height: 16),
-                    _FormRow(children: [
-                      Expanded(
-                        child: _DropdownField<int>(
-                          value: _selectedTingkatId,
-                          label: 'Tingkat',
-                          icon: Icons.stairs_outlined,
-                          items: (tingkatList.isEmpty ? [] : tingkatList).map((t) => DropdownMenuItem<int>(
-                            value: t['id'] as int,
-                            child: Text(t['nama']?.toString() ?? ''),
-                          )).toList(),
-                          onChanged: (v) => _selectedTingkatId = v,
+                  DataCard(
+                    header: Row(children: [
+                      Icon(Icons.meeting_room_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Text('Data Kelas', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ]),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      _ModernField(controller: ctrls['nama']!, label: 'Nama Kelas', icon: Icons.badge_outlined, hint: 'Contoh: X IPA 1'),
+                      const SizedBox(height: 16),
+                      _FormRow(children: [
+                        Expanded(
+                          child: _DropdownField<int>(
+                            value: selectedTingkatId,
+                            label: 'Tingkat',
+                            icon: Icons.stairs_outlined,
+                            items: (tingkatList.isEmpty ? [] : tingkatList).map((t) => DropdownMenuItem<int>(
+                              value: t['id'] as int,
+                              child: Text(t['nama']?.toString() ?? ''),
+                            )).toList(),
+                            onChanged: (v) => selectedTingkatId = v,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _DropdownField<int>(
-                          value: _selectedJurusanId,
-                          label: 'Jurusan',
-                          icon: Icons.category_outlined,
-                          items: (jurusanList.isEmpty ? [] : jurusanList).map((j) => DropdownMenuItem<int>(
-                            value: j['id'] as int,
-                            child: Text(j['nama']?.toString() ?? ''),
-                          )).toList(),
-                          onChanged: (v) => _selectedJurusanId = v,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _DropdownField<int>(
+                            value: selectedJurusanId,
+                            label: 'Jurusan',
+                            icon: Icons.category_outlined,
+                            items: (jurusanList.isEmpty ? [] : jurusanList).map((j) => DropdownMenuItem<int>(
+                              value: j['id'] as int,
+                              child: Text(j['nama']?.toString() ?? ''),
+                            )).toList(),
+                            onChanged: (v) => selectedJurusanId = v,
+                          ),
                         ),
+                      ]),
+                      const SizedBox(height: 16),
+                      _DropdownField<int>(
+                        value: selectedTaId,
+                        label: 'Tahun Ajaran',
+                        icon: Icons.calendar_month_outlined,
+                        items: (taList.isEmpty ? [] : taList).map((ta) => DropdownMenuItem<int>(
+                          value: ta['id'] as int,
+                          child: Text(ta['nama']?.toString() ?? ''),
+                        )).toList(),
+                        onChanged: (v) => selectedTaId = v,
                       ),
                     ]),
-                    const SizedBox(height: 16),
-                    _DropdownField<int>(
-                      value: _selectedTaId,
-                      label: 'Tahun Ajaran',
-                      icon: Icons.calendar_month_outlined,
-                      items: (taList.isEmpty ? [] : taList).map((ta) => DropdownMenuItem<int>(
-                        value: ta['id'] as int,
-                        child: Text(ta['nama']?.toString() ?? ''),
-                      )).toList(),
-                      onChanged: (v) => _selectedTaId = v,
-                    ),
-                  ]),
+                  ),
                 ])
               else if (idx == 5)
                 Column(mainAxisSize: MainAxisSize.min, children: [
-                  _FormCard(title: 'Data Mata Pelajaran', icon: Icons.book_outlined, children: [
-                    _ModernField(controller: ctrls['nama']!, label: 'Nama Mapel', icon: Icons.badge_outlined),
-                    const SizedBox(height: 16),
-                    _FormRow(children: [
-                      Expanded(
-                        child: _ModernField(controller: ctrls['kode']!, label: 'Kode Mapel', icon: Icons.code_outlined, hint: 'Contoh: MTK-WAJIB'),
-                      ),
-                      const SizedBox(width: 16),
-                      const Expanded(child: SizedBox()),
+                  DataCard(
+                    header: Row(children: [
+                      Icon(Icons.book_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Text('Data Mata Pelajaran', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     ]),
-                  ]),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      _ModernField(controller: ctrls['nama']!, label: 'Nama Mapel', icon: Icons.badge_outlined),
+                      const SizedBox(height: 16),
+                      _FormRow(children: [
+                        Expanded(
+                          child: _ModernField(controller: ctrls['kode']!, label: 'Kode Mapel', icon: Icons.code_outlined, hint: 'Contoh: MTK-WAJIB'),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(child: SizedBox()),
+                      ]),
+                    ]),
+                  ),
                   const SizedBox(height: 16),
-                  _FormCard(title: 'Kelas', icon: Icons.meeting_room_outlined, children: [
-                    if (kelasList.isEmpty)
-                      const Text('Memuat data kelas...', style: TextStyle(color: Colors.grey))
-                    else
-                      ...kelasList.map((k) => CheckboxListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                        title: Text(k['nama']?.toString() ?? '', style: const TextStyle(fontSize: 14)),
-                        value: _selectedKelasIds.contains(k['id'] as int),
-                        onChanged: (checked) {
-                          setState(() {
-                            if (checked == true) _selectedKelasIds.add(k['id'] as int);
-                            else _selectedKelasIds.remove(k['id'] as int);
-                          });
-                        },
-                      )),
-                  ]),
+                  DataCard(
+                    header: Row(children: [
+                      Icon(Icons.meeting_room_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Text('Kelas', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ]),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      if (kelasList.isEmpty)
+                        const Text('Memuat data kelas...', style: TextStyle(color: AppTheme.grey500))
+                      else
+                        ...kelasList.map((k) => CheckboxListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          title: Text(k['nama']?.toString() ?? '', style: const TextStyle(fontSize: 14)),
+                          value: selectedKelasIds.contains(k['id'] as int),
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked == true) { selectedKelasIds.add(k['id'] as int); }
+                              else { selectedKelasIds.remove(k['id'] as int); }
+                            });
+                          },
+                        )),
+                    ]),
+                  ),
                 ])
               else if (idx == 6)
                 Column(mainAxisSize: MainAxisSize.min, children: [
-                  _FormCard(title: 'Data Asatidz', icon: Icons.people_outline, children: [
-                    _FormRow(children: [
-                      Expanded(child: _ModernField(controller: ctrls['nip']!, label: 'NIP', icon: Icons.badge_outlined)),
-                      const SizedBox(width: 16),
-                      Expanded(child: _ModernField(controller: ctrls['nama']!, label: 'Nama Asatidz', icon: Icons.text_fields)),
+                  DataCard(
+                    header: Row(children: [
+                      Icon(Icons.people_outline, size: 20, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Text('Data Asatidz', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     ]),
-                    const SizedBox(height: 16),
-                    _FormRow(children: [
-                      Expanded(
-                        child: _DropdownField<String>(
-                          value: _selectedJk,
-                          label: 'Jenis Kelamin',
-                          icon: Icons.wc_outlined,
-                          items: const [
-                            DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
-                            DropdownMenuItem(value: 'P', child: Text('Perempuan')),
-                          ],
-                          onChanged: (v) => _selectedJk = v,
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      _FormRow(children: [
+                        Expanded(child: _ModernField(controller: ctrls['nip']!, label: 'NIP', icon: Icons.badge_outlined)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _ModernField(controller: ctrls['nama']!, label: 'Nama Asatidz', icon: Icons.text_fields)),
+                      ]),
+                      const SizedBox(height: 16),
+                      _FormRow(children: [
+                        Expanded(
+                          child: _DropdownField<String>(
+                            value: selectedJk,
+                            label: 'Jenis Kelamin',
+                            icon: Icons.wc_outlined,
+                            items: const [
+                              DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
+                              DropdownMenuItem(value: 'P', child: Text('Perempuan')),
+                            ],
+                            onChanged: (v) => selectedJk = v,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _DropdownField<String>(
-                          value: _selectedStatusGuru,
-                          label: 'Status',
-                          icon: Icons.flag_outlined,
-                          items: const [
-                            DropdownMenuItem(value: 'Aktif', child: Text('Aktif')),
-                            DropdownMenuItem(value: 'Tidak Aktif', child: Text('Tidak Aktif')),
-                          ],
-                          onChanged: (v) => _selectedStatusGuru = v,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _DropdownField<String>(
+                            value: selectedStatusGuru,
+                            label: 'Status',
+                            icon: Icons.flag_outlined,
+                            items: const [
+                              DropdownMenuItem(value: 'Aktif', child: Text('Aktif')),
+                              DropdownMenuItem(value: 'Tidak Aktif', child: Text('Tidak Aktif')),
+                            ],
+                            onChanged: (v) => selectedStatusGuru = v,
+                          ),
                         ),
-                      ),
+                      ]),
+                      const SizedBox(height: 16),
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        const Text('Jabatan', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.grey600)),
+                        const SizedBox(height: 4),
+                        ...['Asatidz Mapel', 'Wali Kelas', 'Kepala Madrasah', 'Wakil Kurikulum', 'Asatidz BK'].map((j) {
+                          final val = j == 'Asatidz Mapel' ? 'guru_mapel' : j == 'Wali Kelas' ? 'wali_kelas' : j == 'Kepala Madrasah' ? 'kepala_sekolah' : j == 'Wakil Kurikulum' ? 'wakil_kurikulum' : 'guru_bk';
+                          return CheckboxListTile(
+                            dense: true, contentPadding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
+                            title: Text(j, style: const TextStyle(fontSize: 14)),
+                            value: selectedJabatanSet.contains(val),
+                            onChanged: (checked) {
+                              setState(() {
+                                if (checked == true) { selectedJabatanSet.add(val); }
+                                else { selectedJabatanSet.remove(val); }
+                              });
+                            },
+                          );
+                        }),
+                      ]),
                     ]),
-                    const SizedBox(height: 16),
-                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Jabatan', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[700])),
-                      const SizedBox(height: 4),
-                      ...['Asatidz Mapel', 'Wali Kelas', 'Kepala Madrasah', 'Wakil Kurikulum', 'Asatidz BK'].map((j) {
-                        final val = j == 'Asatidz Mapel' ? 'guru_mapel' : j == 'Wali Kelas' ? 'wali_kelas' : j == 'Kepala Madrasah' ? 'kepala_sekolah' : j == 'Wakil Kurikulum' ? 'wakil_kurikulum' : 'guru_bk';
-                        return CheckboxListTile(
-                          dense: true, contentPadding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
-                          title: Text(j, style: const TextStyle(fontSize: 14)),
-                          value: _selectedJabatanSet.contains(val),
-                          onChanged: (checked) {
-                            setState(() {
-                              if (checked == true) _selectedJabatanSet.add(val);
-                              else _selectedJabatanSet.remove(val);
-                            });
-                          },
-                        );
-                      }),
-                    ]),
-                  ]),
+                  ),
                   const SizedBox(height: 16),
-                  _FormCard(title: 'Akun Login', icon: Icons.lock_outline, children: [
-                    _FormRow(children: [
-                      Expanded(child: _ModernField(controller: _guruUsernameCtrl, label: 'Username', icon: Icons.person_outline)),
+                  DataCard(
+                    header: Row(children: [
+                      Icon(Icons.lock_outline, size: 20, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Text('Akun Login', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ]),
+                    child: _FormRow(children: [
+                      Expanded(child: _ModernField(controller: guruUsernameCtrl, label: 'Username', icon: Icons.person_outline)),
                       const SizedBox(width: 16),
                       Expanded(
                         child: TextField(
-                          controller: _guruPasswordCtrl,
+                          controller: guruPasswordCtrl,
                           obscureText: true,
                           decoration: _inputDecoration('Password', Icons.lock_outline),
                         ),
                       ),
                     ]),
-                  ]),
+                  ),
                   const SizedBox(height: 16),
-                  _FormCard(title: 'Mata Pelajaran yang Diampu', icon: Icons.book_outlined, children: [
-                    if (mapelList.isEmpty)
-                      const Text('Memuat data mapel...', style: TextStyle(color: Colors.grey))
-                    else
-                      ...mapelList.map((m) => CheckboxListTile(
-                        dense: true, contentPadding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
-                        title: Text(m['nama']?.toString() ?? '', style: const TextStyle(fontSize: 14)),
-                        value: _selectedGuruMapelIds.contains(m['id'] as int),
-                        onChanged: (checked) {
-                          setState(() {
-                            if (checked == true) _selectedGuruMapelIds.add(m['id'] as int);
-                            else _selectedGuruMapelIds.remove(m['id'] as int);
-                          });
-                        },
-                      )),
-                  ]),
+                  DataCard(
+                    header: Row(children: [
+                      Icon(Icons.book_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Text('Mata Pelajaran yang Diampu', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ]),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      if (mapelList.isEmpty)
+                        const Text('Memuat data mapel...', style: TextStyle(color: AppTheme.grey500))
+                      else
+                        ...mapelList.map((m) => CheckboxListTile(
+                          dense: true, contentPadding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
+                          title: Text(m['nama']?.toString() ?? '', style: const TextStyle(fontSize: 14)),
+                          value: selectedGuruMapelIds.contains(m['id'] as int),
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked == true) { selectedGuruMapelIds.add(m['id'] as int); }
+                              else { selectedGuruMapelIds.remove(m['id'] as int); }
+                            });
+                          },
+                        )),
+                    ]),
+                  ),
                   const SizedBox(height: 16),
-                  _FormCard(title: 'Kelas yang Diajar', icon: Icons.meeting_room_outlined, children: [
-                    if (kelasList.isEmpty)
-                      const Text('Memuat data kelas...', style: TextStyle(color: Colors.grey))
-                    else
-                      ...kelasList.map((k) => CheckboxListTile(
-                        dense: true, contentPadding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
-                        title: Text(k['nama']?.toString() ?? '', style: const TextStyle(fontSize: 14)),
-                        value: _selectedGuruKelasIds.contains(k['id'] as int),
-                        onChanged: (checked) {
-                          setState(() {
-                            if (checked == true) _selectedGuruKelasIds.add(k['id'] as int);
-                            else _selectedGuruKelasIds.remove(k['id'] as int);
-                          });
-                        },
-                      )),
-                  ]),
+                  DataCard(
+                    header: Row(children: [
+                      Icon(Icons.meeting_room_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Text('Kelas yang Diajar', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ]),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      if (kelasList.isEmpty)
+                        const Text('Memuat data kelas...', style: TextStyle(color: AppTheme.grey500))
+                      else
+                        ...kelasList.map((k) => CheckboxListTile(
+                          dense: true, contentPadding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
+                          title: Text(k['nama']?.toString() ?? '', style: const TextStyle(fontSize: 14)),
+                          value: selectedGuruKelasIds.contains(k['id'] as int),
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked == true) { selectedGuruKelasIds.add(k['id'] as int); }
+                              else { selectedGuruKelasIds.remove(k['id'] as int); }
+                            });
+                          },
+                        )),
+                    ]),
+                  ),
                 ])
               else if (idx == 10)
                 Column(mainAxisSize: MainAxisSize.min, children: [
-                  _FormCard(title: 'Data Ruangan', icon: Icons.room_outlined, children: [
-                    _ModernField(controller: ctrls['nama']!, label: 'Nama Ruangan', icon: Icons.badge_outlined, hint: 'Contoh: Aula, Lab. Komputer, Kelas 1A'),
-                    const SizedBox(height: 16),
-                    _ModernField(controller: ctrls['kapasitas']!, label: 'Kapasitas', icon: Icons.people_outlined, hint: 'Jumlah maksimal orang'),
-                  ]),
+                  DataCard(
+                    header: Row(children: [
+                      Icon(Icons.room_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Text('Data Ruangan', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ]),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      _ModernField(controller: ctrls['nama']!, label: 'Nama Ruangan', icon: Icons.badge_outlined, hint: 'Contoh: Aula, Lab. Komputer, Kelas 1A'),
+                      const SizedBox(height: 16),
+                      _ModernField(controller: ctrls['kapasitas']!, label: 'Kapasitas', icon: Icons.people_outlined, hint: 'Jumlah maksimal orang'),
+                    ]),
+                  ),
                 ])
               else
                 for (final col in cfg.columns)
@@ -598,41 +836,45 @@ class _MasterDataPageState extends State<MasterDataPage> {
             ],
           ),
         ),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
           FilledButton(
             onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
               final body = <String, dynamic>{};
               for (final col in cfg.columns) {
                 if ((idx == 0 || idx == 1) && col == 'is_aktif') {
-                  body[col] = _selectedAktif == 'Aktif' ? 1 : 0;
+                  body[col] = selectedAktif == 'Aktif' ? 1 : 0;
                 } else if ((idx == 1 || idx == 4) && col == 'tahun_ajaran_id') {
-                  body[col] = _selectedTaId;
+                  body[col] = selectedTaId;
                 } else if (idx == 1 && col == 'nama') {
-                  body[col] = _selectedNamaSemester;
+                  body[col] = selectedNamaSemester;
                 } else if (idx == 4 && col == 'tingkat_id') {
-                  body[col] = _selectedTingkatId;
+                  body[col] = selectedTingkatId;
                 } else if (idx == 4 && col == 'jurusan_id') {
-                  body[col] = _selectedJurusanId;
+                  body[col] = selectedJurusanId;
                 } else if (idx == 6 && col == 'jenis_kelamin') {
-                  body[col] = _selectedJk;
+                  body[col] = selectedJk;
                 } else if (idx == 6 && col == 'jabatan') {
-                  body[col] = _selectedJabatanSet.join(',');
+                  body[col] = selectedJabatanSet.join(',');
                 } else if (idx == 6 && col == 'status_aktif') {
-                  body[col] = _selectedStatusGuru == 'Aktif' ? 1 : 0;
+                  body[col] = selectedStatusGuru == 'Aktif' ? 1 : 0;
                 } else if (idx == 9 && col == 'jenis_kelamin') {
-                  body[col] = _selectedSiswaJk;
+                  body[col] = selectedSiswaJk;
                 } else if (idx == 9 && col == 'kelas_id') {
-                  body[col] = _selectedSiswaKelasId;
+                  body[col] = selectedSiswaKelasId;
                 } else if (idx == 9 && col == 'status') {
-                  body[col] = _selectedSiswaStatus;
+                  body[col] = selectedSiswaStatus;
+                } else if (idx == 9 && col == 'password' && edit != null && ctrls[col]!.text.isEmpty) {
+                  // skip empty password on edit
                 } else {
                   body[col] = ctrls[col]!.text;
                 }
               }
               if (idx == 6) {
-                body['username'] = _guruUsernameCtrl.text;
-                body['password'] = _guruPasswordCtrl.text;
+                body['username'] = guruUsernameCtrl.text;
+                body['password'] = guruPasswordCtrl.text;
               }
               try {
                 int? savedId;
@@ -645,15 +887,15 @@ class _MasterDataPageState extends State<MasterDataPage> {
                 }
                 if (idx == 5 && savedId != null) {
                   await ApiClient.put('/admin/mapel-kelas/$savedId/kelas', body: {
-                    'kelas_ids': _selectedKelasIds.toList(),
+                    'kelas_ids': selectedKelasIds.toList(),
                   });
                 }
                 if (idx == 6 && savedId != null) {
                   await ApiClient.put('/admin/guru-mapel/$savedId/mapel', body: {
-                    'mapel_ids': _selectedGuruMapelIds.toList(),
+                    'mapel_ids': selectedGuruMapelIds.toList(),
                   });
                   await ApiClient.put('/admin/guru-kelas/$savedId/kelas', body: {
-                    'kelas_ids': _selectedGuruKelasIds.toList(),
+                    'kelas_ids': selectedGuruKelasIds.toList(),
                   });
                 }
                 if (ctx.mounted) Navigator.pop(ctx);
@@ -670,7 +912,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
   }
 
   Future<void> _delete(int idx, int id) async {
-    final ok = await showConfirmDialog(context, title: 'Hapus', message: 'Yakin hapus ${_tabs[idx].label} ini?');
+    final ok = await AppUtils.confirm(context, title: 'Hapus', message: 'Yakin hapus ${_tabs[idx].label} ini?');
     if (!ok) return;
     try {
       await AdminService.delete(_tabs[idx].resource, id);
@@ -741,21 +983,21 @@ class _MasterDataPageState extends State<MasterDataPage> {
               children: [
                 Text(
                   '${rows.where((r) => r['valid'] == true).length} valid, ${rows.where((r) => r['valid'] != true).length} error',
-                  style: TextStyle(color: rows.any((r) => r['valid'] != true) ? Colors.red : Colors.green, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: rows.any((r) => r['valid'] != true) ? AppTheme.error : AppTheme.primary, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 12),
                 ...rows.map((r) => Container(
                   margin: const EdgeInsets.only(bottom: 4),
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: r['valid'] == true ? Colors.green.withValues(alpha: 0.05) : Colors.red.withValues(alpha: 0.05),
+                    color: r['valid'] == true ? AppTheme.primary.withValues(alpha: 0.05) : AppTheme.error.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: r['valid'] == true ? Colors.green.shade200 : Colors.red.shade200),
+                    border: Border.all(color: r['valid'] == true ? AppTheme.primary.withValues(alpha: 0.2) : AppTheme.error.withValues(alpha: 0.2)),
                   ),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     SizedBox(
                       width: 28,
-                      child: Text('${r['row']}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                      child: Text('${r['row']}', style: const TextStyle(fontSize: 11, color: AppTheme.grey500)),
                     ),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -763,14 +1005,14 @@ class _MasterDataPageState extends State<MasterDataPage> {
                         const SizedBox(height: 2),
                         Text(
                           'JK: ${r['jenis_kelamin']}  |  Kelas: ${r['kelas_nama']}  |  Status: ${r['status']}',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                          style: const TextStyle(fontSize: 12, color: AppTheme.grey600),
                         ),
                         if (r['errors'] is List && (r['errors'] as List).isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
                               (r['errors'] as List).join('; '),
-                              style: const TextStyle(fontSize: 12, color: Colors.red),
+                              style: const TextStyle(fontSize: 12, color: AppTheme.error),
                             ),
                           ),
                       ]),
@@ -801,11 +1043,10 @@ class _MasterDataPageState extends State<MasterDataPage> {
                   final result = res['data'] as Map<String, dynamic>;
                   final inserted = result['inserted'];
                   final errors = (result['errors'] as List?) ?? [];
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Berhasil: $inserted ditambahkan${errors.isNotEmpty ? ', ${errors.length} gagal' : ''}'),
-                    ));
-                  }
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Berhasil: $inserted ditambahkan${errors.isNotEmpty ? ', ${errors.length} gagal' : ''}'),
+                  ));
                   _load(9, refresh: true);
                 } catch (e) {
                   if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal simpan: $e')));
@@ -879,21 +1120,21 @@ class _MasterDataPageState extends State<MasterDataPage> {
               children: [
                 Text(
                   '${rows.where((r) => r['valid'] == true).length} valid, ${rows.where((r) => r['valid'] != true).length} error',
-                  style: TextStyle(color: rows.any((r) => r['valid'] != true) ? Colors.red : Colors.green, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: rows.any((r) => r['valid'] != true) ? AppTheme.error : AppTheme.primary, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 12),
                 ...rows.map((r) => Container(
                   margin: const EdgeInsets.only(bottom: 4),
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: r['valid'] == true ? Colors.green.withValues(alpha: 0.05) : Colors.red.withValues(alpha: 0.05),
+                    color: r['valid'] == true ? AppTheme.primary.withValues(alpha: 0.05) : AppTheme.error.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: r['valid'] == true ? Colors.green.shade200 : Colors.red.shade200),
+                    border: Border.all(color: r['valid'] == true ? AppTheme.primary.withValues(alpha: 0.2) : AppTheme.error.withValues(alpha: 0.2)),
                   ),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     SizedBox(
                       width: 28,
-                      child: Text('${r['row']}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                      child: Text('${r['row']}', style: const TextStyle(fontSize: 11, color: AppTheme.grey500)),
                     ),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -903,7 +1144,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
                               (r['errors'] as List).join('; '),
-                              style: const TextStyle(fontSize: 12, color: Colors.red),
+                              style: const TextStyle(fontSize: 12, color: AppTheme.error),
                             ),
                           ),
                       ]),
@@ -930,11 +1171,10 @@ class _MasterDataPageState extends State<MasterDataPage> {
                   final result = res['data'] as Map<String, dynamic>;
                   final inserted = result['inserted'];
                   final errors = (result['errors'] as List?) ?? [];
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Berhasil: $inserted ditambahkan${errors.isNotEmpty ? ', ${errors.length} gagal' : ''}'),
-                    ));
-                  }
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Berhasil: $inserted ditambahkan${errors.isNotEmpty ? ', ${errors.length} gagal' : ''}'),
+                  ));
                   _load(5, refresh: true);
                 } catch (e) {
                   if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal simpan: $e')));
@@ -1008,21 +1248,21 @@ class _MasterDataPageState extends State<MasterDataPage> {
               children: [
                 Text(
                   '${rows.where((r) => r['valid'] == true).length} valid, ${rows.where((r) => r['valid'] != true).length} error',
-                  style: TextStyle(color: rows.any((r) => r['valid'] != true) ? Colors.red : Colors.green, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: rows.any((r) => r['valid'] != true) ? AppTheme.error : AppTheme.primary, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 12),
                 ...rows.map((r) => Container(
                   margin: const EdgeInsets.only(bottom: 4),
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: r['valid'] == true ? Colors.green.withValues(alpha: 0.05) : Colors.red.withValues(alpha: 0.05),
+                    color: r['valid'] == true ? AppTheme.primary.withValues(alpha: 0.05) : AppTheme.error.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: r['valid'] == true ? Colors.green.shade200 : Colors.red.shade200),
+                    border: Border.all(color: r['valid'] == true ? AppTheme.primary.withValues(alpha: 0.2) : AppTheme.error.withValues(alpha: 0.2)),
                   ),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     SizedBox(
                       width: 28,
-                      child: Text('${r['row']}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                      child: Text('${r['row']}', style: const TextStyle(fontSize: 11, color: AppTheme.grey500)),
                     ),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1030,18 +1270,18 @@ class _MasterDataPageState extends State<MasterDataPage> {
                         const SizedBox(height: 2),
                         Text(
                           'JK: ${r['jenis_kelamin']}  |  Jabatan: ${r['jabatan']}  |  Status: ${r['status_aktif'] == 1 ? 'Aktif' : 'Tidak Aktif'}',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                          style: const TextStyle(fontSize: 12, color: AppTheme.grey600),
                         ),
                         Text(
                           'Username: ${r['username']}  |  Password: ${r['password'] ?? ''}',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                          style: const TextStyle(fontSize: 12, color: AppTheme.grey600),
                         ),
                         if (r['errors'] is List && (r['errors'] as List).isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
                               (r['errors'] as List).join('; '),
-                              style: const TextStyle(fontSize: 12, color: Colors.red),
+                              style: const TextStyle(fontSize: 12, color: AppTheme.error),
                             ),
                           ),
                       ]),
@@ -1073,11 +1313,10 @@ class _MasterDataPageState extends State<MasterDataPage> {
                   final result = res['data'] as Map<String, dynamic>;
                   final inserted = result['inserted'];
                   final errors = (result['errors'] as List?) ?? [];
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Berhasil: $inserted ditambahkan${errors.isNotEmpty ? ', ${errors.length} gagal' : ''}'),
-                    ));
-                  }
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Berhasil: $inserted ditambahkan${errors.isNotEmpty ? ', ${errors.length} gagal' : ''}'),
+                  ));
                   _load(6, refresh: true);
                 } catch (e) {
                   if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal simpan: $e')));
@@ -1092,6 +1331,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
 
   String _displayValue(String col, dynamic val, {int? idx, Map<String, dynamic>? row}) {
     if (val == null) return '-';
+    if (col == 'password') return '••••••';
     if (col == 'is_aktif' || col == 'status_aktif') return val == 1 ? 'Ya' : 'Tidak';
     if (col == 'jenis_kelamin') return val == 'L' ? 'Laki-laki' : 'Perempuan';
     if (col == 'kelas_id' && (idx == 5 || idx == 9)) {
@@ -1110,11 +1350,11 @@ class _MasterDataPageState extends State<MasterDataPage> {
       body: Row(children: [
         Container(
           width: 220,
-          decoration: BoxDecoration(color: Colors.grey[50], border: Border(right: BorderSide(color: Colors.grey.shade200))),
+          decoration: const BoxDecoration(color: AppTheme.grey50, border: Border(right: BorderSide(color: AppTheme.grey200))),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text('Menu', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[500])),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Menu', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.grey500)),
             ),
             Expanded(child: ListView.builder(
               padding: const EdgeInsets.only(bottom: 8),
@@ -1125,13 +1365,13 @@ class _MasterDataPageState extends State<MasterDataPage> {
                 return Container(
                   margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: isActive ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1) : null,
+                    color: isActive ? AppTheme.primary.withValues(alpha: 0.1) : null,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: ListTile(
                     dense: true,
-                    leading: Icon(t.icon, size: 20, color: isActive ? Theme.of(context).colorScheme.primary : Colors.grey[600]),
-                    title: Text(t.label, style: TextStyle(fontSize: 13, fontWeight: isActive ? FontWeight.w600 : null, color: isActive ? null : Colors.grey[700])),
+                    leading: Icon(t.icon, size: 20, color: isActive ? AppTheme.primary : AppTheme.grey500),
+                    title: Text(t.label, style: TextStyle(fontSize: 13, fontWeight: isActive ? FontWeight.w600 : null, color: isActive ? null : AppTheme.grey600)),
                     selected: isActive,
                     onTap: () {
                       setState(() => _selectedTab = i);
@@ -1160,7 +1400,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(cfg.label, style: Theme.of(context).textTheme.titleLarge),
-            if (totalData > 0) Text('$totalData data', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+            if (totalData > 0) Text('$totalData data', style: const TextStyle(fontSize: 12, color: AppTheme.grey500)),
           ]),
           if (idx != 7 && idx != 8) Row(children: [
             if (idx == 5) ...[
@@ -1196,6 +1436,66 @@ class _MasterDataPageState extends State<MasterDataPage> {
               const SizedBox(width: 12),
             ],
             if (idx == 9) ...[
+              // Filter Tingkat
+              SizedBox(
+                width: 140,
+                child: DropdownButtonHideUnderline(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppTheme.grey300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButton<String>(
+                      value: _filterTingkat,
+                      hint: const Text('Tingkat', style: TextStyle(fontSize: 13)),
+                      isExpanded: true,
+                      items: _tingkatList.map((t) => DropdownMenuItem(
+                        value: '${t['id']}',
+                        child: Text('${t['nama']}', style: const TextStyle(fontSize: 13)),
+                      )).toList(),
+                      onChanged: (v) {
+                        setState(() {
+                          _filterTingkat = v;
+                          _filterKelas = null;
+                        });
+                        _load(idx, refresh: true);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Filter Kelas
+              SizedBox(
+                width: 160,
+                child: DropdownButtonHideUnderline(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppTheme.grey300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButton<String>(
+                      value: _filterKelas,
+                      hint: const Text('Kelas', style: TextStyle(fontSize: 13)),
+                      isExpanded: true,
+                      items: _kelasList.where((k) {
+                        if (_filterTingkat == null) return true;
+                        return k['tingkat_id'].toString() == _filterTingkat;
+                      }).map((k) => DropdownMenuItem(
+                        value: '${k['id']}',
+                        child: Text('${k['nama']}', style: const TextStyle(fontSize: 13)),
+                      )).toList(),
+                      onChanged: (v) {
+                        setState(() => _filterKelas = v);
+                        _load(idx, refresh: true);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: _downloadTemplate,
                 icon: const Icon(Icons.download, size: 18),
@@ -1236,109 +1536,117 @@ class _MasterDataPageState extends State<MasterDataPage> {
 
   Widget _buildTable(int idx, _TabCfg cfg) {
     if (_loading[idx] == true) return const Center(child: CircularProgressIndicator());
-    if (_error[idx] != null) return Center(child: Text(_error[idx]!, style: const TextStyle(color: Colors.red)));
-    if (_data[idx]!.isEmpty) return Center(child: Text('Belum ada data.', style: TextStyle(color: Colors.grey[500])));
+    if (_error[idx] != null) return Center(child: Text(_error[idx]!, style: const TextStyle(color: AppTheme.error)));
+    if (_data[idx]!.isEmpty) {
+      return const EmptyState(
+        icon: Icons.inbox_outlined,
+        message: 'Belum ada data.',
+      );
+    }
+
+    final showActions = !(idx == 7 || idx == 8);
+    const colWidth = 150.0;
+    final actionsWidth = showActions ? 80.0 : 0.0;
+    final totalContentWidth = cfg.columns.length * colWidth + actionsWidth;
 
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.grey200),
+      ),
       child: Column(children: [
+        // ── HEADER ──
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(color: Colors.grey[50], borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
-            border: Border(bottom: BorderSide(color: Colors.grey[200]!))),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(children: cfg.displayCols.map((h) => Container(
-              width: 150,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(h, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700])),
-            )).toList()),
+          decoration: const BoxDecoration(
+            color: AppTheme.grey50,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
+            border: Border(bottom: BorderSide(color: AppTheme.grey200)),
+          ),
+          child: SizedBox(
+            width: totalContentWidth,
+            child: Row(children: [
+              ...cfg.displayCols.map((h) => SizedBox(
+                width: colWidth,
+                child: Text(h, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.grey700)),
+              )),
+              if (showActions) const SizedBox(
+                width: 80,
+                child: Text('Aksi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.grey700)),
+              ),
+            ]),
           ),
         ),
-        Expanded(child: ListView.separated(
-          itemCount: _data[idx]!.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
-          itemBuilder: (_, i) {
-            final row = _data[idx]![i];
-            return Container(
-              color: i.isEven ? null : Colors.grey[50],
-              child: ListTile(
-                dense: true,
-                title: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(children: cfg.columns.asMap().entries.map((e) {
-                    final col = cfg.columns[e.key];
-                    final val = _displayValue(col, row[col], idx: idx, row: row);
-                    return Container(
-                      width: 150,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Text(val, style: const TextStyle(fontSize: 13, overflow: TextOverflow.ellipsis)),
-                    );
-                  }).toList()),
-                ),
-                trailing: (idx == 7 || idx == 8) ? null : Row(mainAxisSize: MainAxisSize.min, children: [
-                  IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.blueGrey), onPressed: () => _showForm(idx, edit: row)),
-                  IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                      onPressed: () => _delete(idx, row['id'] as int)),
-                ]),
-              ),
-            );
-          },
-        )),
-        if (_totalPages[idx]! > 1) Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(color: Colors.grey[50], borderRadius: const BorderRadius.vertical(bottom: Radius.circular(11)),
-            border: Border(top: BorderSide(color: Colors.grey[200]!))),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            IconButton(icon: const Icon(Icons.chevron_left, size: 20), onPressed: _page[idx]! > 1 ? () {
-              _page[idx] = _page[idx]! - 1;
-              _load(idx);
-            } : null),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.grey.shade200)),
-              child: Text('${_page[idx]} / ${_totalPages[idx]}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+        // ── BODY ──
+        Expanded(child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: totalContentWidth,
+            child: ListView.separated(
+              itemCount: _data[idx]!.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (_, i) {
+                final row = _data[idx]![i];
+                return Container(
+                  color: i.isEven ? null : AppTheme.grey50,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: Row(children: [
+                    ...cfg.columns.asMap().entries.map((e) {
+                      final col = cfg.columns[e.key];
+                      final val = _displayValue(col, row[col], idx: idx, row: row);
+                      return SizedBox(
+                        width: colWidth,
+                        child: Text(val, style: const TextStyle(fontSize: 13, overflow: TextOverflow.ellipsis)),
+                      );
+                    }),
+                    if (showActions) SizedBox(
+                      width: actionsWidth,
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 18, color: AppTheme.grey500),
+                          onPressed: () => _showForm(idx, edit: row),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18, color: AppTheme.error),
+                          onPressed: () => _delete(idx, row['id'] as int),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ]),
+                    ),
+                  ]),
+                );
+              },
             ),
-            const SizedBox(width: 8),
-            IconButton(icon: const Icon(Icons.chevron_right, size: 20), onPressed: _page[idx]! < _totalPages[idx]! ? () {
-              _page[idx] = _page[idx]! + 1;
-              _load(idx);
-            } : null),
-          ]),
-        ),
+          ),
+        )),
+        // ── PAGINATION ──
+        if (_totalPages[idx]! > 1)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: const BoxDecoration(
+              color: AppTheme.grey50,
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(11)),
+              border: Border(top: BorderSide(color: AppTheme.grey200)),
+            ),
+            child: PaginationRow(
+              currentPage: _page[idx]!,
+              totalPages: _totalPages[idx]!,
+              onPrevious: _page[idx]! > 1 ? () {
+                _page[idx] = _page[idx]! - 1;
+                _load(idx);
+              } : null,
+              onNext: _page[idx]! < _totalPages[idx]! ? () {
+                _page[idx] = _page[idx]! + 1;
+                _load(idx);
+              } : null,
+            ),
+          ),
       ]),
-    );
-  }
-}
-
-class _FormCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final List<Widget> children;
-  const _FormCard({required this.title, required this.icon, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Row(children: [
-            Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 8),
-            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          ]),
-          const SizedBox(height: 16),
-          ...children,
-        ]),
-      ),
     );
   }
 }
@@ -1359,46 +1667,43 @@ class _ModernField extends StatelessWidget {
   final IconData icon;
   final String? hint;
   final bool optional;
-  const _ModernField({required this.controller, required this.label, required this.icon, this.hint, this.optional = false});
+  final TextInputType? keyboardType;
+  const _ModernField({required this.controller, required this.label, required this.icon, this.hint, this.optional = false, this.keyboardType});
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return TextFormField(
       controller: controller,
+      keyboardType: keyboardType,
+      validator: optional ? null : (v) => (v == null || v.isEmpty) ? '$label wajib diisi' : null,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         prefixIcon: Icon(icon),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: Colors.white,
         suffixText: optional ? 'Opsional' : null,
-        suffixStyle: TextStyle(fontSize: 11, color: Colors.grey[400]),
+        suffixStyle: const TextStyle(fontSize: 11, color: AppTheme.grey400),
       ),
     );
   }
 }
 
 InputDecoration _searchDeco() {
-  return InputDecoration(
+  return const InputDecoration(
     hintText: 'Cari...',
-    prefixIcon: const Icon(Icons.search, size: 20),
+    prefixIcon: Icon(Icons.search, size: 20),
     isDense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-    border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
     filled: true,
-    fillColor: const Color(0xFFF8FAFC),
+    fillColor: Colors.white,
   );
 }
 
 InputDecoration _inputDecoration(String label, IconData icon) {
-  return InputDecoration(
-    labelText: label,
-    prefixIcon: Icon(icon),
-    border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-    filled: true,
-    fillColor: const Color(0xFFF8FAFC),
-  );
+  return AppInputDecoration.standard(label, icon);
 }
 
 class _DropdownField<T> extends StatelessWidget {
@@ -1436,7 +1741,7 @@ class _DateField extends StatelessWidget {
         prefixIcon: const Icon(Icons.calendar_today, size: 20),
         border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: Colors.white,
       ),
       onTap: () async {
         final date = await showDatePicker(

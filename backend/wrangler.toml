@@ -7,8 +7,8 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "ppi-db"
-database_id = ""
-preview_database_id = ""
+database_id = "local-dev-database-id"
+preview_database_id = "local-dev-database-id"
 
 # Variables (dev default)
 # ⚠️ JWT_SECRET dan JWT_REFRESH_SECRET di-set via Cloudflare Secrets, bukan di sini!
@@ -38,11 +38,11 @@ vars = { JWT_EXPIRES_IN = "8h", CORS_ORIGIN = "*" }
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "ppi-db-staging"
-database_id = ""  # Isi dengan ID dari 'npx wrangler d1 create ppi-db-staging'
+database_id = ""  # ← ISI: jalankan 'npx wrangler d1 create ppi-db-staging', copy ID nya ke sini
 
 # Production environment
 [env.production]
-vars = { JWT_EXPIRES_IN = "8h", CORS_ORIGIN = "https://ppi-bo8.pages.dev,https://ppi-frontend.pages.dev" }
+vars = { JWT_EXPIRES_IN = "8h", CORS_ORIGIN = "https://ppi-bo8.pages.dev,https://f1198d05.ppi-bo8.pages.dev,https://ppi-frontend.pages.dev" }
 
 # D1 Database (Production)
 [[env.production.d1_databases]]
@@ -56,3 +56,6 @@ tag = "v1"
 
 [[migrations]]
 tag = "v2"
+
+[[migrations]]
+tag = "v3"

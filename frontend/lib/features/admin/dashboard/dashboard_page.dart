@@ -1,19 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../services/admin_service.dart';
-
-const Color _green = Color(0xFF2E7D32);
-const Color _greenLight = Color(0xFF4CAF50);
-const Color _greenBg = Color(0xFFE8F5E9);
-const Color _yellow = Color(0xFFF9A825);
-
-const Color _yellowBg = Color(0xFFFFFBF0);
-const Color _white = Color(0xFFFFFFFF);
-const Color _bg = Color(0xFFF8FAF5);
 
 class DashboardPage extends StatefulWidget {
   final void Function(String feature)? onFeatureTap;
-  final VoidCallback? onLogout;
-  const DashboardPage({super.key, this.onFeatureTap, this.onLogout});
+  const DashboardPage({super.key, this.onFeatureTap});
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -35,15 +26,23 @@ class _DashboardPageState extends State<DashboardPage> {
   void _setGreeting() {
     final hour = DateTime.now().hour;
     setState(() {
-      if (hour < 10) _greeting = 'Selamat Pagi';
-      else if (hour < 15) _greeting = 'Selamat Siang';
-      else if (hour < 18) _greeting = 'Selamat Sore';
-      else _greeting = 'Selamat Malam';
+      if (hour < 10) {
+        _greeting = 'Selamat Pagi';
+      } else if (hour < 15) {
+        _greeting = 'Selamat Siang';
+      } else if (hour < 18) {
+        _greeting = 'Selamat Sore';
+      } else {
+        _greeting = 'Selamat Malam';
+      }
     });
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final data = await AdminService.getDashboard();
       if (mounted) setState(() { _data = data; _loading = false; });
@@ -55,11 +54,26 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: AppTheme.background,
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: _green))
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline, size: 48, color: AppTheme.error),
+                      const SizedBox(height: 16),
+                      Text(_error!, style: const TextStyle(color: AppTheme.error, fontSize: 14)),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: _load,
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Coba Lagi'),
+                      ),
+                    ],
+                  ),
+                )
               : _buildBody(),
     );
   }
@@ -69,7 +83,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final d = _data!['detail'] as Map<String, dynamic>;
 
     return RefreshIndicator(
-      color: _green,
+      color: AppTheme.primary,
       onRefresh: _load,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -77,11 +91,11 @@ class _DashboardPageState extends State<DashboardPage> {
           children: [
             _buildHeader(r),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
                   _buildSectionTitle('Ringkasan Data'),
                   const SizedBox(height: 16),
                   _buildStatGrid(r),
@@ -108,11 +122,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_green, _greenLight, Color(0xFF66BB6A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: AppTheme.headerGradient,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       child: SafeArea(
@@ -130,8 +140,8 @@ class _DashboardPageState extends State<DashboardPage> {
                     children: [
                       Text(
                         _greeting,
-                        style: const TextStyle(
-                          color: Colors.white70,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -149,7 +159,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: IconButton(
@@ -180,7 +190,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -202,9 +212,9 @@ class _DashboardPageState extends State<DashboardPage> {
       children: [
         Container(
           width: 4,
-          height: 20,
+          height: 18,
           decoration: BoxDecoration(
-            color: _yellow,
+            gradient: AppTheme.primaryGradient,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -212,9 +222,10 @@ class _DashboardPageState extends State<DashboardPage> {
         Text(
           title,
           style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: _green,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.grey800,
+            letterSpacing: -0.2,
           ),
         ),
       ],
@@ -223,12 +234,12 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildStatGrid(Map<String, dynamic> r) {
     final stats = [
-      _StatItem(Icons.people_outline, 'Asatidz', '${r['guru'] ?? 0}', _green, _greenBg),
-      _StatItem(Icons.person_outline, 'Santri', '${r['siswa'] ?? 0}', _yellow, _yellowBg),
-      _StatItem(Icons.meeting_room_outlined, 'Kelas', '${r['kelas'] ?? 0}', _greenLight, _greenBg),
-      _StatItem(Icons.checklist_outlined, 'Absensi Hari Ini', '${r['absensi_hari_ini'] ?? 0}', _yellow, _yellowBg),
-      _StatItem(Icons.grading_outlined, 'Nilai', '${r['nilai'] ?? 0}', _green, _greenBg),
-      _StatItem(Icons.calendar_month_outlined, 'Jadwal', '${r['jadwal'] ?? 0}', _greenLight, _greenBg),
+      _StatItem(Icons.people_outline, 'Asatidz', '${r['guru'] ?? 0}', AppTheme.primary, AppTheme.primaryLight),
+      _StatItem(Icons.person_outline, 'Santri', '${r['siswa'] ?? 0}', AppTheme.secondary, AppTheme.secondaryLight),
+      _StatItem(Icons.meeting_room_outlined, 'Kelas', '${r['kelas'] ?? 0}', AppTheme.blue, AppTheme.blueLight),
+      _StatItem(Icons.checklist_outlined, 'Absensi Hari Ini', '${r['absensi_hari_ini'] ?? 0}', AppTheme.orange, AppTheme.orangeLight),
+      _StatItem(Icons.grading_outlined, 'Nilai', '${r['nilai'] ?? 0}', AppTheme.teal, AppTheme.primaryLight),
+      _StatItem(Icons.calendar_month_outlined, 'Jadwal', '${r['jadwal'] ?? 0}', AppTheme.indigo, AppTheme.primaryLight),
     ];
 
     return LayoutBuilder(
@@ -244,7 +255,7 @@ class _DashboardPageState extends State<DashboardPage> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: stats.length,
-          itemBuilder: (_, i) => _ModernStatCard(item: stats[i], index: i),
+          itemBuilder: (_, i) => _ModernStatCard(item: stats[i]),
         );
       },
     );
@@ -252,10 +263,10 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildDetailGrid(Map<String, dynamic> d) {
     final details = [
-      _DetailInfo('Statistik Asatidz', d['guru'] as Map<String, dynamic>? ?? {}, Icons.people_outline, _green),
-      _DetailInfo('Statistik Santri', d['siswa'] as Map<String, dynamic>? ?? {}, Icons.person_outline, _yellow),
-      _DetailInfo('Absensi Hari Ini', d['absensi'] as Map<String, dynamic>? ?? {}, Icons.checklist_outlined, _greenLight),
-      _DetailInfo('Statistik Nilai', d['nilai'] as Map<String, dynamic>? ?? {}, Icons.grading_outlined, _green),
+      _DetailInfo('Statistik Asatidz', d['guru'] as Map<String, dynamic>? ?? {}, Icons.people_outline, AppTheme.primary),
+      _DetailInfo('Statistik Santri', d['siswa'] as Map<String, dynamic>? ?? {}, Icons.person_outline, AppTheme.secondary),
+      _DetailInfo('Absensi Hari Ini', d['absensi'] as Map<String, dynamic>? ?? {}, Icons.checklist_outlined, AppTheme.blue),
+      _DetailInfo('Statistik Nilai', d['nilai'] as Map<String, dynamic>? ?? {}, Icons.grading_outlined, AppTheme.teal),
     ];
 
     return LayoutBuilder(
@@ -283,14 +294,15 @@ class _DashboardPageState extends State<DashboardPage> {
       _FeatureItem(Icons.calendar_today_outlined, 'Absensi', 'Monitoring absensi', () => widget.onFeatureTap?.call('absensi')),
       _FeatureItem(Icons.grading_outlined, 'Nilai', 'Monitoring nilai', () => widget.onFeatureTap?.call('nilai')),
       _FeatureItem(Icons.description_outlined, 'Rapor', 'Monitoring rapor', () => widget.onFeatureTap?.call('rapor')),
+      _FeatureItem(Icons.qr_code, 'QR Absensi', 'Cetak QR Code absensi', () => widget.onFeatureTap?.call('qr-absensi'), isSecondary: true),
       _FeatureItem(Icons.settings_outlined, 'Pengaturan', 'Pengaturan sistem', () => widget.onFeatureTap?.call('pengaturan'), isSecondary: true),
     ];
 
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
         childAspectRatio: 1.0,
       ),
       shrinkWrap: true,
@@ -301,47 +313,68 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildFeatureCard(_FeatureItem item) {
-    final gradient = item.isSecondary
-        ? [const Color(0xFFFFF8E1), const Color(0xFFFFE082)]
-        : [const Color(0xFFE8F5E9), const Color(0xFFA5D6A7)];
-    final iconColor = item.isSecondary ? const Color(0xFFE65100) : const Color(0xFF1B5E20);
-    final shadowColor = item.isSecondary ? _yellow : _green;
+    final primaryColor = item.isSecondary ? AppTheme.secondary : AppTheme.primary;
+    final bgColor = item.isSecondary ? AppTheme.secondaryLight : AppTheme.primaryLight;
+    final iconColor = item.isSecondary ? AppTheme.orange : AppTheme.primaryDark;
 
     return Material(
-      color: _white,
-      borderRadius: BorderRadius.circular(16),
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         onTap: item.onTap,
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _green.withOpacity(0.1)),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.grey200),
           ),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 48, height: 48,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: gradient,
+                    colors: [
+                      bgColor,
+                      primaryColor.withValues(alpha: 0.2),
+                    ],
                   ),
                   boxShadow: [
-                    BoxShadow(color: shadowColor.withOpacity(0.12), blurRadius: 6, offset: const Offset(0, 2)),
+                    BoxShadow(
+                      color: primaryColor.withValues(alpha: 0.12),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
                   ],
                 ),
-                child: Icon(item.icon, color: iconColor, size: 22),
+                child: Icon(item.icon, color: iconColor, size: 24),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(
                 item.title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12, color: _green),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: AppTheme.grey700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                item.subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppTheme.grey400,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -351,10 +384,10 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildFooter() {
-    return Center(
+    return const Center(
       child: Text(
         'Sistem Informasi Madrasah PPI',
-        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+        style: TextStyle(color: AppTheme.grey400, fontSize: 12),
       ),
     );
   }
@@ -380,24 +413,23 @@ class _StatItem {
 
 class _ModernStatCard extends StatelessWidget {
   final _StatItem item;
-  final int index;
-  const _ModernStatCard({required this.item, required this.index});
+  const _ModernStatCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.grey200),
         boxShadow: [
           BoxShadow(
-            color: item.color.withOpacity(0.08),
+            color: item.color.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: item.color.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,20 +446,9 @@ class _ModernStatCard extends StatelessWidget {
                 ),
                 child: Icon(item.icon, color: item.color, size: 22),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: item.bgColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  item.label.split(' ').first,
-                  style: TextStyle(color: item.color, fontSize: 10, fontWeight: FontWeight.w600),
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 14),
+          const Spacer(),
           Text(
             item.value,
             style: TextStyle(
@@ -435,12 +456,13 @@ class _ModernStatCard extends StatelessWidget {
               fontWeight: FontWeight.bold,
               color: item.color,
               height: 1,
+              letterSpacing: -0.5,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             item.label,
-            style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+            style: const TextStyle(fontSize: 13, color: AppTheme.grey500, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -465,16 +487,16 @@ class _ModernDetailCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.grey200),
         boxShadow: [
           BoxShadow(
-            color: info.color.withOpacity(0.06),
+            color: info.color.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: info.color.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -485,36 +507,36 @@ class _ModernDetailCard extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 info.title,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _green),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.grey800),
               ),
             ],
           ),
           const SizedBox(height: 16),
           if (info.data.isEmpty)
-            Text('Belum ada data', style: TextStyle(color: Colors.grey[400], fontSize: 14))
+            const Text('Belum ada data', style: TextStyle(color: AppTheme.grey400, fontSize: 14))
           else
             ...info.data.entries.map((e) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: info.color.withOpacity(0.5),
-                      shape: BoxShape.circle,
-                    ),
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: info.color.withValues(alpha: 0.5),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '${e.key}: ${e.value}',
+                          style: const TextStyle(color: AppTheme.grey600, fontSize: 14),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '${e.key}: ${e.value}',
-                      style: TextStyle(color: Colors.grey[700], fontSize: 14),
-                    ),
-                  ),
-                ],
-              ),
-            )),
+                )),
         ],
       ),
     );

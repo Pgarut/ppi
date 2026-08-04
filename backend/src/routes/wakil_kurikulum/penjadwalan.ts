@@ -27,14 +27,47 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
   // ── Referensi ──
   if (subPath === 'referensi' && request.method === 'GET') {
     const [kelas, guru, mapel, ruangan, semester, tingkat] = await Promise.all([
-      env.DB.prepare('SELECT id, nama FROM kelas ORDER BY nama').all(),
+      env.DB.prepare('SELECT id, nama, ruangan_id FROM kelas ORDER BY nama').all(),
       env.DB.prepare("SELECT id, nama, nip FROM guru WHERE status_aktif = 1 ORDER BY nama").all(),
       env.DB.prepare('SELECT id, nama, kode FROM mata_pelajaran ORDER BY nama').all(),
       env.DB.prepare('SELECT id, nama FROM ruangan ORDER BY nama').all(),
       env.DB.prepare('SELECT id, nama, tahun_ajaran_id FROM semester ORDER BY tahun_ajaran_id DESC, id').all(),
       env.DB.prepare('SELECT id, nama FROM tingkat ORDER BY nama').all(),
     ]);
-    return success({ kelas: kelas.results, guru: guru.results, mapel: mapel.results, ruangan: ruangan.results, semester: semester.results, tingkat: tingkat.results, hari: HARI });
+
+    // Ambil mapel per kelas dari mapel_kelas
+    const mapelKelasRows = await env.DB.prepare(
+      'SELECT kelas_id, mata_pelajaran_id FROM mapel_kelas'
+    ).all<{ kelas_id: number; mata_pelajaran_id: number }>();
+    const kelasMapelMap = new Map<number, number[]>();
+    for (const row of mapelKelasRows.results) {
+      if (!kelasMapelMap.has(row.kelas_id)) kelasMapelMap.set(row.kelas_id, []);
+      kelasMapelMap.get(row.kelas_id)!.push(row.mata_pelajaran_id);
+    }
+    const kelasWithMapel = kelas.results.map((k: any) => ({
+      ...k,
+      mapel_ids: kelasMapelMap.get(k.id) || [],
+    }));
+
+    return success({ kelas: kelasWithMapel, guru: guru.results, mapel: mapel.results, ruangan: ruangan.results, semester: semester.results, tingkat: tingkat.results, hari: HARI });
+  }
+
+  // ── Guru by Kelas + Mapel ──
+  if (subPath === 'guru-by-kelas-mapel' && request.method === 'GET') {
+    const kelasId = url.searchParams.get('kelas_id');
+    const mapelId = url.searchParams.get('mata_pelajaran_id');
+    if (!kelasId || !mapelId) return badRequest('kelas_id dan mata_pelajaran_id diperlukan');
+
+    const rows = await env.DB.prepare(
+      `SELECT DISTINCT g.id, g.nama, g.nip
+       FROM guru g
+       INNER JOIN guru_kelas gk ON g.id = gk.guru_id AND gk.kelas_id = ?
+       INNER JOIN guru_mapel gm ON g.id = gm.guru_id AND gm.mata_pelajaran_id = ?
+       WHERE g.status_aktif = 1
+       ORDER BY g.nama`
+    ).bind(parseInt(kelasId), parseInt(mapelId)).all();
+
+    return success(rows.results);
   }
 
   // ═══════════════════════════════════════════════

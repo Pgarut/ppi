@@ -21,6 +21,7 @@ import { handleNilaiGuru } from './routes/guru_mapel_wali_kelas/nilai';
 import { handleRaporGuru } from './routes/guru_mapel_wali_kelas/rapor';
 import { handlePengaduan } from './routes/guru_mapel_wali_kelas/pengaduan';
 import { handleWaliKelas } from './routes/guru_mapel_wali_kelas/wali_kelas';
+import { handleMateriGuru } from './routes/guru_mapel_wali_kelas/materi';
 import { handlePengaduanBK } from './routes/guru_bk/pengaduan';
 import { handleKonselingBK } from './routes/guru_bk/konseling';
 import { handleMonitoringBK } from './routes/guru_bk/monitoring';
@@ -32,6 +33,7 @@ import { handleNilaiKS } from './routes/kepala_sekolah/nilai';
 import { handleRaporKS } from './routes/kepala_sekolah/rapor';
 import { handleBKKS } from './routes/kepala_sekolah/bk';
 import { handleLaporanKS } from './routes/kepala_sekolah/laporan';
+import { handleSiswaRoutes } from './routes/siswa/index';
 import { handleHealth } from './routes/health';
 
 export default {
@@ -60,6 +62,11 @@ export default {
         return handleLogin(request, env);
       }
 
+      // Login Siswa (no auth required)
+      if (path === '/api/auth/login-siswa' && request.method === 'POST') {
+        return handleLoginSiswa(request, env);
+      }
+
       // Public pengaturan (GET only, for login page)
       if (path === '/api/pengaturan-tampilan' && request.method === 'GET') {
         const rows = await env.DB.prepare('SELECT key, value FROM pengaturan ORDER BY key').all();
@@ -69,6 +76,11 @@ export default {
       // Authenticated routes
       const user = await authMiddleware(request, env);
       if (!user) return unauthorized();
+
+      // QR Scan Absensi (shared untuk guru, WK, KS)
+      if (path === '/api/absensi/scan' && request.method === 'POST') {
+        return handleScanAbsensi(request, env, user);
+      }
 
       if (path === '/api/auth/me' && request.method === 'GET') {
         return handleMe(user);
@@ -218,6 +230,9 @@ export default {
         if (subPath.startsWith('pengaduan')) {
           return handlePengaduan(request, env, user, pathParts, url);
         }
+        if (subPath.startsWith('materi')) {
+          return handleMateriGuru(request, env, user, pathParts, url);
+        }
         if (subPath.startsWith('data-siswa') || subPath.startsWith('rekap-absensi') || subPath.startsWith('rekap-nilai') || subPath.startsWith('catatan-wali')) {
           return handleWaliKelas(request, env, user, pathParts, url);
         }
@@ -264,6 +279,12 @@ export default {
         }
       }
 
+      // Siswa routes
+      if (pathParts[0] === 'api' && pathParts[1] === 'siswa') {
+        if (user.role !== 'siswa') return error('Forbidden: siswa only', 403);
+        return handleSiswaRoutes(request, env, user, pathParts, url);
+      }
+
       // Shared referensi endpoint (any role)
       if (path === '/api/referensi' && request.method === 'GET') {
         return handleReferensi(env);
@@ -278,45 +299,92 @@ export default {
 };
 
 async function handleLogin(request: Request, env: Env): Promise<Response> {
-  let body: { username?: string; password?: string };
+  let body: { username?: string; credential?: string; password?: string };
   try {
     body = await request.json();
   } catch {
     return error('Invalid JSON body', 400);
   }
 
-  const { username, password } = body;
-  if (!username || !password) {
-    return error('Username and password are required', 400);
+  const credential = body.username || body.credential;
+  const { password } = body;
+  if (!credential || !password) {
+    return error('Username/NIS and password are required', 400);
   }
 
-  // Brute force check sebelum memproses login
-  const bfCheck = await bruteForceCheck(username, request, env);
+  // Brute force check
+  const bfCheck = await bruteForceCheck(credential, request, env);
   if (bfCheck) return bfCheck;
 
-  const result = await env.DB.prepare(
+  // 1. Coba cari di users WHERE username = ? (admin/guru/WK/BK/KS)
+  let result = await env.DB.prepare(
     'SELECT id, username, password_hash, role, guru_id, is_active FROM users WHERE username = ?'
-  ).bind(username).first<{
-    id: number; username: string; password_hash: string; role: Role; guru_id: number | null; is_active: number;
+  ).bind(credential).first<{
+    id: number; username: string; password_hash: string; role: Role;
+    guru_id: number | null; siswa_id: null; is_active: number;
   }>();
 
+  let siswaInfo: { siswa_id: number; nama: string; nis: string; kelas_id: number | null; kelas_nama: string | null } | null = null;
+
+  // 2. Jika tidak ditemukan, coba cari sebagai NIS siswa
   if (!result) {
-    await bruteForceRecordFailure(username, request, env);
-    return error('Invalid username or password', 401);
+    const siswaResult = await env.DB.prepare(
+      `SELECT u.id, u.username, u.password_hash, u.role, u.siswa_id, u.is_active,
+              s.nama as siswa_nama, s.nis, s.kelas_id, k.nama as kelas_nama
+       FROM users u
+       JOIN siswa s ON u.siswa_id = s.id
+       LEFT JOIN kelas k ON s.kelas_id = k.id
+       WHERE s.nis = ? AND u.role = 'siswa' AND u.is_active = 1`
+    ).bind(credential).first<{
+      id: number; username: string; password_hash: string; role: Role;
+      siswa_id: number; is_active: number; siswa_nama: string; nis: string;
+      kelas_id: number | null; kelas_nama: string | null;
+    }>();
+
+    if (siswaResult) {
+      result = {
+        id: siswaResult.id,
+        username: siswaResult.username,
+        password_hash: siswaResult.password_hash,
+        role: siswaResult.role,
+        guru_id: null,
+        siswa_id: null,
+        is_active: siswaResult.is_active,
+      };
+      siswaInfo = {
+        siswa_id: siswaResult.siswa_id,
+        nama: siswaResult.siswa_nama,
+        nis: siswaResult.nis,
+        kelas_id: siswaResult.kelas_id,
+        kelas_nama: siswaResult.kelas_nama,
+      };
+    }
+  }
+
+  if (!result) {
+    await bruteForceRecordFailure(credential, request, env);
+    return error('Username atau password salah', 401);
   }
 
   if (!result.is_active) return error('Account is disabled', 403);
 
   const passwordMatch = await bcrypt.compare(password, result.password_hash);
   if (!passwordMatch) {
-    await bruteForceRecordFailure(username, request, env);
-    return error('Invalid username or password', 401);
+    await bruteForceRecordFailure(credential, request, env);
+    return error('Username atau password salah', 401);
   }
 
-  // Login berhasil — reset brute force counter
-  await bruteForceRecordSuccess(username, env);
+  // Login berhasil
+  await bruteForceRecordSuccess(credential, env);
 
-  const userPayload = { sub: result.id, username: result.username, role: result.role as Role, guru_id: result.guru_id };
+  const isSiswa = result.role === 'siswa';
+  const userPayload = {
+    sub: result.id,
+    username: result.username,
+    role: result.role as Role,
+    guru_id: result.guru_id,
+    siswa_id: siswaInfo?.siswa_id ?? null,
+  };
   const token = await generateToken(userPayload, env);
   const refreshToken = await generateRefreshToken(result.id, env);
 
@@ -325,17 +393,106 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   await env.DB.prepare(
     "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'login', 'auth', ?, ?)"
-  ).bind(result.id, `Login user ${result.username}`, ip).run();
+  ).bind(result.id, `Login ${isSiswa ? 'siswa' : 'user'} ${result.username}`, ip).run();
+
+  const userData: Record<string, unknown> = {
+    id: result.id,
+    username: result.username,
+    role: result.role,
+    guru_id: result.guru_id,
+  };
+
+  if (isSiswa && siswaInfo) {
+    userData.siswa_id = siswaInfo.siswa_id;
+    userData.nama = siswaInfo.nama;
+    userData.nis = siswaInfo.nis;
+    userData.kelas_id = siswaInfo.kelas_id;
+    userData.kelas_nama = siswaInfo.kelas_nama;
+  }
+
+  return success({ token, refresh_token: refreshToken, user: userData });
+}
+
+async function handleLoginSiswa(request: Request, env: Env): Promise<Response> {
+  let body: { nis?: string; password?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return error('Invalid JSON body', 400);
+  }
+
+  const { nis, password } = body;
+  if (!nis || !password) {
+    return error('NIS dan password wajib diisi', 400);
+  }
+
+  // Brute force check
+  const bfCheck = await bruteForceCheck(`siswa:${nis}`, request, env);
+  if (bfCheck) return bfCheck;
+
+  // Cari user yang terhubung ke siswa via siswa_id
+  const result = await env.DB.prepare(
+    `SELECT u.id, u.username, u.password_hash, u.role, u.siswa_id, u.is_active,
+            s.nama as siswa_nama, s.nis, s.kelas_id, k.nama as kelas_nama
+     FROM users u
+     JOIN siswa s ON u.siswa_id = s.id
+     LEFT JOIN kelas k ON s.kelas_id = k.id
+     WHERE s.nis = ? AND u.role = 'siswa' AND u.is_active = 1`
+  ).bind(nis).first<{
+    id: number; username: string; password_hash: string; role: Role;
+    siswa_id: number; is_active: number; siswa_nama: string; nis: string;
+    kelas_id: number | null; kelas_nama: string | null;
+  }>();
+
+  if (!result) {
+    await bruteForceRecordFailure(`siswa:${nis}`, request, env);
+    return error('NIS tidak terdaftar atau akun belum dibuat', 401);
+  }
+
+  const passwordMatch = await bcrypt.compare(password, result.password_hash);
+  if (!passwordMatch) {
+    await bruteForceRecordFailure(`siswa:${nis}`, request, env);
+    return error('Password salah', 401);
+  }
+
+  // Login berhasil
+  await bruteForceRecordSuccess(`siswa:${nis}`, env);
+
+  const userPayload = {
+    sub: result.id,
+    username: result.username,
+    role: 'siswa' as Role,
+    guru_id: null,
+    siswa_id: result.siswa_id,
+  };
+  const token = await generateToken(userPayload, env);
+  const refreshToken = await generateRefreshToken(result.id, env);
+
+  await env.DB.prepare("UPDATE users SET last_login_at = datetime('now') WHERE id = ?").bind(result.id).run();
+
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  await env.DB.prepare(
+    "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'login', 'auth', ?, ?)"
+  ).bind(result.id, `Login siswa ${result.siswa_nama} (NIS: ${nis})`, ip).run();
 
   return success({
     token,
     refresh_token: refreshToken,
-    user: { id: result.id, username: result.username, role: result.role, guru_id: result.guru_id },
+    user: {
+      id: result.id,
+      username: result.username,
+      role: 'siswa',
+      siswa_id: result.siswa_id,
+      nama: result.siswa_nama,
+      nis: result.nis,
+      kelas_id: result.kelas_id,
+      kelas_nama: result.kelas_nama,
+    },
   });
 }
 
-function handleMe(user: { sub: number; username: string; role: string; guru_id: number | null }): Response {
-  return success({ id: user.sub, username: user.username, role: user.role, guru_id: user.guru_id });
+function handleMe(user: { sub: number; username: string; role: string; guru_id: number | null; siswa_id: number | null }): Response {
+  return success({ id: user.sub, username: user.username, role: user.role, guru_id: user.guru_id, siswa_id: user.siswa_id });
 }
 
 async function handleRefresh(request: Request, env: Env): Promise<Response> {
@@ -364,7 +521,7 @@ async function handleRefresh(request: Request, env: Env): Promise<Response> {
 
   if (!user || !user.is_active) return error('User not found or disabled', 401);
 
-  const userPayload = { sub: user.id, username: user.username, role: user.role, guru_id: user.guru_id };
+  const userPayload = { sub: user.id, username: user.username, role: user.role, guru_id: user.guru_id, siswa_id: (user as any).siswa_id ?? null };
   const newToken = await generateToken(userPayload, env);
   const newRefreshToken = await generateRefreshToken(user.id, env);
 
@@ -376,7 +533,7 @@ async function handleRefresh(request: Request, env: Env): Promise<Response> {
   return success({
     token: newToken,
     refresh_token: newRefreshToken,
-    user: { id: user.id, username: user.username, role: user.role, guru_id: user.guru_id },
+    user: { id: user.id, username: user.username, role: user.role, guru_id: user.guru_id, siswa_id: (user as any).siswa_id ?? null },
   });
 }
 
@@ -459,4 +616,68 @@ async function handleDashboardWK(env: Env): Promise<Response> {
     total_nilai: nilaiCount?.total || 0,
     nilai_belum_divalidasi: draftCount?.total || 0,
   });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  QR SCAN ABSENSI GURU (shared untuk guru, WK, KS)
+// ═══════════════════════════════════════════════════════════════
+async function handleScanAbsensi(request: Request, env: Env, user: UserPayload): Promise<Response> {
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+
+  // Hanya role tertentu yang boleh scan
+  const allowedRoles = ['guru_mapel_wali_kelas', 'wakil_kurikulum', 'kepala_sekolah'];
+  if (!allowedRoles.includes(user.role)) {
+    return error('Role Anda tidak memiliki akses absensi', 403);
+  }
+
+  // Guru harus punya guru_id
+  if (!user.guru_id) {
+    return error('Data guru tidak ditemukan untuk akun ini', 400);
+  }
+
+  const now = new Date();
+  const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
+  const currentTime = now.toTimeString().split(' ')[0]; // HH:MM:SS
+
+  // Cek apakah sudah ada absensi hari ini
+  const existing = await env.DB.prepare(
+    'SELECT id, jam_masuk, jam_keluar FROM absensi_guru WHERE guru_id = ? AND tanggal = ?'
+  ).bind(user.guru_id, today).first<{ id: number; jam_masuk: string | null; jam_keluar: string | null }>();
+
+  if (!existing) {
+    // Scan pertama → Jam Masuk
+    await env.DB.prepare(
+      'INSERT INTO absensi_guru (guru_id, tanggal, jam_masuk, status) VALUES (?, ?, ?, ?)'
+    ).bind(user.guru_id, today, currentTime, 'hadir').run();
+
+    // Log aktivitas
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'scan_masuk', 'absensi_guru', ?, ?)"
+    ).bind(user.sub, `Scan QR masuk - ${user.username}`, ip).run();
+
+    return success({
+      action: 'jam_masuk',
+      time: currentTime,
+      message: `Absensi masuk tercatat pukul ${currentTime}`,
+    });
+  } else if (existing.jam_masuk && !existing.jam_keluar) {
+    // Scan kedua → Jam Keluar
+    await env.DB.prepare(
+      'UPDATE absensi_guru SET jam_keluar = ? WHERE id = ?'
+    ).bind(currentTime, existing.id).run();
+
+    // Log aktivitas
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'scan_keluar', 'absensi_guru', ?, ?)"
+    ).bind(user.sub, `Scan QR keluar - ${user.username}`, ip).run();
+
+    return success({
+      action: 'jam_keluar',
+      time: currentTime,
+      message: `Absensi keluar tercatat pukul ${currentTime}`,
+    });
+  } else {
+    // Sudah scan masuk dan keluar
+    return error('Anda sudah melakukan absensi masuk dan keluar hari ini', 400);
+  }
 }

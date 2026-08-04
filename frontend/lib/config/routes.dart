@@ -5,6 +5,7 @@ import '../features/wakil_kurikulum/wakil_kurikulum_page.dart';
 import '../features/guru_mapel_wali_kelas/guru_mapel_page.dart';
 import '../features/guru_bk/guru_bk_page.dart';
 import '../features/kepala_sekolah/kepala_sekolah_page.dart';
+import '../features/santri/santri_page.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -13,6 +14,7 @@ class AppRoutes {
   static const String wakilKurikulum = '/wakil-kurikulum';
   static const String guru = '/guru';
   static const String guruBk = '/guru-bk';
+  static const String santri = '/santri';
 
   static String dashboardByRole(String role) {
     switch (role) {
@@ -26,6 +28,8 @@ class AppRoutes {
         return guru;
       case 'guru_bk':
         return guruBk;
+      case 'siswa':
+        return santri;
       default:
         return login;
     }
@@ -45,6 +49,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const GuruBKPage());
       case kepalaSekolah:
         return MaterialPageRoute(builder: (_) => const KepalaSekolahPage());
+      case santri:
+        return MaterialPageRoute(builder: (_) => const SantriPage());
       default:
         return MaterialPageRoute(builder: (_) => const LoginScreen());
     }

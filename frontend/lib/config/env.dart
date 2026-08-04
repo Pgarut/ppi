@@ -9,4 +9,7 @@ class Env {
 
   static const String appName = 'Sistem Informasi Madrasah PPI';
   static const String appVersion = '1.0.0';
+
+  // QR Token untuk absensi (harus cocok di client & server)
+  static const String qrAbsensiToken = 'PPI_ABSENSI_QR_2026';
 }

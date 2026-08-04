@@ -158,4 +158,35 @@ class GuruService {
     final res = await ApiClient.get('/guru/jadwal');
     return res['data'] as List<dynamic>;
   }
+
+  // ── Materi ──
+  static Future<Map<String, dynamic>> getMateri({String? kelasId, String? mapelId, int page = 1, int perPage = 50}) async {
+    final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
+    if (kelasId != null) params['kelas_id'] = kelasId;
+    if (mapelId != null) params['mata_pelajaran_id'] = mapelId;
+    final res = await ApiClient.get('/guru/materi', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<List<dynamic>> getMateriAssignments() async {
+    final res = await ApiClient.get('/guru/materi/assignments');
+    return res['data'] as List<dynamic>? ?? [];
+  }
+
+  static Future<Map<String, dynamic>> createMateri(Map<String, dynamic> body) async {
+    final res = await ApiClient.post('/guru/materi', body: body);
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<void> updateMateri(int id, Map<String, dynamic> body) async {
+    await ApiClient.put('/guru/materi/$id', body: body);
+  }
+
+  static Future<void> deleteMateri(int id) async {
+    await ApiClient.delete('/guru/materi/$id');
+  }
+
+  static Future<void> toggleMateri(int id) async {
+    await ApiClient.put('/guru/materi/$id/toggle', body: {});
+  }
 }

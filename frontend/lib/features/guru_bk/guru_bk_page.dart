@@ -22,7 +22,6 @@ class _GuruBKPageState extends State<GuruBKPage> {
       title: 'BK',
       dashboardBuilder: (context, onFeatureTap, onLogout) => DashboardPageBK(
         onFeatureTap: onFeatureTap,
-        onLogout: onLogout,
       ),
       features: {
         'pengaduan': (_) => const PengaduanPageBK(),

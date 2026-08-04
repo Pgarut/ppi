@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../services/wakil_kurikulum_service.dart';
 
 class LaporanPageWK extends StatefulWidget {
@@ -31,30 +32,51 @@ class _LaporanPageWKState extends State<LaporanPageWK> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Laporan'), automaticallyImplyLeading: false,
-        bottom: TabBar(controller: _tabCtrl, onTap: (i) {
-          _jenis = ['jadwal', 'absensi', 'nilai', 'rapor'][i];
-          _load();
-        }, tabs: const [
-          Tab(text: 'Jadwal'), Tab(text: 'Absensi'), Tab(text: 'Nilai'), Tab(text: 'Rapor'),
-        ]),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _data.isEmpty
-              ? Center(child: Text('Tidak ada data.', style: TextStyle(color: Colors.grey[500])))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _data.length,
-                  itemBuilder: (_, i) {
-                    final d = _data[i];
-                    return Card(child: ListTile(
-                      title: Text(_formatTitle(d), style: const TextStyle(fontSize: 13)),
-                      subtitle: Text(_formatSubtitle(d), style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-                    ));
-                  },
-                ),
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          decoration: BoxDecoration(
+            color: AppTheme.grey100,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TabBar(
+            controller: _tabCtrl,
+            labelColor: AppTheme.primaryDark,
+            unselectedLabelColor: AppTheme.grey500,
+            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            indicatorColor: AppTheme.primary,
+            indicatorSize: TabBarIndicatorSize.label,
+            dividerColor: Colors.transparent,
+            onTap: (i) {
+              _jenis = ['jadwal', 'absensi', 'nilai', 'rapor'][i];
+              _load();
+            },
+            tabs: const [
+              Tab(text: 'Jadwal'), Tab(text: 'Absensi'), Tab(text: 'Nilai'), Tab(text: 'Rapor'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+              : _data.isEmpty
+                  ? const Center(child: Text('Tidak ada data.', style: TextStyle(color: AppTheme.grey500)))
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _data.length,
+                      itemBuilder: (_, i) {
+                        final d = _data[i];
+                        return Card(child: ListTile(
+                          title: Text(_formatTitle(d), style: const TextStyle(fontSize: 13)),
+                          subtitle: Text(_formatSubtitle(d), style: const TextStyle(fontSize: 11, color: AppTheme.grey500)),
+                        ));
+                      },
+                    ),
+        ),
+      ],
     );
   }
 

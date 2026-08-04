@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../config/env.dart';
+import '../logging/app_logger.dart';
 
 class ApiException implements Exception {
   final String message;
@@ -18,42 +19,40 @@ class ApiClient {
 
   static bool _isRefreshing = false;
 
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
+  );
+
   // ── Token Management ──
 
   static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    return await _storage.read(key: _tokenKey);
   }
 
   static Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
+    await _storage.write(key: _tokenKey, value: token);
   }
 
   static Future<void> removeToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
+    await _storage.delete(key: _tokenKey);
   }
 
   static Future<String?> getRefreshToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_refreshTokenKey);
+    return await _storage.read(key: _refreshTokenKey);
   }
 
   static Future<void> saveRefreshToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_refreshTokenKey, token);
+    await _storage.write(key: _refreshTokenKey, value: token);
   }
 
   static Future<void> removeRefreshToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_refreshTokenKey);
+    await _storage.delete(key: _refreshTokenKey);
   }
 
   static Future<void> clearTokens() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
-    await prefs.remove(_refreshTokenKey);
+    await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _refreshTokenKey);
   }
 
   // Callback dipanggil saat session expired (token tak bisa di-refresh)
@@ -136,7 +135,9 @@ class ApiClient {
             }
           }
         }
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.error('[ApiClient] Refresh token gagal: $e');
+      }
 
       _isRefreshing = false;
       await clearTokens();

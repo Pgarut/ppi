@@ -1,4 +1,4 @@
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -185,7 +185,7 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.teal.withOpacity(0.3),
+            color: Colors.teal.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -200,7 +200,7 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.school, color: Colors.white, size: 28),
@@ -213,7 +213,7 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
                     Text(
                       'WALI KELAS',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1.5,
@@ -233,7 +233,7 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
                       Text(
                         guru['nama'] ?? '',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.85),
+                          color: Colors.white.withValues(alpha: 0.85),
                           fontSize: 14,
                         ),
                       ),
@@ -243,7 +243,7 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
                       Text(
                         'Semester ${sem['nama'] ?? '-'}',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
+                          color: Colors.white.withValues(alpha: 0.6),
                           fontSize: 12,
                         ),
                       ),
@@ -274,18 +274,18 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color ?? Colors.white.withOpacity(0.85)),
+          Icon(icon, size: 16, color: color ?? Colors.white.withValues(alpha: 0.85)),
           const SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
-              color: color ?? Colors.white.withOpacity(0.85),
+              color: color ?? Colors.white.withValues(alpha: 0.85),
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -326,9 +326,9 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Column(
           children: [
@@ -346,7 +346,7 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
               label,
               style: TextStyle(
                 fontSize: 10,
-                color: color.withOpacity(0.8),
+                color: color.withValues(alpha: 0.8),
               ),
             ),
           ],
@@ -440,7 +440,7 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.15),
+                      color: statusColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -490,7 +490,7 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.12),
+                        color: statusColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
@@ -598,7 +598,7 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
 
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat(215.0, 330.0, marginAll: 15),
+        pageFormat: const PdfPageFormat(215.0, 330.0, marginAll: 15),
         margin: const pw.EdgeInsets.all(15),
         header: (context) => pw.Container(
           alignment: pw.Alignment.center,
@@ -626,7 +626,7 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
             style: const pw.TextStyle(fontSize: 11),
           ),
           pw.SizedBox(height: 12),
-          pw.Table.fromTextArray(
+          pw.TableHelper.fromTextArray(
             headerStyle: pw.TextStyle(
               fontSize: 8,
               fontWeight: pw.FontWeight.bold,

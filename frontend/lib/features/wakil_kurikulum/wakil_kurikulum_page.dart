@@ -20,9 +20,9 @@ class _WakilKurikulumPageState extends State<WakilKurikulumPage> {
   Widget build(BuildContext context) {
     return DashboardShell(
       title: 'WK',
+      showScanTab: true,
       dashboardBuilder: (context, onFeatureTap, onLogout) => DashboardPageWK(
         onFeatureTap: onFeatureTap,
-        onLogout: onLogout,
       ),
       features: {
         'absensi': (_) => const AbsensiPageWK(),

@@ -47,8 +47,10 @@ class _ProfilPageGuruState extends State<ProfilPageGuru> {
       ),
     );
     if (confirm != true) return;
+    if (!mounted) return;
     await context.read<AuthProvider>().logout();
-    if (context.mounted) Navigator.of(context).pushReplacementNamed('/login');
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed('/login');
   }
 
   @override
@@ -77,7 +79,7 @@ class _ProfilPageGuruState extends State<ProfilPageGuru> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2E7D32).withOpacity(0.1),
+                  color: const Color(0xFF2E7D32).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(roleDisplay, style: const TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.w500)),

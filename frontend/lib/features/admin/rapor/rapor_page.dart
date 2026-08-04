@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/admin_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/common_widgets.dart';
 
 class RaporPage extends StatefulWidget {
   const RaporPage({super.key});
@@ -41,10 +43,10 @@ class _RaporPageState extends State<RaporPage> with SingleTickerProviderStateMix
   Future<void> _cetak(int id) async {
     try {
       await AdminService.cetakRapor(id);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rapor dicetak dan diarsipkan'), backgroundColor: Colors.green));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rapor dicetak dan diarsipkan'), backgroundColor: AppTheme.primary));
       _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal cetak: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal cetak: $e'), backgroundColor: AppTheme.error));
     }
   }
 
@@ -86,29 +88,26 @@ class _RaporPageState extends State<RaporPage> with SingleTickerProviderStateMix
 
   Color _statusColor(String s) {
     switch (s) {
-      case 'divalidasi': return Colors.green;
-      case 'terkirim': return Colors.blue;
-      default: return Colors.orange;
+      case 'divalidasi': return AppTheme.primary;
+      case 'terkirim': return AppTheme.blue;
+      default: return AppTheme.orange;
     }
-  }
-
-  Widget _statusBadge(String status) {
-    final c = _statusColor(status);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: c.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
-      child: Text(status, style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
-    );
   }
 
   Widget _buildMonitoringTab() {
     return Column(children: [
-      _FormCard(title: 'Filter', icon: Icons.filter_list, children: [
-        Row(children: [
+      DataCard(
+        padding: const EdgeInsets.all(16),
+        header: const Row(children: [
+          Icon(Icons.filter_list, size: 20, color: AppTheme.primary),
+          SizedBox(width: 8),
+          Text('Filter', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        ]),
+        child: Row(children: [
           Expanded(child: DropdownButtonFormField<String>(
             value: _statusFilter.isEmpty ? null : _statusFilter,
             isDense: true,
-            decoration: _inpDeco('Status Kirim', Icons.send_outlined),
+            decoration: inputDecoration('Status Kirim', Icons.send_outlined),
             items: ['', 'draft', 'terkirim', 'divalidasi'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
                 child: Text(s.isEmpty ? 'Semua' : s, style: const TextStyle(fontSize: 13)))).toList(),
             onChanged: (v) { _statusFilter = v ?? ''; },
@@ -120,11 +119,11 @@ class _RaporPageState extends State<RaporPage> with SingleTickerProviderStateMix
             label: const Text('Cari'),
           ),
         ]),
-      ]),
+      ),
       Expanded(child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _data.isEmpty
-              ? Center(child: Text('Tidak ada data rapor.', style: TextStyle(color: Colors.grey[500])))
+              ? const EmptyState(icon: Icons.inbox_outlined, message: 'Tidak ada data rapor.')
               : ListView.builder(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), itemCount: _data.length + 1,
                   itemBuilder: (_, i) {
                     if (i == _data.length) return _buildPagination();
@@ -133,7 +132,7 @@ class _RaporPageState extends State<RaporPage> with SingleTickerProviderStateMix
                     return Card(
                       margin: const EdgeInsets.only(top: 10),
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
                       child: Padding(
                         padding: const EdgeInsets.all(14),
                         child: Row(children: [
@@ -144,20 +143,20 @@ class _RaporPageState extends State<RaporPage> with SingleTickerProviderStateMix
                             Text('${d['siswa_nama'] ?? '-'}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                             const SizedBox(height: 4),
                             Row(children: [
-                              Icon(Icons.book_outlined, size: 12, color: Colors.grey[500]),
+                              const Icon(Icons.book_outlined, size: 12, color: AppTheme.grey500),
                               const SizedBox(width: 4),
-                              Text('${d['mapel_nama'] ?? '-'}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                              Text('${d['mapel_nama'] ?? '-'}', style: const TextStyle(fontSize: 12, color: AppTheme.grey600)),
                               const SizedBox(width: 12),
-                              Icon(Icons.school_outlined, size: 12, color: Colors.grey[500]),
+                              const Icon(Icons.school_outlined, size: 12, color: AppTheme.grey500),
                               const SizedBox(width: 4),
-                              Text('${d['kelas_nama'] ?? '-'}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                              Text('${d['kelas_nama'] ?? '-'}', style: const TextStyle(fontSize: 12, color: AppTheme.grey600)),
                             ]),
                             const SizedBox(height: 2),
                             Text('${d['semester_nama'] ?? '-'} | Predikat: ${d['predikat'] ?? '-'}',
-                                style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                                style: const TextStyle(fontSize: 11, color: AppTheme.grey400)),
                           ])),
                           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                            _statusBadge(statusKirim),
+                            GradeStatus.fromString(statusKirim),
                             const SizedBox(height: 6),
                             SizedBox(
                               height: 32,
@@ -181,7 +180,7 @@ class _RaporPageState extends State<RaporPage> with SingleTickerProviderStateMix
     return _loading
         ? const Center(child: CircularProgressIndicator())
         : _data.isEmpty
-            ? Center(child: Text('Tidak ada data arsip.', style: TextStyle(color: Colors.grey[500])))
+            ? const EmptyState(icon: Icons.archive_outlined, message: 'Tidak ada data arsip.')
             : ListView.builder(padding: const EdgeInsets.all(16), itemCount: _data.length + 1,
                 itemBuilder: (_, i) {
                   if (i == _data.length) return _buildPagination();
@@ -189,21 +188,21 @@ class _RaporPageState extends State<RaporPage> with SingleTickerProviderStateMix
                   return Card(
                     margin: const EdgeInsets.only(top: 10),
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: Row(children: [
-                        CircleAvatar(radius: 22, backgroundColor: Colors.blueGrey.withValues(alpha: 0.12),
-                          child: Text((d['siswa_nama'] as String? ?? '?')[0], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.blueGrey))),
+                        CircleAvatar(radius: 22, backgroundColor: AppTheme.grey500.withValues(alpha: 0.12),
+                          child: Text((d['siswa_nama'] as String? ?? '?')[0], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.grey500))),
                         const SizedBox(width: 14),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(d['siswa_nama'] as String? ?? '-', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 4),
-                          Text('${d['semester_nama'] ?? '-'}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                          Text('${d['semester_nama'] ?? '-'}', style: const TextStyle(fontSize: 12, color: AppTheme.grey600)),
                         ])),
-                        Icon(Icons.check_circle_outline, size: 18, color: Colors.green[400]),
+                        const Icon(Icons.check_circle_outline, size: 18, color: AppTheme.primary),
                         const SizedBox(width: 4),
-                        Text('${d['dicetak_pada'] ?? '-'}', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                        Text('${d['dicetak_pada'] ?? '-'}', style: const TextStyle(fontSize: 11, color: AppTheme.grey500)),
                       ]),
                     ),
                   );
@@ -253,12 +252,18 @@ class _AnalisisTabState extends State<_AnalisisTab> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(children: [
-      _FormCard(title: 'Filter Analisis', icon: Icons.analytics_outlined, children: [
-        Row(children: [
+      DataCard(
+        padding: const EdgeInsets.all(16),
+        header: const Row(children: [
+          Icon(Icons.analytics_outlined, size: 20, color: AppTheme.primary),
+          SizedBox(width: 8),
+          Text('Filter Analisis', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        ]),
+        child: Row(children: [
           Expanded(child: DropdownButtonFormField<String>(
             value: _semesterId,
             isDense: true,
-            decoration: _inpDeco('Semester', Icons.calendar_month_outlined),
+            decoration: inputDecoration('Semester', Icons.calendar_month_outlined),
             items: _semesterList.map((s) => DropdownMenuItem(value: '${s['id']}', child: Text('${s['nama']}', style: const TextStyle(fontSize: 13)))).toList(),
             onChanged: (v) => setState(() => _semesterId = v),
           )),
@@ -266,7 +271,7 @@ class _AnalisisTabState extends State<_AnalisisTab> {
           Expanded(child: DropdownButtonFormField<String>(
             value: _kelasId,
             isDense: true,
-            decoration: _inpDeco('Kelas', Icons.school_outlined, optional: true),
+            decoration: inputDecoration('Kelas', Icons.school_outlined, optional: true),
             items: [const DropdownMenuItem<String>(value: null, child: Text('Semua Kelas', style: TextStyle(fontSize: 13))),
               ..._kelasList.map((k) => DropdownMenuItem(value: '${k['id']}', child: Text('${k['nama']}', style: const TextStyle(fontSize: 13))))],
             onChanged: (v) => setState(() => _kelasId = v),
@@ -278,7 +283,7 @@ class _AnalisisTabState extends State<_AnalisisTab> {
             label: const Text('Analisis'),
           ),
         ]),
-      ]),
+      ),
       const SizedBox(height: 16),
       if (_loading)
         const Center(child: CircularProgressIndicator())
@@ -289,9 +294,9 @@ class _AnalisisTabState extends State<_AnalisisTab> {
         const SizedBox(height: 16),
         _buildPerKelas(theme),
       ] else if (_semesterId != null)
-        Center(child: Text('Pilih semester dan klik Analisis.', style: TextStyle(color: Colors.grey[500])))
+        const EmptyState(icon: Icons.analytics_outlined, message: 'Pilih semester dan klik Analisis.')
       else
-        Center(child: Text('Pilih semester untuk memulai.', style: TextStyle(color: Colors.grey[500]))),
+        const EmptyState(icon: Icons.analytics_outlined, message: 'Pilih semester untuk memulai.'),
     ]));
   }
 
@@ -299,7 +304,7 @@ class _AnalisisTabState extends State<_AnalisisTab> {
     final o = _analisis!['overview'] as Map<String, dynamic>? ?? {};
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
       child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.summarize_outlined, size: 20, color: theme.colorScheme.primary),
@@ -308,12 +313,12 @@ class _AnalisisTabState extends State<_AnalisisTab> {
         ]),
         const SizedBox(height: 16),
         Wrap(spacing: 16, runSpacing: 16, children: [
-          _statChip(Icons.people_outline, 'Santri', '${o['total_siswa'] ?? 0}', Colors.blue),
-          _statChip(Icons.book_outlined, 'Mapel', '${o['total_mapel'] ?? 0}', Colors.teal),
-          _statChip(Icons.trending_up, 'Rata-rata', '${o['rata_rata'] ?? '-'}', Colors.green),
-          _statChip(Icons.arrow_upward, 'Tertinggi', '${o['nilai_tertinggi'] ?? '-'}', Colors.orange),
-          _statChip(Icons.arrow_downward, 'Terendah', '${o['nilai_terendah'] ?? '-'}', Colors.red),
-          _statChip(Icons.list, 'Total Entry', '${o['total_entries'] ?? 0}', Colors.grey),
+          _statChip(Icons.people_outline, 'Santri', '${o['total_siswa'] ?? 0}', AppTheme.blue),
+          _statChip(Icons.book_outlined, 'Mapel', '${o['total_mapel'] ?? 0}', AppTheme.teal),
+          _statChip(Icons.trending_up, 'Rata-rata', '${o['rata_rata'] ?? '-'}', AppTheme.primary),
+          _statChip(Icons.arrow_upward, 'Tertinggi', '${o['nilai_tertinggi'] ?? '-'}', AppTheme.orange),
+          _statChip(Icons.arrow_downward, 'Terendah', '${o['nilai_terendah'] ?? '-'}', AppTheme.error),
+          _statChip(Icons.list, 'Total Entry', '${o['total_entries'] ?? 0}', AppTheme.grey500),
         ]),
       ])),
     );
@@ -327,7 +332,7 @@ class _AnalisisTabState extends State<_AnalisisTab> {
         Icon(icon, size: 18, color: color),
         const SizedBox(width: 8),
         Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+          Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.grey600)),
           Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
         ]),
       ]),
@@ -339,7 +344,7 @@ class _AnalisisTabState extends State<_AnalisisTab> {
     if (list.isEmpty) return const SizedBox.shrink();
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
       child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.book_outlined, size: 20, color: theme.colorScheme.primary),
@@ -348,7 +353,7 @@ class _AnalisisTabState extends State<_AnalisisTab> {
         ]),
         const SizedBox(height: 12),
         SingleChildScrollView(scrollDirection: Axis.horizontal, child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
+          headingRowColor: WidgetStateProperty.all(AppTheme.grey50),
           columnSpacing: 24,
           columns: const [
             DataColumn(label: Text('Mapel', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
@@ -376,7 +381,7 @@ class _AnalisisTabState extends State<_AnalisisTab> {
     if (list.isEmpty) return const SizedBox.shrink();
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
       child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.school_outlined, size: 20, color: theme.colorScheme.primary),
@@ -385,7 +390,7 @@ class _AnalisisTabState extends State<_AnalisisTab> {
         ]),
         const SizedBox(height: 12),
         DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
+          headingRowColor: WidgetStateProperty.all(AppTheme.grey50),
           columnSpacing: 24,
           columns: const [
             DataColumn(label: Text('Kelas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
@@ -441,22 +446,12 @@ class _AuditTabState extends State<_AuditTab> {
     }
   }
 
-  Color _colorForAksi(String aksi) {
-    switch (aksi) {
-      case 'create': return Colors.green;
-      case 'update': return Colors.orange;
-      case 'delete': return Colors.red;
-      case 'cetak': return Colors.blue;
-      default: return Colors.grey;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return _loading
         ? const Center(child: CircularProgressIndicator())
         : _items.isEmpty
-            ? Center(child: Text('Belum ada aktivitas rapor.', style: TextStyle(color: Colors.grey[500])))
+            ? const EmptyState(icon: Icons.history, message: 'Belum ada aktivitas rapor.')
             : ListView.builder(padding: const EdgeInsets.all(16), itemCount: _items.length + 1,
                 itemBuilder: (_, i) {
                   if (i == _items.length) {
@@ -472,11 +467,11 @@ class _AuditTabState extends State<_AuditTab> {
                   }
                   final d = _items[i];
                   final aksi = d['aksi'] as String? ?? '';
-                  final c = _colorForAksi(aksi);
+                  final c = AuditAction.colorFor(aksi);
                   return Card(
                     margin: const EdgeInsets.only(top: 10),
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: Row(children: [
@@ -495,13 +490,13 @@ class _AuditTabState extends State<_AuditTab> {
                           ]),
                           const SizedBox(height: 4),
                           Row(children: [
-                            Icon(Icons.person_outline, size: 12, color: Colors.grey[500]),
+                            const Icon(Icons.person_outline, size: 12, color: AppTheme.grey500),
                             const SizedBox(width: 4),
-                            Text('${d['username'] ?? '-'}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                            Text('${d['username'] ?? '-'}', style: const TextStyle(fontSize: 11, color: AppTheme.grey600)),
                             const SizedBox(width: 16),
-                            Icon(Icons.access_time, size: 12, color: Colors.grey[500]),
+                            const Icon(Icons.access_time, size: 12, color: AppTheme.grey500),
                             const SizedBox(width: 4),
-                            Text('${d['created_at'] ?? '-'}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                            Text('${d['created_at'] ?? '-'}', style: const TextStyle(fontSize: 11, color: AppTheme.grey600)),
                           ]),
                         ])),
                       ]),
@@ -514,42 +509,6 @@ class _AuditTabState extends State<_AuditTab> {
 
 // ── Shared Helpers ──
 
-InputDecoration _inpDeco(String label, IconData icon, {bool optional = false}) {
-  return InputDecoration(
-    labelText: label,
-    hintText: optional ? 'Opsional' : null,
-    prefixIcon: Icon(icon),
-    border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-    filled: true,
-    fillColor: const Color(0xFFF8FAFC),
-    isDense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-  );
-}
-
-class _FormCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final List<Widget> children;
-  const _FormCard({required this.title, required this.icon, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 8),
-            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          ]),
-          const SizedBox(height: 16),
-          ...children,
-        ]),
-      ),
-    );
-  }
+InputDecoration inputDecoration(String label, IconData icon, {bool optional = false}) {
+  return AppInputDecoration.standard(label, icon, optional: optional);
 }

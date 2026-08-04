@@ -6,6 +6,7 @@ import 'absensi/absensi_page.dart';
 import 'nilai/nilai_page.dart';
 import 'rapor/rapor_page.dart';
 import 'pengaturan/pengaturan_page.dart';
+import 'qr_absensi/qr_absensi_page.dart';
 
 class AdminPage extends StatefulWidget {
   const AdminPage({super.key});
@@ -21,7 +22,6 @@ class _AdminPageState extends State<AdminPage> {
       title: 'Admin',
       dashboardBuilder: (context, onFeatureTap, onLogout) => DashboardPage(
         onFeatureTap: onFeatureTap,
-        onLogout: onLogout,
       ),
       features: {
         'master-data': (_) => const MasterDataPage(),
@@ -29,6 +29,7 @@ class _AdminPageState extends State<AdminPage> {
         'nilai': (_) => const NilaiPage(),
         'rapor': (_) => const RaporPage(),
         'pengaturan': (_) => const PengaturanPage(),
+        'qr-absensi': (_) => const QrAbsensiPage(),
       },
     );
   }

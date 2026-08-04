@@ -4,8 +4,7 @@ import '../services/kepala_sekolah_service.dart';
 
 class DashboardPageKS extends StatefulWidget {
   final void Function(String feature)? onFeatureTap;
-  final VoidCallback? onLogout;
-  const DashboardPageKS({super.key, this.onFeatureTap, this.onLogout});
+  const DashboardPageKS({super.key, this.onFeatureTap});
 
   @override
   State<DashboardPageKS> createState() => _DashboardPageKSState();
@@ -42,7 +41,6 @@ class _DashboardPageKSState extends State<DashboardPageKS> {
         FeatureItem('Monitoring', 'monitoring', Icons.trending_up_outlined, 'Pantau aktivitas sekolah'),
       ],
       onFeatureTap: widget.onFeatureTap,
-      onLogout: widget.onLogout,
     );
   }
 }

@@ -17,9 +17,9 @@ class _KepalaSekolahPageState extends State<KepalaSekolahPage> {
   Widget build(BuildContext context) {
     return DashboardShell(
       title: 'Kamad',
+      showScanTab: true,
       dashboardBuilder: (context, onFeatureTap, onLogout) => DashboardPageKS(
         onFeatureTap: onFeatureTap,
-        onLogout: onLogout,
       ),
       features: {
         'laporan': (_) => const LaporanPageKS(),

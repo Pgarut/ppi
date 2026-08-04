@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/dashboard_template.dart';
 import '../services/wakil_kurikulum_service.dart';
 
 class DashboardPageWK extends StatefulWidget {
   final void Function(String feature) onFeatureTap;
-  final VoidCallback onLogout;
-  const DashboardPageWK({super.key, required this.onFeatureTap, required this.onLogout});
+  const DashboardPageWK({super.key, required this.onFeatureTap});
 
   @override
   State<DashboardPageWK> createState() => _DashboardPageWKState();
@@ -30,9 +30,9 @@ class _DashboardPageWKState extends State<DashboardPageWK> {
     return DashboardTemplate(
       loading: _loading,
       stats: [
-        StatItem(Icons.calendar_month_outlined, 'Jadwal', '${_data?['jadwal'] ?? 0}', Colors.blue),
-        StatItem(Icons.grading_outlined, 'Total Nilai', '${_data?['total_nilai'] ?? 0}', Colors.green),
-        StatItem(Icons.pending_outlined, 'Nilai Draft', '${_data?['nilai_belum_divalidasi'] ?? 0}', Colors.orange),
+        StatItem(Icons.calendar_month_outlined, 'Jadwal', '${_data?['jadwal'] ?? 0}', AppTheme.blue),
+        StatItem(Icons.grading_outlined, 'Total Nilai', '${_data?['total_nilai'] ?? 0}', AppTheme.primary),
+        StatItem(Icons.pending_outlined, 'Nilai Draft', '${_data?['nilai_belum_divalidasi'] ?? 0}', AppTheme.orange),
       ],
       features: const [
         FeatureItem('Absensi', 'absensi', Icons.checklist_outlined, 'Rekap kehadiran siswa & guru'),
@@ -42,7 +42,6 @@ class _DashboardPageWKState extends State<DashboardPageWK> {
         FeatureItem('Laporan', 'laporan', Icons.description_outlined, 'Generate laporan akademik', isSecondary: true),
       ],
       onFeatureTap: widget.onFeatureTap,
-      onLogout: widget.onLogout,
     );
   }
 }

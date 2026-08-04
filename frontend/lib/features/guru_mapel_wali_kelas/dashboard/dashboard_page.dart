@@ -5,8 +5,7 @@ import '../services/guru_service.dart';
 
 class DashboardPageGuru extends StatefulWidget {
   final void Function(String feature) onFeatureTap;
-  final VoidCallback onLogout;
-  const DashboardPageGuru({super.key, required this.onFeatureTap, required this.onLogout});
+  const DashboardPageGuru({super.key, required this.onFeatureTap});
 
   @override
   State<DashboardPageGuru> createState() => _DashboardPageGuruState();
@@ -37,6 +36,7 @@ class _DashboardPageGuruState extends State<DashboardPageGuru> {
       const FeatureItem('Absensi', 'absensi', Icons.checklist_outlined, 'Input & rekap kehadiran'),
       const FeatureItem('Jadwal', 'jadwal', Icons.calendar_month_outlined, 'Lihat jadwal mengajar'),
       const FeatureItem('Nilai', 'nilai', Icons.grading_outlined, 'Input & kelola nilai siswa'),
+      const FeatureItem('Materi', 'materi', Icons.menu_book_outlined, 'Upload & kelola materi'),
       if (_isWaliKelas) ...[
         const FeatureItem('Rapor', 'rapor', Icons.assignment_outlined, 'Cetak rapor siswa'),
         const FeatureItem('Wali Kelas', 'wali-kelas', Icons.people_outlined, 'Kelola data wali kelas'),
@@ -54,7 +54,6 @@ class _DashboardPageGuruState extends State<DashboardPageGuru> {
       ],
       features: features,
       onFeatureTap: widget.onFeatureTap,
-      onLogout: widget.onLogout,
     );
   }
 }

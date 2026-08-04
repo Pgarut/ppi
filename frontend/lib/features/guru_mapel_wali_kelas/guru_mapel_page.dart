@@ -9,6 +9,7 @@ import 'rapor/rapor_page.dart';
 import 'pengaduan/pengaduan_page.dart';
 import 'profil/profil_page.dart';
 import 'wali_kelas/wali_kelas_page.dart';
+import 'materi/materi_page.dart';
 import 'services/guru_service.dart';
 
 class GuruMapelPage extends StatefulWidget {
@@ -20,7 +21,6 @@ class GuruMapelPage extends StatefulWidget {
 
 class _GuruMapelPageState extends State<GuruMapelPage> {
   bool _isWaliKelas = false;
-  bool _loading = true;
 
   @override
   void initState() {
@@ -35,21 +35,22 @@ class _GuruMapelPageState extends State<GuruMapelPage> {
     } catch (e) {
       if (mounted) AppUtils.handleError(context, e, message: 'Gagal memuat status wali kelas');
     }
-    if (mounted) setState(() => _loading = false);
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return DashboardShell(
       title: 'Asatidz',
+      showScanTab: true,
       dashboardBuilder: (context, onFeatureTap, onLogout) => DashboardPageGuru(
         onFeatureTap: onFeatureTap,
-        onLogout: onLogout,
       ),
       features: {
         'absensi': (_) => const AbsensiPageGuru(),
         'jadwal': (_) => const JadwalPageGuru(),
         'nilai': (_) => const NilaiPageGuru(),
+        'materi': (_) => const MateriPageGuru(),
         if (_isWaliKelas) 'rapor': (_) => const RaporPageGuru(),
         'pengaduan': (_) => const PengaduanPageGuru(),
         if (_isWaliKelas) 'wali-kelas': (_) => const WaliKelasPageGuru(),

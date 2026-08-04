@@ -4,8 +4,7 @@ import '../services/guru_bk_service.dart';
 
 class DashboardPageBK extends StatefulWidget {
   final void Function(String feature) onFeatureTap;
-  final VoidCallback onLogout;
-  const DashboardPageBK({super.key, required this.onFeatureTap, required this.onLogout});
+  const DashboardPageBK({super.key, required this.onFeatureTap});
 
   @override
   State<DashboardPageBK> createState() => _DashboardPageBKState();
@@ -43,7 +42,6 @@ class _DashboardPageBKState extends State<DashboardPageBK> {
         FeatureItem('Laporan', 'laporan', Icons.description_outlined, 'Generate laporan BK', isSecondary: true),
       ],
       onFeatureTap: widget.onFeatureTap,
-      onLogout: widget.onLogout,
     );
   }
 }

@@ -1,5 +1,11 @@
 import '../../../core/network/api_client.dart';
 
+/// Service untuk endpoint Kepala Sekolah.
+///
+/// Konvensi response:
+/// - Endpoint list (jadwal, absensi, nilai, rapor) return full response `{data: {data: [...], meta: {...}}}`.
+///   Caller harus extract `['data']` untuk mendapatkan list.
+/// - Endpoint detail (dashboard, bk) return `res['data']` langsung.
 class KepalaSekolahService {
   static Future<Map<String, dynamic>> getDashboard() async {
     final res = await ApiClient.get('/kepala-sekolah/dashboard');

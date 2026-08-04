@@ -98,14 +98,14 @@ class _KonselingPageState extends State<KonselingPage>
         return StatefulBuilder(
           builder: (ctx, setDialogState) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(
+            title: const Row(
               children: [
-                const Icon(Icons.calendar_today, color: Color(0xFF00897B), size: 22),
-                const SizedBox(width: 8),
+                Icon(Icons.calendar_today, color: Color(0xFF00897B), size: 22),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Jadwal Konseling',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -156,7 +156,7 @@ class _KonselingPageState extends State<KonselingPage>
                     children: hariList.map((h) => ChoiceChip(
                       label: Text(h, style: const TextStyle(fontSize: 12)),
                       selected: hari == h,
-                      selectedColor: const Color(0xFF00897B).withOpacity(0.15),
+                      selectedColor: const Color(0xFF00897B).withValues(alpha: 0.15),
                       onSelected: (v) => setDialogState(() => hari = h),
                       visualDensity: VisualDensity.compact,
                     )).toList(),
@@ -322,7 +322,7 @@ class _KonselingPageState extends State<KonselingPage>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(Icons.support_agent_outlined, color: Colors.white, size: 24),
@@ -473,7 +473,7 @@ class _KonselingPageState extends State<KonselingPage>
                     ? Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
+                          color: Colors.green.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -659,7 +659,7 @@ class _KonselingPageState extends State<KonselingPage>
             DataCell(Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.12),
+                color: statusColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -714,7 +714,7 @@ class _KonselingPageState extends State<KonselingPage>
                   children: [
                     CircleAvatar(
                       radius: 16,
-                      backgroundColor: statusColor.withOpacity(0.15),
+                      backgroundColor: statusColor.withValues(alpha: 0.15),
                       child: Icon(
                         status == 'selesai' ? Icons.check_circle : Icons.schedule,
                         size: 18,
@@ -737,7 +737,7 @@ class _KonselingPageState extends State<KonselingPage>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.12),
+                        color: statusColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(

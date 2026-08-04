@@ -1,10 +1,12 @@
 import 'dart:convert';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
 import '../services/admin_service.dart';
-import '../../../shared/widgets/confirm_dialog.dart';
+import '../../../shared/widgets/common_widgets.dart';
+import '../../../shared/widgets/app_utils.dart';
 import '../../../shared/models/user_model.dart';
 
 class PengaturanPage extends StatefulWidget {
@@ -65,7 +67,7 @@ class _HakAksesTab extends StatefulWidget {
   State<_HakAksesTab> createState() => _HakAksesTabState();
 }
 
-const _roleIcons = {
+const roleIcons = {
   'admin': Icons.shield_outlined,
   'kepala_sekolah': Icons.school_outlined,
   'wakil_kurikulum': Icons.auto_stories_outlined,
@@ -89,7 +91,7 @@ class _HakAksesTabState extends State<_HakAksesTab> {
   }
 
   Future<void> _add() {
-    String? _role, _modul, _aksi = 'view';
+    String? role, modul, aksi = 'view';
     return showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -97,32 +99,32 @@ class _HakAksesTabState extends State<_HakAksesTab> {
           title: const Text('Tambah Hak Akses'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             DropdownButtonFormField<String>(
-              decoration: _inpDeco('Role', Icons.badge_outlined),
-              items: _roleIcons.entries.map((e) => DropdownMenuItem(value: e.key,
+              decoration: inputDecoration('Role', Icons.badge_outlined),
+              items: roleIcons.entries.map((e) => DropdownMenuItem(value: e.key,
                 child: Row(children: [Icon(e.value, size: 18), const SizedBox(width: 8), Text(UserModel.roleDisplayName(e.key))]),
               )).toList(),
-              onChanged: (v) { _role = v; setD(() {}); },
+              onChanged: (v) { role = v; setD(() {}); },
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              decoration: _inpDeco('Modul', Icons.widgets_outlined),
+              decoration: inputDecoration('Modul', Icons.widgets_outlined),
               items: ['dashboard', 'master_data', 'penjadwalan', 'absensi', 'nilai', 'rapor', 'pengaduan', 'konseling', 'bakat_minat', 'kenaikan_kelas', 'alumni', 'users', 'pengaturan', 'laporan']
                   .map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
-              onChanged: (v) { _modul = v; setD(() {}); },
+              onChanged: (v) { modul = v; setD(() {}); },
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              decoration: _inpDeco('Aksi', Icons.flash_on_outlined),
+              decoration: inputDecoration('Aksi', Icons.flash_on_outlined),
               items: const ['view', 'create', 'edit', 'delete', 'validate']
                   .map((a) => DropdownMenuItem(value: a, child: Text(a))).toList(),
-              onChanged: (v) { _aksi = v; setD(() {}); },
+              onChanged: (v) { aksi = v; setD(() {}); },
             ),
           ]),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
             FilledButton(onPressed: () async {
               try {
-                await AdminService.addHakAkses({'role': _role, 'modul': _modul, 'aksi': _aksi});
+                await AdminService.addHakAkses({'role': role, 'modul': modul, 'aksi': aksi});
                 if (ctx.mounted) Navigator.pop(ctx);
                 _load();
               } catch (e) { if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('$e'))); }
@@ -134,7 +136,7 @@ class _HakAksesTabState extends State<_HakAksesTab> {
   }
 
   Future<void> _delete(int id) async {
-    final ok = await showConfirmDialog(context, title: 'Hapus', message: 'Yakin hapus hak akses ini?');
+    final ok = await AppUtils.confirm(context, title: 'Hapus', message: 'Yakin hapus hak akses ini?');
     if (!ok) return;
     try { await AdminService.deleteHakAkses(id); _load(); }
     catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'))); }
@@ -151,7 +153,7 @@ class _HakAksesTabState extends State<_HakAksesTab> {
         ]),
         const SizedBox(height: 16),
         Expanded(child: _items.isEmpty
-            ? Center(child: Text('Belum ada hak akses.', style: TextStyle(color: Colors.grey[500])))
+            ? const EmptyState(icon: Icons.security_outlined, message: 'Belum ada hak akses.')
             : ListView.builder(
                 itemCount: _items.length,
                 itemBuilder: (_, i) {
@@ -159,18 +161,18 @@ class _HakAksesTabState extends State<_HakAksesTab> {
                   final role = item['role']?.toString() ?? '';
                   return Card(
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       leading: Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                        child: Icon(_roleIcons[role] ?? Icons.person_outline, size: 20, color: Colors.blue[700]),
+                        decoration: BoxDecoration(color: AppTheme.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                        child: Icon(roleIcons[role] ?? Icons.person_outline, size: 20, color: AppTheme.blue),
                       ),
                       title: Text(UserModel.roleDisplayName(role), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      subtitle: Text('Modul: ${item['modul']}  ·  Aksi: ${item['aksi']}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                      trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                      subtitle: Text('Modul: ${item['modul']}  ·  Aksi: ${item['aksi']}', style: const TextStyle(fontSize: 12, color: AppTheme.grey600)),
+                      trailing: IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 20),
                           onPressed: () => _delete(item['id'] as int)),
                     ),
                   );
@@ -199,15 +201,15 @@ class _LogTabState extends State<_LogTab> {
     setState(() => _loading = true);
     try {
       final res = await AdminService.getLogAktivitas(page: _page);
-      if (mounted) setState(() {
+      if (mounted) { setState(() {
         _logs = (res['items'] as List).cast<Map<String, dynamic>>();
         _totalPages = res['pagination']?['total_pages'] ?? 1;
         _loading = false;
-      });
+      }); }
     } catch (e) { if (mounted) setState(() => _loading = false); }
   }
 
-  IconData _aksiIcon(String? aksi) {
+  IconData aksiIcon(String? aksi) {
     switch (aksi) {
       case 'create': return Icons.add_circle_outline;
       case 'update': return Icons.edit_outlined;
@@ -219,18 +221,6 @@ class _LogTabState extends State<_LogTab> {
     }
   }
 
-  Color _aksiColor(String? aksi) {
-    switch (aksi) {
-      case 'create': return Colors.green;
-      case 'update': return Colors.orange;
-      case 'delete': return Colors.red;
-      case 'login': return Colors.blue;
-      case 'backup': return Colors.purple;
-      case 'restore': return Colors.teal;
-      default: return Colors.grey;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
@@ -238,51 +228,45 @@ class _LogTabState extends State<_LogTab> {
       padding: const EdgeInsets.all(16),
       child: Column(children: [
         Expanded(child: _logs.isEmpty
-            ? Center(child: Text('Belum ada log.', style: TextStyle(color: Colors.grey[500])))
+            ? const EmptyState(icon: Icons.history, message: 'Belum ada log.')
             : ListView.builder(
                 itemCount: _logs.length,
                 itemBuilder: (_, i) {
                   final log = _logs[i];
                   final aksi = log['aksi']?.toString();
+                  final color = AuditAction.colorFor(aksi ?? '');
                   return Card(
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       leading: Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: _aksiColor(aksi).withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                        child: Icon(_aksiIcon(aksi), size: 20, color: _aksiColor(aksi)),
+                        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                        child: Icon(aksiIcon(aksi), size: 20, color: color),
                       ),
                       title: Row(children: [
                         Text(log['username']?.toString() ?? '-', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                         const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(color: _aksiColor(aksi).withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                          child: Text(aksi ?? '-', style: TextStyle(fontSize: 11, color: _aksiColor(aksi), fontWeight: FontWeight.w500)),
-                        ),
+                        StatusBadge(label: aksi ?? '-', color: color),
                       ]),
                       subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         const SizedBox(height: 2),
-                        Text('${log['modul'] ?? '-'} — ${log['detail'] ?? '-'}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                        Text(log['created_at']?.toString() ?? '', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                        Text('${log['modul'] ?? '-'} — ${log['detail'] ?? '-'}', style: const TextStyle(fontSize: 12, color: AppTheme.grey600)),
+                        Text(log['created_at']?.toString() ?? '', style: const TextStyle(fontSize: 11, color: AppTheme.grey400)),
                       ]),
                     ),
                   );
                 },
               )),
         const SizedBox(height: 8),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          IconButton(icon: const Icon(Icons.chevron_left), onPressed: _page > 1 ? () { _page--; _load(); } : null),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
-            child: Text('$_page / $_totalPages', style: const TextStyle(fontSize: 13)),
-          ),
-          IconButton(icon: const Icon(Icons.chevron_right), onPressed: _page < _totalPages ? () { _page++; _load(); } : null),
-        ]),
+        PaginationRow(
+          currentPage: _page,
+          totalPages: _totalPages,
+          onPrevious: _page > 1 ? () { _page--; _load(); } : null,
+          onNext: _page < _totalPages ? () { _page++; _load(); } : null,
+        ),
       ]),
     );
   }
@@ -345,46 +329,41 @@ class _BackupTabState extends State<_BackupTab> {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)),
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
-                child: const Icon(Icons.backup, size: 48, color: Colors.blue),
+        child: DataCard(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(color: AppTheme.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
+              child: const Icon(Icons.backup, size: 48, color: AppTheme.blue),
+            ),
+            const SizedBox(height: 20),
+            Text('Backup Database', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            const Text('Download seluruh data ke file JSON.', style: TextStyle(color: AppTheme.grey600)),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: AppTheme.grey50, borderRadius: BorderRadius.circular(10)),
+              child: Row(children: [
+                const Icon(Icons.calendar_today, size: 16, color: AppTheme.grey500),
+                const SizedBox(width: 8),
+                Text(_lastBackup != null ? 'Backup terakhir: $_lastBackup' : 'Belum pernah backup',
+                    style: TextStyle(fontSize: 13, color: _lastBackup != null ? AppTheme.grey700 : AppTheme.grey500)),
+              ]),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _loading ? null : _doBackup,
+                icon: _loading
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.download),
+                label: Text(_loading ? 'Memproses...' : 'Download Backup'),
               ),
-              const SizedBox(height: 20),
-              Text('Backup Database', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              Text('Download seluruh data ke file JSON.', style: TextStyle(color: Colors.grey[600])),
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(10)),
-                child: Row(children: [
-                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[500]),
-                  const SizedBox(width: 8),
-                  Text(_lastBackup != null ? 'Backup terakhir: $_lastBackup' : 'Belum pernah backup',
-                      style: TextStyle(fontSize: 13, color: _lastBackup != null ? Colors.grey[700] : Colors.grey[500])),
-                ]),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _loading ? null : _doBackup,
-                  icon: _loading
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.download),
-                  label: Text(_loading ? 'Memproses...' : 'Download Backup'),
-                ),
-              ),
-            ]),
-          ),
+            ),
+          ]),
         ),
       ),
     );
@@ -447,63 +426,58 @@ class _RestoreTabState extends State<_RestoreTab> {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)),
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
-                child: const Icon(Icons.restore, size: 48, color: Colors.orange),
+        child: DataCard(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(color: AppTheme.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
+              child: const Icon(Icons.restore, size: 48, color: AppTheme.orange),
+            ),
+            const SizedBox(height: 20),
+            Text('Restore Database', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            const Text('Pilih file backup JSON untuk mengembalikan data.', style: TextStyle(color: AppTheme.grey600)),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _fileName != null ? AppTheme.orange.withValues(alpha: 0.05) : AppTheme.grey50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _fileName != null ? AppTheme.orange.withValues(alpha: 0.3) : AppTheme.grey200),
               ),
-              const SizedBox(height: 20),
-              Text('Restore Database', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              Text('Pilih file backup JSON untuk mengembalikan data.', style: TextStyle(color: Colors.grey[600])),
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _fileName != null ? Colors.orange.withOpacity(0.05) : Colors.grey[50],
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _fileName != null ? Colors.orange.shade200 : Colors.grey.shade200),
-                ),
-                child: _fileName != null
-                    ? Row(children: [
-                        Icon(Icons.insert_drive_file, size: 20, color: Colors.orange[700]),
-                        const SizedBox(width: 8),
-                        Expanded(child: Text(_fileName!, style: TextStyle(fontSize: 13, color: Colors.orange[900])),
-                        ),
-                        Text(_fmtSize(_fileSize!), style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                      ])
-                    : Row(children: [
-                        Icon(Icons.folder_open, size: 20, color: Colors.grey[400]),
-                        const SizedBox(width: 8),
-                        Text('Belum ada file dipilih', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
-                      ]),
+              child: _fileName != null
+                  ? Row(children: [
+                      const Icon(Icons.insert_drive_file, size: 20, color: AppTheme.orange),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_fileName!, style: const TextStyle(fontSize: 13, color: AppTheme.grey700)),
+                      ),
+                      Text(_fmtSize(_fileSize!), style: const TextStyle(fontSize: 11, color: AppTheme.grey500)),
+                    ])
+                  : const Row(children: [
+                      Icon(Icons.folder_open, size: 20, color: AppTheme.grey400),
+                      SizedBox(width: 8),
+                      Text('Belum ada file dipilih', style: TextStyle(fontSize: 13, color: AppTheme.grey500)),
+                    ]),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _loading ? null : _pickAndRestore,
+                icon: _loading
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.upload_file),
+                label: Text(_loading ? 'Merestore...' : 'Pilih & Restore File'),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _loading ? null : _pickAndRestore,
-                  icon: _loading
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.upload_file),
-                  label: Text(_loading ? 'Merestore...' : 'Pilih & Restore File'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.warning_amber_outlined, size: 14, color: Colors.grey[400]),
-                const SizedBox(width: 6),
-                Text('Akan menimpa data yang sudah ada', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-              ]),
+            ),
+            const SizedBox(height: 12),
+            const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(Icons.warning_amber_outlined, size: 14, color: AppTheme.grey400),
+              SizedBox(width: 6),
+              Text('Akan menimpa data yang sudah ada', style: TextStyle(fontSize: 11, color: AppTheme.grey500)),
             ]),
-          ),
+          ]),
         ),
       ),
     );
@@ -566,22 +540,28 @@ class _ProfilTabState extends State<_ProfilTab> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 500),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _FormCard(title: 'Profil Sekolah', icon: Icons.school_outlined, children: [
-            _ModernField(controller: _namaCtrl, label: 'Nama Sekolah', icon: Icons.badge_outlined),
-            const SizedBox(height: 16),
-            TextField(controller: _alamatCtrl, maxLines: 3,
-              decoration: _inpDeco('Alamat', Icons.location_on_outlined)),
-            const SizedBox(height: 16),
-            _ModernField(controller: _telpCtrl, label: 'Telepon', icon: Icons.phone_outlined),
-            const SizedBox(height: 16),
-            _ModernField(controller: _emailCtrl, label: 'Email', icon: Icons.email_outlined),
-            const SizedBox(height: 20),
-            Row(children: [
-              FilledButton.icon(onPressed: _save, icon: const Icon(Icons.save, size: 18), label: const Text('Simpan Profil')),
-              const SizedBox(width: 16),
-              OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh, size: 18), label: const Text('Reset')),
+          DataCard(
+            header: const Row(children: [
+              Icon(Icons.school_outlined, size: 20, color: AppTheme.primary),
+              SizedBox(width: 8),
+              Text('Profil Sekolah', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             ]),
-          ]),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              TextField(controller: _namaCtrl, decoration: inputDecoration('Nama Sekolah', Icons.badge_outlined)),
+              const SizedBox(height: 16),
+              TextField(controller: _alamatCtrl, maxLines: 3, decoration: inputDecoration('Alamat', Icons.location_on_outlined)),
+              const SizedBox(height: 16),
+              TextField(controller: _telpCtrl, decoration: inputDecoration('Telepon', Icons.phone_outlined)),
+              const SizedBox(height: 16),
+              TextField(controller: _emailCtrl, decoration: inputDecoration('Email', Icons.email_outlined)),
+              const SizedBox(height: 20),
+              Row(children: [
+                FilledButton.icon(onPressed: _save, icon: const Icon(Icons.save, size: 18), label: const Text('Simpan Profil')),
+                const SizedBox(width: 16),
+                OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh, size: 18), label: const Text('Reset')),
+              ]),
+            ]),
+          ),
         ]),
       ),
     );
@@ -648,29 +628,35 @@ class _TampilanLoginTabState extends State<_TampilanLoginTab> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 500),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _FormCard(title: 'Tampilan Halaman Login', icon: Icons.login_outlined, children: [
-            _ModernField(controller: _heroTitleCtrl, label: 'Judul Hero', icon: Icons.title),
-            const SizedBox(height: 16),
-            TextField(controller: _heroSubtitleCtrl, maxLines: 3,
-              decoration: _inpDeco('Subtitle Hero', Icons.description_outlined)),
-            const SizedBox(height: 16),
-            _ModernField(controller: _logoUrlCtrl, label: 'URL Logo', icon: Icons.image_outlined, hint: 'https://...'),
-            const SizedBox(height: 16),
-            _ModernField(controller: _bgUrlCtrl, label: 'URL Background', icon: Icons.wallpaper_outlined, hint: 'https://...'),
-            const SizedBox(height: 20),
-            Row(children: [
-              FilledButton.icon(onPressed: _save, icon: const Icon(Icons.save, size: 18), label: const Text('Simpan')),
-              const SizedBox(width: 16),
-              OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh, size: 18), label: const Text('Reset')),
+          DataCard(
+            header: const Row(children: [
+              Icon(Icons.login_outlined, size: 20, color: AppTheme.primary),
+              SizedBox(width: 8),
+              Text('Tampilan Halaman Login', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             ]),
-          ]),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              TextField(controller: _heroTitleCtrl, decoration: inputDecoration('Judul Hero', Icons.title)),
+              const SizedBox(height: 16),
+              TextField(controller: _heroSubtitleCtrl, maxLines: 3, decoration: inputDecoration('Subtitle Hero', Icons.description_outlined)),
+              const SizedBox(height: 16),
+              TextField(controller: _logoUrlCtrl, decoration: inputDecoration('URL Logo', Icons.image_outlined).copyWith(hintText: 'https://...')),
+              const SizedBox(height: 16),
+              TextField(controller: _bgUrlCtrl, decoration: inputDecoration('URL Background', Icons.wallpaper_outlined).copyWith(hintText: 'https://...')),
+              const SizedBox(height: 20),
+              Row(children: [
+                FilledButton.icon(onPressed: _save, icon: const Icon(Icons.save, size: 18), label: const Text('Simpan')),
+                const SizedBox(width: 16),
+                OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh, size: 18), label: const Text('Reset')),
+              ]),
+            ]),
+          ),
           const SizedBox(height: 16),
           Text('Pratinjau', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           Container(
             height: 200,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF2E7D32), Color(0xFFFDD835)]),
+              gradient: const LinearGradient(colors: [AppTheme.primaryDark, AppTheme.secondary]),
               borderRadius: BorderRadius.circular(12),
               image: _bgUrlCtrl.text.isNotEmpty
                   ? DecorationImage(image: NetworkImage(_bgUrlCtrl.text), fit: BoxFit.cover, opacity: 0.3)
@@ -686,7 +672,7 @@ class _TampilanLoginTabState extends State<_TampilanLoginTab> {
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 4),
                 Text(_heroSubtitleCtrl.text.isNotEmpty ? _heroSubtitleCtrl.text : 'Subtitle',
-                    style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12)),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12)),
               ]),
             ),
           ),
@@ -696,65 +682,6 @@ class _TampilanLoginTabState extends State<_TampilanLoginTab> {
   }
 }
 
-InputDecoration _inpDeco(String label, IconData icon) {
-  return InputDecoration(
-    labelText: label,
-    prefixIcon: Icon(icon),
-    border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-    filled: true,
-    fillColor: const Color(0xFFF8FAFC),
-  );
-}
-
-class _FormCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final List<Widget> children;
-  const _FormCard({required this.title, required this.icon, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Row(children: [
-            Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 8),
-            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          ]),
-          const SizedBox(height: 16),
-          ...children,
-        ]),
-      ),
-    );
-  }
-}
-
-class _ModernField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final String? hint;
-  const _ModernField({required this.controller, required this.label, required this.icon, this.hint});
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon),
-        border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-        filled: true,
-        fillColor: const Color(0xFFF8FAFC),
-      ),
-    );
-  }
+InputDecoration inputDecoration(String label, IconData icon) {
+  return AppInputDecoration.standard(label, icon, style: InputDecorationStyle.filled, fillColor: AppTheme.grey50);
 }

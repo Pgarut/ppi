@@ -280,7 +280,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.report_outlined, color: Colors.white, size: 26),
@@ -293,16 +293,16 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
                     Text(
                       'PENGADUAN SANTRI',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1.5,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
+                    const Text(
                       'Daftar Pengaduan',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -314,7 +314,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child:                    Text(
@@ -344,7 +344,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.12),
+          color: Colors.white.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
@@ -361,7 +361,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
               label,
               style: TextStyle(
                 fontSize: 10,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
               ),
             ),
           ],
@@ -413,7 +413,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
       child: FilterChip(
         label: Text(label, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
         selected: selected,
-        selectedColor: const Color(0xFF00897B).withOpacity(0.15),
+        selectedColor: const Color(0xFF00897B).withValues(alpha: 0.15),
         checkmarkColor: const Color(0xFF00897B),
         onSelected: (_) => _onFilterChanged(
           status: value,
@@ -431,7 +431,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
       child: FilterChip(
         label: Text(label, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
         selected: selected,
-        selectedColor: Colors.deepPurple.withOpacity(0.15),
+        selectedColor: Colors.deepPurple.withValues(alpha: 0.15),
         checkmarkColor: Colors.deepPurple,
         onSelected: (_) => _onFilterChanged(
           status: _filterStatus,
@@ -504,8 +504,8 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: kategori == 'kasus'
-                          ? Colors.deepPurple.withOpacity(0.1)
-                          : Colors.orange.withOpacity(0.1),
+                          ? Colors.deepPurple.withValues(alpha: 0.1)
+                          : Colors.orange.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(kategoriIcon, size: 18,
@@ -532,7 +532,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.12),
+                      color: statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -585,7 +585,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFF00897B).withOpacity(0.1),
+          color: const Color(0xFF00897B).withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -625,8 +625,8 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: kategori == 'kasus'
-                            ? Colors.deepPurple.withOpacity(0.1)
-                            : Colors.orange.withOpacity(0.1),
+                            ? Colors.deepPurple.withValues(alpha: 0.1)
+                            : Colors.orange.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
@@ -654,7 +654,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.12),
+                        color: statusColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -727,10 +727,10 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Tutup'),
                         style: OutlinedButton.styleFrom(
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
+                        child: const Text('Tutup'),
                       ),
                     ),
                   ],

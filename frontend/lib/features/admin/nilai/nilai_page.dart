@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/common_widgets.dart';
 import '../services/admin_service.dart';
 
 class NilaiPage extends StatefulWidget {
@@ -44,7 +46,7 @@ class _NilaiPageState extends State<NilaiPage> with SingleTickerProviderStateMix
       await AdminService.validasiNilai(id);
       _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal validasi: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal validasi: $e'), backgroundColor: AppTheme.error));
     }
   }
 
@@ -80,50 +82,49 @@ class _NilaiPageState extends State<NilaiPage> with SingleTickerProviderStateMix
     );
   }
 
-  Color _statusColor(String s) => s == 'tervalidasi' ? Colors.green : Colors.orange;
-
-  Widget _statusBadge(String status) {
-    final c = _statusColor(status);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: c.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
-      child: Text(status, style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
-    );
-  }
+  Color _statusColor(String s) => s == 'tervalidasi' ? AppTheme.primary : AppTheme.orange;
 
   Widget _buildMonitoringTab() {
     return Column(children: [
-      _FormCard(title: 'Filter', icon: Icons.filter_list, children: [
-        Row(children: [
-          Expanded(child: DropdownButtonFormField<String>(
-            value: _statusFilter.isEmpty ? null : _statusFilter,
-            isDense: true,
-            decoration: _inpDeco('Status', Icons.verified_outlined),
-            items: ['', 'draft', 'tervalidasi'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
-                child: Text(s.isEmpty ? 'Semua' : s, style: const TextStyle(fontSize: 13)))).toList(),
-            onChanged: (v) { _statusFilter = v ?? ''; },
-          )),
-          const SizedBox(width: 12),
-          Expanded(child: DropdownButtonFormField<String>(
-            value: _jenisFilter.isEmpty ? null : _jenisFilter,
-            isDense: true,
-            decoration: _inpDeco('Jenis', Icons.category_outlined),
-            items: ['', 'harian', 'tugas', 'uts', 'uas', 'akhir'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
-                child: Text(s.isEmpty ? 'Semua' : s, style: const TextStyle(fontSize: 13)))).toList(),
-            onChanged: (v) { _jenisFilter = v ?? ''; },
-          )),
-          const SizedBox(width: 12),
-          FilledButton.icon(
-            onPressed: () { _page = 1; _load(); },
-            icon: const Icon(Icons.search, size: 18),
-            label: const Text('Cari'),
-          ),
+      DataCard(
+        padding: const EdgeInsets.all(16),
+        header: const Row(children: [
+          Icon(Icons.filter_list, size: 20, color: AppTheme.primary),
+          SizedBox(width: 8),
+          Text('Filter', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
         ]),
-      ]),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: DropdownButtonFormField<String>(
+              value: _statusFilter.isEmpty ? null : _statusFilter,
+              isDense: true,
+              decoration: inputDecoration('Status', Icons.verified_outlined),
+              items: ['', 'draft', 'tervalidasi'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
+                  child: Text(s.isEmpty ? 'Semua' : s, style: const TextStyle(fontSize: 13)))).toList(),
+              onChanged: (v) { _statusFilter = v ?? ''; },
+            )),
+            const SizedBox(width: 12),
+            Expanded(child: DropdownButtonFormField<String>(
+              value: _jenisFilter.isEmpty ? null : _jenisFilter,
+              isDense: true,
+              decoration: inputDecoration('Jenis', Icons.category_outlined),
+              items: ['', 'harian', 'tugas', 'uts', 'uas', 'akhir'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
+                  child: Text(s.isEmpty ? 'Semua' : s, style: const TextStyle(fontSize: 13)))).toList(),
+              onChanged: (v) { _jenisFilter = v ?? ''; },
+            )),
+            const SizedBox(width: 12),
+            FilledButton.icon(
+              onPressed: () { _page = 1; _load(); },
+              icon: const Icon(Icons.search, size: 18),
+              label: const Text('Cari'),
+            ),
+          ]),
+        ]),
+      ),
       Expanded(child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _data.isEmpty
-              ? Center(child: Text('Tidak ada data nilai.', style: TextStyle(color: Colors.grey[500])))
+              ? const EmptyState(icon: Icons.inbox_outlined, message: 'Tidak ada data nilai.')
               : ListView.builder(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), itemCount: _data.length + 1,
                   itemBuilder: (_, i) {
                     if (i == _data.length) return _buildPagination();
@@ -133,7 +134,7 @@ class _NilaiPageState extends State<NilaiPage> with SingleTickerProviderStateMix
                     return Card(
                       margin: const EdgeInsets.only(top: 10),
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
                       child: Padding(
                         padding: const EdgeInsets.all(14),
                         child: Row(children: [
@@ -144,23 +145,23 @@ class _NilaiPageState extends State<NilaiPage> with SingleTickerProviderStateMix
                             Text('${d['siswa_nama'] ?? '-'}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                             const SizedBox(height: 4),
                             Row(children: [
-                              Icon(Icons.book_outlined, size: 12, color: Colors.grey[500]),
+                              const Icon(Icons.book_outlined, size: 12, color: AppTheme.grey500),
                               const SizedBox(width: 4),
-                              Text('${d['mapel_nama'] ?? '-'}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                              Text('${d['mapel_nama'] ?? '-'}', style: const TextStyle(fontSize: 12, color: AppTheme.grey600)),
                               const SizedBox(width: 12),
-                              Icon(Icons.category_outlined, size: 12, color: Colors.grey[500]),
+                              const Icon(Icons.category_outlined, size: 12, color: AppTheme.grey500),
                               const SizedBox(width: 4),
-                              Text('${d['jenis'] ?? '-'}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                              Text('${d['jenis'] ?? '-'}', style: const TextStyle(fontSize: 12, color: AppTheme.grey600)),
                             ]),
                             const SizedBox(height: 2),
                             Row(children: [
-                              Text('Nilai: ${d['nilai'] ?? '-'}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700])),
+                              Text('Nilai: ${d['nilai'] ?? '-'}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.grey700)),
                               const SizedBox(width: 12),
-                              Text('${d['kelas_nama'] ?? '-'} | ${d['semester_nama'] ?? '-'}', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                              Text('${d['kelas_nama'] ?? '-'} | ${d['semester_nama'] ?? '-'}', style: const TextStyle(fontSize: 11, color: AppTheme.grey400)),
                             ]),
                           ])),
                           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                            _statusBadge(st),
+                            StatusBadge(label: st, color: _statusColor(st), small: true),
                             if (isDraft) ...[
                               const SizedBox(height: 6),
                               SizedBox(
@@ -229,43 +230,51 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(children: [
-      _FormCard(title: 'Filter Analisis', icon: Icons.analytics_outlined, children: [
-        Row(children: [
-          Expanded(child: DropdownButtonFormField<String>(
-            value: _semesterId,
-            isDense: true,
-            decoration: _inpDeco('Semester', Icons.calendar_month_outlined),
-            items: _semesterList.map((s) => DropdownMenuItem(value: '${s['id']}', child: Text('${s['nama']}', style: const TextStyle(fontSize: 13)))).toList(),
-            onChanged: (v) => setState(() => _semesterId = v),
-          )),
-          const SizedBox(width: 12),
-          Expanded(child: DropdownButtonFormField<String>(
-            value: _kelasId,
-            isDense: true,
-            decoration: _inpDeco('Kelas', Icons.school_outlined, optional: true),
-            items: [DropdownMenuItem<String>(value: null, child: Text('Semua Kelas', style: TextStyle(fontSize: 13))),
-              ..._kelasList.map((k) => DropdownMenuItem(value: '${k['id']}', child: Text('${k['nama']}', style: const TextStyle(fontSize: 13))))],
-            onChanged: (v) => setState(() => _kelasId = v),
-          )),
+      DataCard(
+        padding: const EdgeInsets.all(16),
+        header: const Row(children: [
+          Icon(Icons.analytics_outlined, size: 20, color: AppTheme.primary),
+          SizedBox(width: 8),
+          Text('Filter Analisis', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
         ]),
-        const SizedBox(height: 12),
-        Row(children: [
-          Expanded(child: DropdownButtonFormField<String>(
-            value: _jenis.isEmpty ? null : _jenis,
-            isDense: true,
-            decoration: _inpDeco('Jenis Nilai', Icons.category_outlined, optional: true),
-            items: ['', 'harian', 'tugas', 'uts', 'uas', 'akhir'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
-                child: Text(s.isEmpty ? 'Semua' : s, style: const TextStyle(fontSize: 13)))).toList(),
-            onChanged: (v) => setState(() => _jenis = v ?? ''),
-          )),
-          const SizedBox(width: 12),
-          FilledButton.icon(
-            onPressed: _loadAnalisis,
-            icon: const Icon(Icons.analytics, size: 18),
-            label: const Text('Analisis'),
-          ),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: DropdownButtonFormField<String>(
+              value: _semesterId,
+              isDense: true,
+              decoration: inputDecoration('Semester', Icons.calendar_month_outlined),
+              items: _semesterList.map((s) => DropdownMenuItem(value: '${s['id']}', child: Text('${s['nama']}', style: const TextStyle(fontSize: 13)))).toList(),
+              onChanged: (v) => setState(() => _semesterId = v),
+            )),
+            const SizedBox(width: 12),
+            Expanded(child: DropdownButtonFormField<String>(
+              value: _kelasId,
+              isDense: true,
+              decoration: inputDecoration('Kelas', Icons.school_outlined, optional: true),
+              items: [const DropdownMenuItem<String>(value: null, child: Text('Semua Kelas', style: TextStyle(fontSize: 13))),
+                ..._kelasList.map((k) => DropdownMenuItem(value: '${k['id']}', child: Text('${k['nama']}', style: const TextStyle(fontSize: 13))))],
+              onChanged: (v) => setState(() => _kelasId = v),
+            )),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: DropdownButtonFormField<String>(
+              value: _jenis.isEmpty ? null : _jenis,
+              isDense: true,
+              decoration: inputDecoration('Jenis Nilai', Icons.category_outlined, optional: true),
+              items: ['', 'harian', 'tugas', 'uts', 'uas', 'akhir'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
+                  child: Text(s.isEmpty ? 'Semua' : s, style: const TextStyle(fontSize: 13)))).toList(),
+              onChanged: (v) => setState(() => _jenis = v ?? ''),
+            )),
+            const SizedBox(width: 12),
+            FilledButton.icon(
+              onPressed: _loadAnalisis,
+              icon: const Icon(Icons.analytics, size: 18),
+              label: const Text('Analisis'),
+            ),
+          ]),
         ]),
-      ]),
+      ),
       const SizedBox(height: 16),
       if (_loading)
         const Center(child: CircularProgressIndicator())
@@ -278,9 +287,9 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
         const SizedBox(height: 16),
         _buildPerJenis(theme),
       ] else if (_semesterId != null)
-        Center(child: Text('Pilih semester dan klik Analisis.', style: TextStyle(color: Colors.grey[500])))
+        const EmptyState(icon: Icons.analytics_outlined, message: 'Pilih semester dan klik Analisis.')
       else
-        Center(child: Text('Pilih semester untuk memulai.', style: TextStyle(color: Colors.grey[500]))),
+        const EmptyState(icon: Icons.calendar_month_outlined, message: 'Pilih semester untuk memulai.'),
     ]));
   }
 
@@ -288,7 +297,7 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
     final o = _analisis!['overview'] as Map<String, dynamic>? ?? {};
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
       child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.summarize_outlined, size: 20, color: theme.colorScheme.primary),
@@ -297,12 +306,12 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
         ]),
         const SizedBox(height: 16),
         Wrap(spacing: 16, runSpacing: 16, children: [
-          _statChip(Icons.people_outline, 'Santri', '${o['total_siswa'] ?? 0}', Colors.blue),
-          _statChip(Icons.book_outlined, 'Mapel', '${o['total_mapel'] ?? 0}', Colors.teal),
-          _statChip(Icons.trending_up, 'Rata-rata', '${o['rata_rata'] ?? '-'}', Colors.green),
-          _statChip(Icons.arrow_upward, 'Tertinggi', '${o['nilai_tertinggi'] ?? '-'}', Colors.orange),
-          _statChip(Icons.arrow_downward, 'Terendah', '${o['nilai_terendah'] ?? '-'}', Colors.red),
-          _statChip(Icons.list, 'Total Entry', '${o['total_entries'] ?? 0}', Colors.grey),
+          _statChip(Icons.people_outline, 'Santri', '${o['total_siswa'] ?? 0}', AppTheme.blue),
+          _statChip(Icons.book_outlined, 'Mapel', '${o['total_mapel'] ?? 0}', AppTheme.teal),
+          _statChip(Icons.trending_up, 'Rata-rata', '${o['rata_rata'] ?? '-'}', AppTheme.primary),
+          _statChip(Icons.arrow_upward, 'Tertinggi', '${o['nilai_tertinggi'] ?? '-'}', AppTheme.orange),
+          _statChip(Icons.arrow_downward, 'Terendah', '${o['nilai_terendah'] ?? '-'}', AppTheme.error),
+          _statChip(Icons.list, 'Total Entry', '${o['total_entries'] ?? 0}', AppTheme.grey400),
         ]),
       ])),
     );
@@ -316,7 +325,7 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
         Icon(icon, size: 18, color: color),
         const SizedBox(width: 8),
         Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+          Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.grey600)),
           Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
         ]),
       ]),
@@ -328,7 +337,7 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
     if (list.isEmpty) return const SizedBox.shrink();
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
       child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.book_outlined, size: 20, color: theme.colorScheme.primary),
@@ -337,7 +346,7 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
         ]),
         const SizedBox(height: 12),
         DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
+          headingRowColor: WidgetStateProperty.all(AppTheme.grey50),
           columnSpacing: 24,
           columns: const [
             DataColumn(label: Text('Mapel', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
@@ -359,7 +368,7 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
     if (list.isEmpty) return const SizedBox.shrink();
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
       child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.school_outlined, size: 20, color: theme.colorScheme.primary),
@@ -368,7 +377,7 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
         ]),
         const SizedBox(height: 12),
         DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
+          headingRowColor: WidgetStateProperty.all(AppTheme.grey50),
           columnSpacing: 24,
           columns: const [
             DataColumn(label: Text('Kelas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
@@ -392,7 +401,7 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
     if (list.isEmpty) return const SizedBox.shrink();
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
       child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.category_outlined, size: 20, color: theme.colorScheme.primary),
@@ -401,7 +410,7 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
         ]),
         const SizedBox(height: 12),
         DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
+          headingRowColor: WidgetStateProperty.all(AppTheme.grey50),
           columnSpacing: 24,
           columns: const [
             DataColumn(label: Text('Jenis', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
@@ -455,22 +464,12 @@ class _AuditNilaiTabState extends State<_AuditNilaiTab> {
     }
   }
 
-  Color _colorForAksi(String aksi) {
-    switch (aksi) {
-      case 'create': return Colors.green;
-      case 'update': return Colors.orange;
-      case 'delete': return Colors.red;
-      case 'validate': return Colors.blue;
-      default: return Colors.grey;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return _loading
         ? const Center(child: CircularProgressIndicator())
         : _items.isEmpty
-            ? Center(child: Text('Belum ada aktivitas nilai.', style: TextStyle(color: Colors.grey[500])))
+            ? const EmptyState(icon: Icons.history, message: 'Belum ada aktivitas nilai.')
             : ListView.builder(padding: const EdgeInsets.all(16), itemCount: _items.length + 1,
                 itemBuilder: (_, i) {
                   if (i == _items.length) {
@@ -486,11 +485,11 @@ class _AuditNilaiTabState extends State<_AuditNilaiTab> {
                   }
                   final d = _items[i];
                   final aksi = d['aksi'] as String? ?? '';
-                  final c = _colorForAksi(aksi);
+                  final c = AuditAction.colorFor(aksi);
                   return Card(
                     margin: const EdgeInsets.only(top: 10),
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: Row(children: [
@@ -499,23 +498,19 @@ class _AuditNilaiTabState extends State<_AuditNilaiTab> {
                         const SizedBox(width: 14),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Row(children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                              decoration: BoxDecoration(color: c.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
-                              child: Text(aksi, style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
-                            ),
+                            StatusBadge(label: aksi, color: c, small: true),
                             const SizedBox(width: 8),
                             Expanded(child: Text(d['detail'] as String? ?? '', style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
                           ]),
                           const SizedBox(height: 4),
                           Row(children: [
-                            Icon(Icons.person_outline, size: 12, color: Colors.grey[500]),
+                            const Icon(Icons.person_outline, size: 12, color: AppTheme.grey500),
                             const SizedBox(width: 4),
-                            Text('${d['username'] ?? '-'}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                            Text('${d['username'] ?? '-'}', style: const TextStyle(fontSize: 11, color: AppTheme.grey600)),
                             const SizedBox(width: 16),
-                            Icon(Icons.access_time, size: 12, color: Colors.grey[500]),
+                            const Icon(Icons.access_time, size: 12, color: AppTheme.grey500),
                             const SizedBox(width: 4),
-                            Text('${d['created_at'] ?? '-'}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                            Text('${d['created_at'] ?? '-'}', style: const TextStyle(fontSize: 11, color: AppTheme.grey600)),
                           ]),
                         ])),
                       ]),
@@ -528,42 +523,6 @@ class _AuditNilaiTabState extends State<_AuditNilaiTab> {
 
 // ── Shared Helpers ──
 
-InputDecoration _inpDeco(String label, IconData icon, {bool optional = false}) {
-  return InputDecoration(
-    labelText: label,
-    hintText: optional ? 'Opsional' : null,
-    prefixIcon: Icon(icon),
-    border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-    filled: true,
-    fillColor: const Color(0xFFF8FAFC),
-    isDense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-  );
-}
-
-class _FormCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final List<Widget> children;
-  const _FormCard({required this.title, required this.icon, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 8),
-            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          ]),
-          const SizedBox(height: 16),
-          ...children,
-        ]),
-      ),
-    );
-  }
+InputDecoration inputDecoration(String label, IconData icon, {bool optional = false}) {
+  return AppInputDecoration.standard(label, icon, optional: optional);
 }

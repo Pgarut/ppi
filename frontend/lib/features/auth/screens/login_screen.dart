@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-import '../../../config/env.dart';
+import '../../../core/network/api_client.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/login_form.dart';
 
@@ -39,19 +37,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   Future<void> _loadPengaturan() async {
     try {
-      final res = await http.get(Uri.parse('${Env.apiUrl}/pengaturan-tampilan'));
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body)['data'] as List<dynamic>? ?? [];
-        for (final item in data) {
-          final m = item as Map<String, dynamic>;
-          if (mounted) {
-            setState(() {
-              if (m['key'] == 'hero_title') _heroTitle = m['value'] as String? ?? _heroTitle;
-              if (m['key'] == 'hero_subtitle') _heroSubtitle = m['value'] as String? ?? _heroSubtitle;
-              if (m['key'] == 'logo_url') _logoUrl = m['value'] as String? ?? '';
-              if (m['key'] == 'background_url') _backgroundUrl = m['value'] as String? ?? '';
-            });
-          }
+      final res = await ApiClient.get('/pengaturan-tampilan');
+      final data = res['data'] as List<dynamic>? ?? [];
+      for (final item in data) {
+        final m = item as Map<String, dynamic>;
+        if (mounted) {
+          setState(() {
+            if (m['key'] == 'hero_title') _heroTitle = m['value'] as String? ?? _heroTitle;
+            if (m['key'] == 'hero_subtitle') _heroSubtitle = m['value'] as String? ?? _heroSubtitle;
+            if (m['key'] == 'logo_url') _logoUrl = m['value'] as String? ?? '';
+            if (m['key'] == 'background_url') _backgroundUrl = m['value'] as String? ?? '';
+          });
         }
       }
     } catch (_) {}

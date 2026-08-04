@@ -142,7 +142,7 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(14)),
+            Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(14)),
               child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 28)),
             const SizedBox(width: 14),
             const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -170,8 +170,8 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(18),
-        boxShadow: [BoxShadow(color: const Color(0xFFC62828).withOpacity(0.06), blurRadius: 20, offset: const Offset(0, 6))],
-        border: Border.all(color: const Color(0xFFC62828).withOpacity(0.08)),
+        boxShadow: [BoxShadow(color: const Color(0xFFC62828).withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 6))],
+        border: Border.all(color: const Color(0xFFC62828).withValues(alpha: 0.08)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -217,12 +217,12 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
         TextField(
           controller: _deskripsiCtl,
           maxLines: 4,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             labelText: 'Deskripsi',
             hintText: 'Jelaskan kronologi kejadian secara detail...',
             border: OutlineInputBorder(),
             alignLabelWithHint: true,
-            prefixIcon: Padding(padding: const EdgeInsets.only(bottom: 60), child: const Icon(Icons.description_rounded, size: 20)),
+            prefixIcon: Padding(padding: EdgeInsets.only(bottom: 60), child: Icon(Icons.description_rounded, size: 20)),
           ),
         ),
         const SizedBox(height: 14),
@@ -230,11 +230,11 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
         // Baris 4: URL Bukti
         TextField(
           controller: _buktiCtl,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             labelText: 'URL Google Drive / Bukti (opsional)',
             hintText: 'https://drive.google.com/...',
             border: OutlineInputBorder(),
-            prefixIcon: const Icon(Icons.link_rounded, size: 20),
+            prefixIcon: Icon(Icons.link_rounded, size: 20),
           ),
           keyboardType: TextInputType.url,
         ),
@@ -360,10 +360,10 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isBaru ? const Color(0xFFC62828).withOpacity(0.12) : const Color(0xFF2E7D32).withOpacity(0.12)),
+        border: Border.all(color: isBaru ? const Color(0xFFC62828).withValues(alpha: 0.12) : const Color(0xFF2E7D32).withValues(alpha: 0.12)),
         boxShadow: [
           BoxShadow(
-            color: (isBaru ? const Color(0xFFC62828) : const Color(0xFF2E7D32)).withOpacity(0.04),
+            color: (isBaru ? const Color(0xFFC62828) : const Color(0xFF2E7D32)).withValues(alpha: 0.04),
             blurRadius: 12, offset: const Offset(0, 4),
           ),
         ],
@@ -380,7 +380,7 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isBaru ? const Color(0xFFC62828).withOpacity(0.08) : const Color(0xFF2E7D32).withOpacity(0.08),
+                    color: isBaru ? const Color(0xFFC62828).withValues(alpha: 0.08) : const Color(0xFF2E7D32).withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(isKasus ? Icons.gavel_rounded : Icons.warning_rounded,
@@ -396,9 +396,9 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: statusColor.withOpacity(0.3)),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(statusIcon, size: 14, color: statusColor),
@@ -451,7 +451,7 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
               Row(children: [
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                   child: Icon(p['kategori'] == 'kasus' ? Icons.gavel_rounded : Icons.warning_rounded, color: Colors.deepOrange, size: 24),
                 ),
                 const SizedBox(width: 12),
@@ -465,7 +465,7 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
               // Status
               Container(
                 width: double.infinity, padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: statusColor.withOpacity(0.06), borderRadius: BorderRadius.circular(14), border: Border.all(color: statusColor.withOpacity(0.15))),
+                decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(14), border: Border.all(color: statusColor.withValues(alpha: 0.15))),
                 child: Row(children: [
                   Icon(status == 'baru' ? Icons.fiber_new_rounded : Icons.check_circle_rounded, color: statusColor, size: 22),
                   const SizedBox(width: 10),
@@ -510,7 +510,7 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF1565C0),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      side: BorderSide(color: const Color(0xFF1565C0).withOpacity(0.3)),
+                      side: BorderSide(color: const Color(0xFF1565C0).withValues(alpha: 0.3)),
                     ),
                   ),
                 ),

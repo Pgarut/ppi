@@ -1,13 +1,14 @@
 import '../models/user_model.dart';
 import '../../core/network/api_client.dart';
+import '../../core/logging/app_logger.dart';
 
 class AuthService {
   Future<({String token, String refreshToken, UserModel user})> login({
-    required String username,
+    required String credential,
     required String password,
   }) async {
     final response = await ApiClient.post('/auth/login', body: {
-      'username': username,
+      'username': credential,
       'password': password,
     });
 
@@ -31,8 +32,7 @@ class AuthService {
       final data = response['data'] as Map<String, dynamic>;
       return UserModel.fromJson(data);
     } catch (e) {
-      // ignore: avoid_print
-      print('[Auth] Gagal getCurrentUser: $e');
+      AppLogger.error('[Auth] Gagal getCurrentUser: $e');
       return null;
     }
   }

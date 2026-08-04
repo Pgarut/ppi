@@ -11,13 +11,13 @@ class AbsensiPageGuru extends StatelessWidget {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [Color(0xFF2E7D32), Color(0xFF4CAF50), Color(0xFF66BB6A)],
             ),
-            borderRadius: const BorderRadius.only(
+            borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(32),
               bottomRight: Radius.circular(32),
             ),
@@ -30,7 +30,7 @@ class AbsensiPageGuru extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Row(
@@ -116,9 +116,9 @@ class _MenuCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(color: color.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 6)),
+            BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 6)),
           ],
-          border: Border.all(color: color.withOpacity(0.12)),
+          border: Border.all(color: color.withValues(alpha: 0.12)),
         ),
         child: Material(
           color: Colors.transparent,
@@ -139,10 +139,10 @@ class _MenuCard extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [lightColor, color.withOpacity(0.25)],
+                        colors: [lightColor, color.withValues(alpha: 0.25)],
                       ),
                       boxShadow: [
-                        BoxShadow(color: color.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 4)),
+                        BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 4)),
                       ],
                     ),
                     child: Icon(icon, size: 34, color: color),
@@ -155,7 +155,7 @@ class _MenuCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.08),
+                      color: color.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -213,7 +213,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
     _tanggalCtl.dispose();
     _searchCtl.dispose();
     _jamCtl.dispose();
-    for (final c in _ketCtl.values) c.dispose();
+    for (final c in _ketCtl.values) { c.dispose(); }
     super.dispose();
   }
 
@@ -232,7 +232,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
       _siswa = [];
       _siswaFiltered = [];
       _statusMap = {};
-      for (final c in _ketCtl.values) c.dispose();
+      for (final c in _ketCtl.values) { c.dispose(); }
       _ketCtl = {};
       if (id != null) {
         final mapel = _assignments.firstWhere((a) => a['id'] == id, orElse: () => null);
@@ -271,7 +271,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
       final siswa = data['siswa'] as List<dynamic>? ?? [];
       final existing = data['existing'] as Map<dynamic, dynamic>? ?? {};
 
-      for (final c in _ketCtl.values) c.dispose();
+      for (final c in _ketCtl.values) { c.dispose(); }
 
       _siswa = siswa;
       _statusMap = {};
@@ -357,7 +357,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _SectionTitle(title: 'Pilih Sesi Absensi'),
+                        const _SectionTitle(title: 'Pilih Sesi Absensi'),
                         Wrap(
                           spacing: 14, runSpacing: 14,
                           children: [
@@ -388,7 +388,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
                               readOnly: true,
                               onTap: () async {
                                 final t = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-                                if (t != null) _jamCtl.text = t.format(context);
+                                if (t != null) { if (!context.mounted) return; _jamCtl.text = t.format(context); }
                               },
                             )),
                             SizedBox(
@@ -418,7 +418,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _SectionTitle(title: 'Data Santri'),
+                          const _SectionTitle(title: 'Data Santri'),
                           TextField(
                             controller: _searchCtl,
                             decoration: InputDecoration(
@@ -454,7 +454,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
                                 return SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
                                   child: DataTable(
-                                    headingRowColor: WidgetStatePropertyAll(const Color(0xFF2E7D32).withOpacity(0.06)),
+                                    headingRowColor: WidgetStatePropertyAll(const Color(0xFF2E7D32).withValues(alpha: 0.06)),
                                     headingTextStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF2E7D32)),
                                     columnSpacing: 10, horizontalMargin: 12, dataRowMinHeight: 48, dataRowMaxHeight: 56,
                                     columns: const [
@@ -497,7 +497,6 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
                                 itemBuilder: (_, i) {
                                   final s = _siswaFiltered[i];
                                   final id = s['id'];
-                                  final status = _statusMap[id] ?? 'hadir';
                                   return Container(
                                     decoration: BoxDecoration(
                                       color: Colors.white,
@@ -514,7 +513,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
                                               Container(
                                                 width: 26, height: 26,
                                                 alignment: Alignment.center,
-                                                decoration: BoxDecoration(color: const Color(0xFF2E7D32).withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
+                                                decoration: BoxDecoration(color: const Color(0xFF2E7D32).withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
                                                 child: Text('${i + 1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
                                               ),
                                               const SizedBox(width: 10),
@@ -588,12 +587,12 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
     final isSelected = _siswa.every((s) => _statusMap[s['id']] == val);
     return FilterChip(
       label: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : color)),
-      selected: isSelected, selectedColor: color, backgroundColor: color.withOpacity(0.1),
+      selected: isSelected, selectedColor: color, backgroundColor: color.withValues(alpha: 0.1),
       checkmarkColor: Colors.white, showCheckmark: false,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       onSelected: (_) => _setAllStatus(val),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSelected ? color : color.withOpacity(0.4))),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSelected ? color : color.withValues(alpha: 0.4))),
     );
   }
 
@@ -606,7 +605,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.12) : Colors.transparent,
+          color: isSelected ? color.withValues(alpha: 0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: isSelected ? color : Colors.grey[300]!, width: isSelected ? 1.5 : 1),
         ),
@@ -623,7 +622,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.12) : Colors.transparent,
+          color: isSelected ? color.withValues(alpha: 0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: isSelected ? color : Colors.grey[300]!, width: isSelected ? 1.5 : 1),
         ),
@@ -719,8 +718,8 @@ class _RiwayatAbsensiPageState extends State<_RiwayatAbsensiPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: const Color(0xFF1565C0).withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
-                  border: Border.all(color: const Color(0xFF1565C0).withOpacity(0.08)),
+                  boxShadow: [BoxShadow(color: const Color(0xFF1565C0).withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+                  border: Border.all(color: const Color(0xFF1565C0).withValues(alpha: 0.08)),
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(16),
@@ -781,7 +780,7 @@ class _RiwayatAbsensiPageState extends State<_RiwayatAbsensiPage> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: sudah == (totalSiswa as int) ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                                    color: sudah == (totalSiswa as int) ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(isNarrow ? '$sudah/$totalSiswa' : 'Tercatat $sudah/$totalSiswa', style: TextStyle(
@@ -850,7 +849,7 @@ class _SesiBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -898,8 +897,8 @@ class _FormCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
-        border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.08)),
+        boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+        border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.08)),
       ),
       padding: const EdgeInsets.all(20),
       child: child,
@@ -984,7 +983,7 @@ class _DetailSesiPageState extends State<_DetailSesiPage> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
               color: const Color(0xFFE3F2FD),
-              border: Border(bottom: BorderSide(color: const Color(0xFF1565C0).withOpacity(0.1))),
+              border: Border(bottom: BorderSide(color: const Color(0xFF1565C0).withValues(alpha: 0.1))),
             ),
             child: Wrap(
               spacing: 20, runSpacing: 8,
@@ -1012,13 +1011,13 @@ class _DetailSesiPageState extends State<_DetailSesiPage> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: color.withOpacity(0.15)),
-                              boxShadow: [BoxShadow(color: color.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                              border: Border.all(color: color.withValues(alpha: 0.15)),
+                              boxShadow: [BoxShadow(color: color.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                               leading: CircleAvatar(
-                                backgroundColor: color.withOpacity(0.12), radius: 18,
+                                backgroundColor: color.withValues(alpha: 0.12), radius: 18,
                                 child: Text('${i + 1}', style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
                               ),
                               title: Text(r['siswa_nama'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
@@ -1026,8 +1025,8 @@ class _DetailSesiPageState extends State<_DetailSesiPage> {
                               trailing: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                                 decoration: BoxDecoration(
-                                  color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: color.withOpacity(0.3)),
+                                  color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: color.withValues(alpha: 0.3)),
                                 ),
                                 child: Text(_statusLabel(status), style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12)),
                               ),
@@ -1046,7 +1045,7 @@ class _DetailSesiPageState extends State<_DetailSesiPage> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF1565C0).withOpacity(0.15)),
+        border: Border.all(color: const Color(0xFF1565C0).withValues(alpha: 0.15)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

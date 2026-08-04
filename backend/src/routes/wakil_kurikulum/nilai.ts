@@ -61,10 +61,61 @@ export async function handleNilaiWK(request: Request, env: Env, user: UserPayloa
       await logAktivitas(env, user.sub, 'update', 'bobot_nilai', `Update bobot nilai id=${id}`, ip);
       return success({ id });
     }
+
+    if (request.method === 'DELETE') {
+      const id = parseInt(subPath.split('/')[1]);
+      if (!id) return badRequest('ID diperlukan');
+      const existing = await env.DB.prepare('SELECT id FROM bobot_nilai WHERE id = ?').bind(id).first();
+      if (!existing) return notFound('Bobot nilai');
+
+      await env.DB.prepare('DELETE FROM bobot_nilai WHERE id = ?').bind(id).run();
+      await logAktivitas(env, user.sub, 'delete', 'bobot_nilai', `Hapus bobot nilai id=${id}`, ip);
+      return success({ message: 'Bobot nilai berhasil dihapus' });
+    }
   }
 
-  // Monitoring nilai
+  // Monitoring nilai (with pagination & filters)
   if (subPath === 'monitoring-nilai' && request.method === 'GET') {
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const perPage = parseInt(url.searchParams.get('per_page') || '20');
+    const kelasId = url.searchParams.get('kelas_id');
+    const mapelId = url.searchParams.get('mata_pelajaran_id');
+    const statusFilter = url.searchParams.get('status');
+    const search = url.searchParams.get('search');
+    const offset = (page - 1) * perPage;
+
+    let whereClause = 'WHERE 1=1';
+    const params: unknown[] = [];
+
+    if (kelasId) {
+      whereClause += ' AND n.kelas_id = ?';
+      params.push(parseInt(kelasId));
+    }
+    if (mapelId) {
+      whereClause += ' AND n.mata_pelajaran_id = ?';
+      params.push(parseInt(mapelId));
+    }
+    if (statusFilter) {
+      whereClause += ' AND n.status_validasi = ?';
+      params.push(statusFilter);
+    }
+    if (search) {
+      whereClause += ' AND (s.nama LIKE ? OR mp.nama LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    // Get total count
+    const countResult = await env.DB.prepare(
+      `SELECT COUNT(*) as total FROM nilai n
+       LEFT JOIN siswa s ON n.siswa_id = s.id
+       LEFT JOIN mata_pelajaran mp ON n.mata_pelajaran_id = mp.id
+       ${whereClause}`
+    ).bind(...params).first<{ total: number }>();
+
+    const total = countResult?.total || 0;
+    const totalPages = Math.ceil(total / perPage);
+
+    // Get paginated data
     const rows = await env.DB.prepare(
       `SELECT n.id, n.nilai, n.jenis, n.status_validasi, n.siswa_id, s.nama as siswa_nama,
               mp.nama as mapel_nama, k.nama as kelas_nama, g.nama as guru_nama
@@ -73,9 +124,34 @@ export async function handleNilaiWK(request: Request, env: Env, user: UserPayloa
        LEFT JOIN mata_pelajaran mp ON n.mata_pelajaran_id = mp.id
        LEFT JOIN kelas k ON n.kelas_id = k.id
        LEFT JOIN guru g ON n.diinput_oleh = g.id
-       ORDER BY n.created_at DESC LIMIT 100`
-    ).all();
-    return success(rows.results);
+       ${whereClause}
+       ORDER BY n.created_at DESC
+       LIMIT ? OFFSET ?`
+    ).bind(...params, perPage, offset).all();
+
+    // Get summary stats
+    const statsResult = await env.DB.prepare(
+      `SELECT 
+         COUNT(*) as total,
+         COUNT(CASE WHEN n.status_validasi = 'draft' THEN 1 END) as draft,
+         COUNT(CASE WHEN n.status_validasi = 'tervalidasi' THEN 1 END) as tervalidasi,
+         ROUND(AVG(CASE WHEN n.jenis = 'angka' THEN CAST(n.nilai AS REAL) END), 1) as rata_rata
+       FROM nilai n
+       LEFT JOIN siswa s ON n.siswa_id = s.id
+       LEFT JOIN mata_pelajaran mp ON n.mata_pelajaran_id = mp.id
+       ${whereClause}`
+    ).bind(...params).first();
+
+    return success({
+      data: rows.results,
+      pagination: {
+        page,
+        per_page: perPage,
+        total,
+        total_pages: totalPages,
+      },
+      stats: statsResult || { total: 0, draft: 0, tervalidasi: 0, rata_rata: 0 },
+    });
   }
 
   // Status pengumpulan nilai per guru

@@ -33,6 +33,18 @@ class WakilKurikulumService {
     return res['data'] as Map<String, dynamic>;
   }
 
+  static Future<List<dynamic>> getGuruByKelasMapel(String kelasId, String mapelId) async {
+    final res = await ApiClient.get('/wakil-kurikulum/guru-by-kelas-mapel',
+        queryParams: {'kelas_id': kelasId, 'mata_pelajaran_id': mapelId});
+    return res['data'] as List<dynamic>;
+  }
+
+  static Future<List<dynamic>> getKesiapanGuru(int guruId, int semesterId) async {
+    final res = await ApiClient.get('/wakil-kurikulum/kesiapan',
+        queryParams: {'semester_id': '$semesterId', 'guru_id': '$guruId'});
+    return res['data'] as List<dynamic>;
+  }
+
   static Future<List<dynamic>> getJpSlots() async {
     final res = await ApiClient.get('/wakil-kurikulum/jp-slots');
     return res['data'] as List<dynamic>;
@@ -121,9 +133,28 @@ class WakilKurikulumService {
     await ApiClient.put('/wakil-kurikulum/bobot-nilai/$id', body: body);
   }
 
-  static Future<List<dynamic>> getMonitoringNilai() async {
-    final res = await ApiClient.get('/wakil-kurikulum/monitoring-nilai');
-    return res['data'] as List<dynamic>;
+  static Future<void> deleteBobotNilai(int id) async {
+    await ApiClient.delete('/wakil-kurikulum/bobot-nilai/$id');
+  }
+
+  static Future<Map<String, dynamic>> getMonitoringNilai({
+    int page = 1, 
+    int perPage = 20,
+    String? kelasId,
+    String? mapelId,
+    String? status,
+    String? search,
+  }) async {
+    final params = <String, String>{
+      'page': '$page', 
+      'per_page': '$perPage',
+    };
+    if (kelasId != null && kelasId.isNotEmpty) params['kelas_id'] = kelasId;
+    if (mapelId != null && mapelId.isNotEmpty) params['mata_pelajaran_id'] = mapelId;
+    if (status != null && status.isNotEmpty) params['status'] = status;
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    final res = await ApiClient.get('/wakil-kurikulum/monitoring-nilai', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
   }
 
   static Future<List<dynamic>> getStatusPengumpulan() async {
@@ -145,6 +176,35 @@ class WakilKurikulumService {
     final res = await ApiClient.get('/wakil-kurikulum/kenaikan-kelas/calon',
         queryParams: {'kelas_id': kelasId, 'tahun_ajaran_id': tahunAjaranId});
     return res['data'] as List<dynamic>;
+  }
+
+  // ── Batch Processing ──
+
+  static Future<Map<String, dynamic>> getCalonBatch(String kelasId, String tahunAjaranId) async {
+    final res = await ApiClient.get('/wakil-kurikulum/kenaikan-kelas/calon-batch',
+        queryParams: {'kelas_id': kelasId, 'tahun_ajaran_id': tahunAjaranId});
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getKelasTujuan(String dariKelasId, String tahunAjaranId) async {
+    final res = await ApiClient.get('/wakil-kurikulum/kenaikan-kelas/kelas-tujuan',
+        queryParams: {'dari_kelas_id': dariKelasId, 'tahun_ajaran_id': tahunAjaranId});
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> prosesBatch(Map<String, dynamic> body) async {
+    final res = await ApiClient.post('/wakil-kurikulum/kenaikan-kelas/proses-batch', body: body);
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getPengaturanKenaikan(int tahunAjaranId) async {
+    final res = await ApiClient.get('/wakil-kurikulum/kenaikan-kelas/pengaturan',
+        queryParams: {'tahun_ajaran_id': '$tahunAjaranId'});
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<void> savePengaturanKenaikan(Map<String, dynamic> body) async {
+    await ApiClient.post('/wakil-kurikulum/kenaikan-kelas/pengaturan', body: body);
   }
 
   static Future<List<dynamic>> getAlumni() async {

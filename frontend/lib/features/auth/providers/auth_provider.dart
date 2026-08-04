@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/services/auth_service.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/logging/app_logger.dart';
 import '../../../config/routes.dart';
 
 enum AuthStatus { uninitialized, authenticated, unauthenticated, loading }
@@ -33,7 +34,7 @@ class AuthProvider extends ChangeNotifier {
     _inactivityTimer?.cancel();
     if (_status == AuthStatus.authenticated) {
       _inactivityTimer = Timer(_inactivityTimeout, () {
-        debugPrint('[Auth] Auto-logout karena 30 menit tidak ada aktivitas');
+        AppLogger.info('[Auth] Auto-logout karena 30 menit tidak ada aktivitas');
         _onSessionExpired();
       });
     }
@@ -41,7 +42,11 @@ class AuthProvider extends ChangeNotifier {
 
   void _onSessionExpired() {
     _inactivityTimer?.cancel();
-    _authService.logout();
+    _performLogout();
+  }
+
+  Future<void> _performLogout() async {
+    await _authService.logout();
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
@@ -69,14 +74,14 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(String username, String password) async {
+  Future<void> login(String credential, String password) async {
     _status = AuthStatus.loading;
     _error = null;
     notifyListeners();
 
     try {
       final result = await _authService.login(
-        username: username,
+        credential: credential,
         password: password,
       );
       _user = result.user;
@@ -92,7 +97,9 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> logout() async {
     _inactivityTimer?.cancel();
-    await _authService.logout();
+    try {
+      await _authService.logout();
+    } catch (_) {}
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();

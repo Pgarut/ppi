@@ -30,7 +30,7 @@ void main() {
     testWidgets('should render username and password fields', (WidgetTester tester) async {
       await tester.pumpWidget(createLoginForm());
 
-      expect(find.text('Username'), findsOneWidget);
+      expect(find.text('Username / NIS'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.byType(ElevatedButton), findsOneWidget);
     });

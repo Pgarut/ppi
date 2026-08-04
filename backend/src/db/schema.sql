@@ -18,9 +18,11 @@ CREATE TABLE users (
                         'kepala_sekolah',
                         'wakil_kurikulum',
                         'guru_mapel_wali_kelas',
-                        'guru_bk'
+                        'guru_bk',
+                        'siswa'
                     )),
     guru_id         INTEGER REFERENCES guru(id),   -- null untuk admin/kepala sekolah jika tidak terhubung ke data guru
+    siswa_id        INTEGER REFERENCES siswa(id),   -- link ke data siswa untuk role 'siswa'
     is_active       INTEGER NOT NULL DEFAULT 1,    -- 1 = aktif, 0 = nonaktif
     last_login_at   TEXT,
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
@@ -156,6 +158,9 @@ CREATE TABLE guru_mata_pelajaran (
     mata_pelajaran_id   INTEGER NOT NULL REFERENCES mata_pelajaran(id),
     kelas_id            INTEGER NOT NULL REFERENCES kelas(id),
     semester_id         INTEGER NOT NULL REFERENCES semester(id),
+    hari_aktif          TEXT DEFAULT '[]',          -- JSON array hari aktif (mis. ["Senin","Selasa"])
+    jp_max_per_hari     INTEGER DEFAULT 8,          -- batas jam pelajaran per hari
+    jp_max_per_minggu   INTEGER DEFAULT 24,         -- batas jam pelajaran per minggu
     UNIQUE (guru_id, mata_pelajaran_id, kelas_id, semester_id)
 );
 
@@ -201,6 +206,7 @@ CREATE TABLE absensi_siswa (
     kelas_id            INTEGER NOT NULL REFERENCES kelas(id),
     mata_pelajaran_id   INTEGER REFERENCES mata_pelajaran(id),  -- null = absensi harian umum
     tanggal             TEXT NOT NULL,
+    jam                 TEXT,                       -- jam pelajaran (mis. '07:00')
     status              TEXT NOT NULL CHECK (status IN ('hadir','izin','sakit','alpa')),
     keterangan          TEXT,
     diinput_oleh        INTEGER NOT NULL REFERENCES guru(id),
@@ -228,7 +234,8 @@ CREATE TABLE nilai (
     kelas_id            INTEGER NOT NULL REFERENCES kelas(id),
     semester_id         INTEGER NOT NULL REFERENCES semester(id),
     jenis               TEXT NOT NULL CHECK (jenis IN (
-                            'harian','tugas','uts','uas','akhir'
+                            'harian','tugas','uts','uas','akhir',
+                            'pts1','pas','pts2','pat'
                         )),
     nilai               REAL NOT NULL,
     keterangan          TEXT,
@@ -263,7 +270,26 @@ CREATE TABLE rapor_arsip (
 );
 
 -- ============================================================
--- 6. PENGADUAN (Guru Mapel/Wali Kelas -> dilihat oleh Guru BK)
+-- 6. MATERI (Guru Mapel)
+-- ============================================================
+
+CREATE TABLE materi (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    guru_id             INTEGER NOT NULL REFERENCES guru(id),
+    mata_pelajaran_id   INTEGER NOT NULL REFERENCES mata_pelajaran(id),
+    kelas_id            INTEGER NOT NULL REFERENCES kelas(id),
+    judul               TEXT NOT NULL,
+    deskripsi           TEXT,
+    link_url            TEXT NOT NULL,       -- link Google Drive
+    link_youtube         TEXT,                -- link YouTube (opsional)
+    pertemuan           TEXT,                -- nomor/label pertemuan (mis. '1', '2', 'Pertemuan 1')
+    is_aktif            INTEGER NOT NULL DEFAULT 1,  -- 1 = aktif, 0 = tidak aktif
+    created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ============================================================
+-- 6b. PENGADUAN (Guru Mapel/Wali Kelas -> dilihat oleh Guru BK)
 -- ============================================================
 
 CREATE TABLE pengaduan (
@@ -352,7 +378,20 @@ CREATE TABLE alumni (
     siswa_id        INTEGER NOT NULL REFERENCES siswa(id),
     tahun_lulus     TEXT NOT NULL,
     kontak          TEXT,
-    catatan         TEXT
+    catatan         TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Konfigurasi batas minimum kenaikan kelas per tahun ajaran
+CREATE TABLE pengaturan_kenaikan_kelas (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    tahun_ajaran_id     INTEGER NOT NULL REFERENCES tahun_ajaran(id),
+    min_absensi_persen  REAL NOT NULL DEFAULT 75,
+    min_nilai_akhir     REAL NOT NULL DEFAULT 60,
+    created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at          TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (tahun_ajaran_id)
 );
 
 -- ============================================================
@@ -361,8 +400,16 @@ CREATE TABLE alumni (
 
 CREATE INDEX idx_siswa_kelas          ON siswa(kelas_id);
 CREATE INDEX idx_nilai_siswa          ON nilai(siswa_id, semester_id);
+CREATE INDEX idx_nilai_diinput        ON nilai(diinput_oleh);
 CREATE INDEX idx_absensi_siswa_tgl    ON absensi_siswa(siswa_id, tanggal);
+CREATE INDEX idx_absensi_kelas_tgl    ON absensi_siswa(kelas_id, tanggal);
 CREATE INDEX idx_absensi_guru_tgl     ON absensi_guru(guru_id, tanggal);
 CREATE INDEX idx_jadwal_kelas         ON jadwal_pelajaran(kelas_id, semester_id);
+CREATE INDEX idx_jadwal_guru          ON jadwal_pelajaran(guru_id, semester_id);
+CREATE INDEX idx_jadwal_hari          ON jadwal_pelajaran(hari, guru_id);
+CREATE INDEX idx_materi_guru          ON materi(guru_id);
+CREATE INDEX idx_materi_kelas         ON materi(kelas_id, is_aktif);
 CREATE INDEX idx_pengaduan_siswa      ON pengaduan(siswa_id);
+CREATE INDEX idx_pengaduan_pelapor    ON pengaduan(dilaporkan_oleh);
+CREATE INDEX idx_pengaduan_status     ON pengaduan(status);
 CREATE INDEX idx_konseling_siswa      ON konseling(siswa_id);

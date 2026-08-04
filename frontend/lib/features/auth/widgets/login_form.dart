@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/common_widgets.dart';
 
 class LoginForm extends StatefulWidget {
   final GlobalKey<FormState> formKey;
@@ -26,30 +27,7 @@ class _LoginFormState extends State<LoginForm> {
   bool _obscurePassword = true;
 
   InputDecoration _inputStyle(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, size: 20),
-      filled: true,
-      fillColor: Colors.grey[50],
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.grey[200]!),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.red[300]!),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-    );
+    return AppInputDecoration.standard(label, icon, style: InputDecorationStyle.login);
   }
 
   @override
@@ -71,7 +49,7 @@ class _LoginFormState extends State<LoginForm> {
             'Masuk ke akun Anda',
             style: TextStyle(color: Colors.grey[500], fontSize: 14),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
           if (widget.error != null) ...[
             Container(
               padding: const EdgeInsets.all(12),
@@ -97,9 +75,9 @@ class _LoginFormState extends State<LoginForm> {
           ],
           TextFormField(
             controller: widget.usernameController,
-            decoration: _inputStyle('Username', Icons.person_outline),
+            decoration: _inputStyle('Username / NIS', Icons.person_outline),
             style: const TextStyle(fontSize: 15),
-            validator: (v) => v == null || v.isEmpty ? 'Masukkan username' : null,
+            validator: (v) => v == null || v.isEmpty ? 'Masukkan username atau NIS' : null,
           ),
           const SizedBox(height: 16),
           TextFormField(

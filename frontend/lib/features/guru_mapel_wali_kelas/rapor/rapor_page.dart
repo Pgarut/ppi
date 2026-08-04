@@ -1,5 +1,5 @@
 import 'dart:typed_data';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -109,7 +109,7 @@ class _RaporPageGuruState extends State<RaporPageGuru> with SingleTickerProvider
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
                     child: const Icon(Icons.assignment_rounded, color: Colors.white, size: 24),
                   ),
                   const SizedBox(width: 12),
@@ -117,8 +117,8 @@ class _RaporPageGuruState extends State<RaporPageGuru> with SingleTickerProvider
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Rapor Santri', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-                        Text('Wali Kelas: ${waliKelas['nama'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.85))),
+                        const Text('Rapor Santri', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                        Text('Wali Kelas: ${waliKelas['nama'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85))),
                       ],
                     ),
                   ),
@@ -127,13 +127,13 @@ class _RaporPageGuruState extends State<RaporPageGuru> with SingleTickerProvider
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.12), borderRadius: BorderRadius.circular(14)),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.people, size: 14, color: Colors.white.withOpacity(0.8)),
+                    Icon(Icons.people, size: 14, color: Colors.white.withValues(alpha: 0.8)),
                     const SizedBox(width: 6),
-                    Text('${siswa.length} Santri  ·  ${mapel.length} Mapel', style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.8))),
+                    Text('${siswa.length} Santri  ·  ${mapel.length} Mapel', style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
                   ],
                 ),
               ),
@@ -225,7 +225,7 @@ class _LihatRaporState extends State<_LihatRapor> {
     final catatan = _raporData!['catatan_wali'] as String? ?? '';
 
     final pdf = pw.Document();
-    final pageFormat = PdfPageFormat(215 * PdfPageFormat.mm, 330 * PdfPageFormat.mm); // F4
+    const pageFormat = PdfPageFormat(215 * PdfPageFormat.mm, 330 * PdfPageFormat.mm); // F4
 
     pdf.addPage(
       pw.MultiPage(
@@ -237,7 +237,7 @@ class _LihatRaporState extends State<_LihatRapor> {
           child: pw.Column(children: [
             pw.Text('RAPOR HASIL BELAJAR SANTRI', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 4),
-            pw.Text('Madrasah Tsanawiyah / Aliyah', style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+            pw.Text('Madrasah Tsanawiyah / Aliyah', style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
             pw.Divider(thickness: 1),
           ]),
         ),
@@ -372,13 +372,13 @@ class _LihatRaporState extends State<_LihatRapor> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white, borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.1)),
-            boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
+            border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.1)),
+            boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4))],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _SectionTitle(title: 'Pilih Santri & Semester'),
+              const _SectionTitle(title: 'Pilih Santri & Semester'),
               const SizedBox(height: 12),
               Wrap(spacing: 16, runSpacing: 12, crossAxisAlignment: WrapCrossAlignment.center, children: [
                 SizedBox(width: 250, child: DropdownButtonFormField<int>(
@@ -432,9 +432,9 @@ class _LihatRaporState extends State<_LihatRapor> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
             decoration: BoxDecoration(
-              color: const Color(0xFF2E7D32).withOpacity(0.06),
+              color: const Color(0xFF2E7D32).withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.12)),
+              border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.12)),
             ),
             child: Text(
               'NILAI HASIL BELAJAR ${(_raporData!['semester']?['nama'] as String?)?.toUpperCase() ?? ''}',
@@ -471,7 +471,7 @@ class _LihatRaporState extends State<_LihatRapor> {
 
   Widget _actionBtn({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
     return Material(
-      color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(10),
+      color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10), onTap: onTap,
         child: Padding(
@@ -490,9 +490,9 @@ class _LihatRaporState extends State<_LihatRapor> {
     final s = _raporData!['siswa'] as Map<String, dynamic>? ?? {};
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.08)), boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.08)), boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))]),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(width: 48, height: 48, decoration: BoxDecoration(color: const Color(0xFF2E7D32).withOpacity(0.1), borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.person_rounded, color: Color(0xFF2E7D32), size: 26)),
+        Container(width: 48, height: 48, decoration: BoxDecoration(color: const Color(0xFF2E7D32).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.person_rounded, color: Color(0xFF2E7D32), size: 26)),
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(s['nama']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Color(0xFF2E7D32))),
@@ -520,9 +520,9 @@ class _LihatRaporState extends State<_LihatRapor> {
     final rataRata = mapel.isNotEmpty ? (totalAkhir / mapel.length).toStringAsFixed(1) : '0.0';
 
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.08)), boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.08)), boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(width: double.infinity, padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: const Color(0xFF2E7D32).withOpacity(0.06), borderRadius: const BorderRadius.vertical(top: Radius.circular(14))),
+        Container(width: double.infinity, padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: const Color(0xFF2E7D32).withValues(alpha: 0.06), borderRadius: const BorderRadius.vertical(top: Radius.circular(14))),
           child: Row(children: [
             const Icon(Icons.menu_book_rounded, size: 18, color: Color(0xFF2E7D32)),
             const SizedBox(width: 8),
@@ -534,7 +534,7 @@ class _LihatRaporState extends State<_LihatRapor> {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
-            headingRowColor: WidgetStatePropertyAll(const Color(0xFF2E7D32).withOpacity(0.04)),
+            headingRowColor: WidgetStatePropertyAll(const Color(0xFF2E7D32).withValues(alpha: 0.04)),
             headingTextStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF2E7D32)),
             columnSpacing: 20, horizontalMargin: 16, dataRowMinHeight: 40, dataRowMaxHeight: 48,
             columns: const [DataColumn(label: Text('No')), DataColumn(label: Text('Mata Pelajaran')), DataColumn(label: Text('Nilai Ujian'), numeric: true), DataColumn(label: Text('Rata Harian'), numeric: true), DataColumn(label: Text('Nilai Akhir'), numeric: true), DataColumn(label: Text('Predikat'))],
@@ -549,7 +549,7 @@ class _LihatRaporState extends State<_LihatRapor> {
                 DataCell(Text(m['nilai_ujian']?.toString() ?? '-', style: const TextStyle(fontSize: 13))),
                 DataCell(Text(m['rata_harian']?.toString() ?? '-', style: const TextStyle(fontSize: 13))),
                 DataCell(Text(nilaiAkhir?.toString() ?? '-', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: nilaiAkhir != null ? const Color(0xFF2E7D32) : Colors.grey))),
-                DataCell(Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(8), border: Border.all(color: color.withOpacity(0.3))), child: Text(predikat, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color)))),
+                DataCell(Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8), border: Border.all(color: color.withValues(alpha: 0.3))), child: Text(predikat, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color)))),
               ]);
             }),
           ),
@@ -565,9 +565,9 @@ class _LihatRaporState extends State<_LihatRapor> {
   Widget _buildCatatanCard() {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFF9A825).withOpacity(0.2)), boxShadow: [BoxShadow(color: const Color(0xFFF9A825).withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFF9A825).withValues(alpha: 0.2)), boxShadow: [BoxShadow(color: const Color(0xFFF9A825).withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))]),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: const Color(0xFFF9A825).withOpacity(0.12), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.note_alt_rounded, color: Color(0xFFF9A825), size: 22)),
+        Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: const Color(0xFFF9A825).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.note_alt_rounded, color: Color(0xFFF9A825), size: 22)),
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Catatan Wali Kelas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFFF9A825))),
@@ -632,9 +632,9 @@ class _StatusPengirimanState extends State<_StatusPengiriman> {
         // Filter
         Container(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.1)), boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))]),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.1)), boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4))]),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _SectionTitle(title: 'Pilih Semester'),
+            const _SectionTitle(title: 'Pilih Semester'),
             const SizedBox(height: 12),
             Wrap(spacing: 16, runSpacing: 12, crossAxisAlignment: WrapCrossAlignment.center, children: [
               SizedBox(width: 250, child: DropdownButtonFormField<int>(
@@ -684,8 +684,8 @@ class _StatusPengirimanState extends State<_StatusPengiriman> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.08)),
-        boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.08)),
+        boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(children: [
         Expanded(child: _summaryItem(Icons.check_circle_rounded, 'Sudah Input', '$sudah', const Color(0xFF2E7D32))),
@@ -716,14 +716,14 @@ class _StatusPengirimanState extends State<_StatusPengiriman> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: sudahInput ? const Color(0xFF2E7D32).withOpacity(0.15) : Colors.orange.withOpacity(0.15)),
-        boxShadow: [BoxShadow(color: (sudahInput ? const Color(0xFF2E7D32) : Colors.orange).withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        border: Border.all(color: sudahInput ? const Color(0xFF2E7D32).withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15)),
+        boxShadow: [BoxShadow(color: (sudahInput ? const Color(0xFF2E7D32) : Colors.orange).withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: sudahInput ? const Color(0xFF2E7D32).withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+            color: sudahInput ? const Color(0xFF2E7D32).withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(sudahInput ? Icons.check_circle : Icons.hourglass_empty_rounded,
@@ -747,9 +747,9 @@ class _StatusPengirimanState extends State<_StatusPengiriman> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: sudahInput ? const Color(0xFF2E7D32).withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+              color: sudahInput ? const Color(0xFF2E7D32).withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: sudahInput ? const Color(0xFF2E7D32).withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
+              border: Border.all(color: sudahInput ? const Color(0xFF2E7D32).withValues(alpha: 0.3) : Colors.orange.withValues(alpha: 0.3)),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(sudahInput ? Icons.check : Icons.close, size: 14, color: sudahInput ? const Color(0xFF2E7D32) : Colors.orange[700]),

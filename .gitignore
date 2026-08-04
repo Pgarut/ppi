@@ -3,9 +3,39 @@ node_modules/
 *.db
 *.sqlite
 .env
+.dev.vars
 dist/
+build/
+backend.log
+backend_run.log
+
+# Flutter generated
+frontend/.dart_tool/
+frontend/.packages
+frontend/build/
+frontend/android/.gradle/
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+frontend/ios/Flutter/ephemeral/
+frontend/ios/Flutter/Generated.xcconfig
+frontend/ios/Flutter/flutter_export_environment.sh
+frontend/ios/Runner/GeneratedPluginRegistrant.*
+frontend/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs (internal)
 token.md
 new.md
-frontend.zip
 console.md
 jadwal.md
+frontend.zip
