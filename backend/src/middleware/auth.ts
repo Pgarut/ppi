@@ -1,5 +1,6 @@
 import { jwtVerify, SignJWT } from 'jose';
 import { Env, UserPayload } from '../types';
+import { hashToken, validateSession } from './session';
 
 const getSecretKey = (env: Env) => new TextEncoder().encode(env.JWT_SECRET);
 const getRefreshSecret = (env: Env) => {
@@ -66,5 +67,13 @@ export async function authMiddleware(
   }
 
   const token = authHeader.slice(7);
-  return verifyToken(token, env);
+  const user = await verifyToken(token, env);
+  if (!user) return null;
+
+  // Validasi session aktif (opsional: Uncomment jika ingin cek session di setiap request)
+  // const tokenHash = await hashToken(token);
+  // const isValid = await validateSession(tokenHash, env);
+  // if (!isValid) return null;
+
+  return user;
 }

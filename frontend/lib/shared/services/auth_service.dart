@@ -23,7 +23,7 @@ class AuthService {
   }
 
   Future<void> logout() async {
-    await ApiClient.clearTokens();
+    await ApiClient.logout();
   }
 
   Future<UserModel?> getCurrentUser() async {

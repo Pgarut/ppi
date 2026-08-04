@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { authMiddleware, generateToken, generateRefreshToken, verifyRefreshToken } from './middleware/auth';
 import { generalRateLimit, bruteForceCheck, bruteForceRecordFailure, bruteForceRecordSuccess } from './middleware/rate_limit';
+import { createSession, validateSession, revokeSession, hashToken } from './middleware/session';
 import { Env, Role, UserPayload } from './types';
 import { json, success, error, unauthorized, cors, setCorsOrigin, resolveCorsOrigin } from './utils/response';
 import { handleAdminMasterData, handleMapelKelas, handleGuruMapelAmpu, handleGuruKelasAmpu, handleWaliKelasList, handleGuruBKList, handleSiswaTemplate, handleSiswaPreview, handleSiswaBulk, handleMapelTemplate, handleMapelPreview, handleMapelBulk, handleGuruTemplate, handleGuruPreview, handleGuruBulk } from './routes/admin/master_data';
@@ -89,6 +90,11 @@ export default {
       // Auth routes (no sign-in required)
       if (path === '/api/auth/refresh' && request.method === 'POST') {
         return handleRefresh(request, env);
+      }
+
+      // Logout endpoint (requires auth)
+      if (path === '/api/auth/logout' && request.method === 'POST') {
+        return handleLogout(request, env, user);
       }
 
       // Admin routes
@@ -388,6 +394,11 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
   const token = await generateToken(userPayload, env);
   const refreshToken = await generateRefreshToken(result.id, env);
 
+  // Buat session baru (device limiting: max 2 perangkat)
+  const userAgent = request.headers.get('User-Agent') || 'unknown';
+  const tokenHash = await hashToken(token);
+  await createSession(result.id, tokenHash, userAgent, env);
+
   await env.DB.prepare("UPDATE users SET last_login_at = datetime('now') WHERE id = ?").bind(result.id).run();
 
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
@@ -468,6 +479,11 @@ async function handleLoginSiswa(request: Request, env: Env): Promise<Response> {
   const token = await generateToken(userPayload, env);
   const refreshToken = await generateRefreshToken(result.id, env);
 
+  // Buat session baru (device limiting: max 2 perangkat)
+  const userAgent = request.headers.get('User-Agent') || 'unknown';
+  const tokenHash = await hashToken(token);
+  await createSession(result.id, tokenHash, userAgent, env);
+
   await env.DB.prepare("UPDATE users SET last_login_at = datetime('now') WHERE id = ?").bind(result.id).run();
 
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
@@ -496,14 +512,14 @@ function handleMe(user: { sub: number; username: string; role: string; guru_id: 
 }
 
 async function handleRefresh(request: Request, env: Env): Promise<Response> {
-  let body: { refresh_token?: string; username?: string };
+  let body: { refresh_token?: string; username?: string; token?: string };
   try {
     body = await request.json();
   } catch {
     return error('Invalid JSON body', 400);
   }
 
-  const { refresh_token, username } = body;
+  const { refresh_token, username, token: oldToken } = body;
   if (!refresh_token) return error('refresh_token is required', 400);
 
   // Brute force check untuk refresh token (pakai username jika ada)
@@ -525,6 +541,19 @@ async function handleRefresh(request: Request, env: Env): Promise<Response> {
   const newToken = await generateToken(userPayload, env);
   const newRefreshToken = await generateRefreshToken(user.id, env);
 
+  // Revoke session lama (berdasarkan token yang dikirim frontend)
+  if (oldToken) {
+    const oldTokenHash = await hashToken(oldToken);
+    await env.DB.prepare(
+      "UPDATE sessions SET is_active = 0, revoked_at = datetime('now') WHERE token_hash = ? AND user_id = ? AND is_active = 1"
+    ).bind(oldTokenHash, user.id).run();
+  }
+
+  // Buat session baru untuk token baru
+  const userAgent = request.headers.get('User-Agent') || 'unknown';
+  const newTokenHash = await hashToken(newToken);
+  await createSession(user.id, newTokenHash, userAgent, env);
+
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   await env.DB.prepare(
     "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'refresh_token', 'auth', ?, ?)"
@@ -535,6 +564,35 @@ async function handleRefresh(request: Request, env: Env): Promise<Response> {
     refresh_token: newRefreshToken,
     user: { id: user.id, username: user.username, role: user.role, guru_id: user.guru_id, siswa_id: (user as any).siswa_id ?? null },
   });
+}
+
+async function handleLogout(request: Request, env: Env, user: UserPayload): Promise<Response> {
+  let body: { token?: string };
+  try {
+    body = await request.json();
+  } catch {
+    body = {};
+  }
+
+  // Revoke session berdasarkan token jika dikirim
+  if (body.token) {
+    const tokenHash = await hashToken(body.token);
+    await env.DB.prepare(
+      "UPDATE sessions SET is_active = 0, revoked_at = datetime('now') WHERE token_hash = ? AND user_id = ? AND is_active = 1"
+    ).bind(tokenHash, user.sub).run();
+  } else {
+    // Revoke semua session aktif user ini
+    await env.DB.prepare(
+      "UPDATE sessions SET is_active = 0, revoked_at = datetime('now') WHERE user_id = ? AND is_active = 1"
+    ).bind(user.sub).run();
+  }
+
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  await env.DB.prepare(
+    "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'logout', 'auth', ?, ?)"
+  ).bind(user.sub, `Logout user ${user.username}`, ip).run();
+
+  return success({ message: 'Logged out successfully' });
 }
 
 async function handleJadwalGuru(env: Env, user: UserPayload): Promise<Response> {

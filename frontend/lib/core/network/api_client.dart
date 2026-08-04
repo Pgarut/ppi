@@ -19,7 +19,7 @@ class ApiClient {
 
   static bool _isRefreshing = false;
 
-  static const _storage = FlutterSecureStorage(
+  static final _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
   );
@@ -71,6 +71,19 @@ class ApiClient {
     return headers;
   }
 
+  /// Kirim request logout ke backend untuk revoke session
+  static Future<void> logout() async {
+    try {
+      final token = await getToken();
+      if (token != null) {
+        await post('/auth/logout', body: {'token': token});
+      }
+    } catch (e) {
+      AppLogger.error('[ApiClient] Logout gagal: $e');
+    }
+    await clearTokens();
+  }
+
   static Future<Map<String, dynamic>> get(String path, {Map<String, String>? queryParams}) async {
     final uri = Uri.parse('${Env.apiUrl}$path').replace(queryParameters: queryParams);
     final response = await http.get(uri, headers: await _headers());
@@ -112,11 +125,15 @@ class ApiClient {
       _isRefreshing = true;
       try {
         final refreshToken = await getRefreshToken();
+        final currentToken = await getToken();
         if (refreshToken != null) {
           final refreshResponse = await http.post(
             Uri.parse('${Env.apiUrl}/auth/refresh'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'refresh_token': refreshToken}),
+            body: jsonEncode({
+              'refresh_token': refreshToken,
+              'token': currentToken,
+            }),
           );
 
           if (refreshResponse.statusCode == 200) {
