@@ -12,9 +12,12 @@ import { handleDashboard } from './routes/admin/dashboard';
 import { handleAdminAbsensi } from './routes/admin/absensi';
 import { handleAdminNilai } from './routes/admin/nilai';
 import { handleAdminRapor } from './routes/admin/rapor';
+import { handleAdminDauroh } from './routes/admin/dauroh';
+import { handleMusyrifahRoutes } from './routes/musyrifah/index';
 import { handlePenjadwalan } from './routes/wakil_kurikulum/penjadwalan';
 import { handleNilaiWK } from './routes/wakil_kurikulum/nilai';
 import { handleAbsensiWK } from './routes/wakil_kurikulum/absensi';
+import { handleDaurohWK } from './routes/wakil_kurikulum/dauroh';
 import { handleKenaikanKelas } from './routes/wakil_kurikulum/kenaikan_kelas';
 import { handleLaporanWK } from './routes/wakil_kurikulum/laporan';
 import { handleAbsensiGuru } from './routes/guru_mapel_wali_kelas/absensi';
@@ -31,6 +34,7 @@ import { handleDashboardKS } from './routes/kepala_sekolah/dashboard';
 import { handleJadwalKS } from './routes/kepala_sekolah/jadwal';
 import { handleAbsensiKS } from './routes/kepala_sekolah/absensi';
 import { handleNilaiKS } from './routes/kepala_sekolah/nilai';
+import { handleDaurohKS } from './routes/kepala_sekolah/dauroh';
 import { handleRaporKS } from './routes/kepala_sekolah/rapor';
 import { handleBKKS } from './routes/kepala_sekolah/bk';
 import { handleLaporanKS } from './routes/kepala_sekolah/laporan';
@@ -191,6 +195,11 @@ export default {
         if (subPath.startsWith('rapor')) {
           return handleAdminRapor(request, env, user, url);
         }
+
+        // Dauroh (Admin)
+        if (subPath === 'dauroh' || subPath.startsWith('dauroh/')) {
+          return handleAdminDauroh(request, env, user, pathParts, url);
+        }
       }
 
       // Wakil Kurikulum routes
@@ -208,6 +217,9 @@ export default {
         }
         if (subPath.startsWith('absensi')) {
           return handleAbsensiWK(request, env, url);
+        }
+        if (subPath.startsWith('dauroh')) {
+          return handleDaurohWK(request, env, user, pathParts, url);
         }
         if (subPath.startsWith('kenaikan-kelas') || subPath.startsWith('alumni')) {
           return handleKenaikanKelas(request, env, user, pathParts, url);
@@ -260,9 +272,16 @@ export default {
         if (subPath === 'jadwal') return handleJadwalKS(request, env, url);
         if (subPath === 'absensi') return handleAbsensiKS(request, env, url);
         if (subPath === 'nilai') return handleNilaiKS(request, env, url);
+        if (subPath === 'dauroh/nilai' || subPath === 'dauroh/filters') return handleDaurohKS(request, env, user, pathParts, url);
         if (subPath === 'rapor') return handleRaporKS(request, env, url);
         if (subPath === 'bk') return handleBKKS(request, env, url);
         if (subPath === 'laporan') return handleLaporanKS(request, env, url);
+      }
+
+      // Musyrifah routes
+      if (pathParts[0] === 'api' && pathParts[1] === 'musyrifah') {
+        if (user.role !== 'musyrifah') return error('Forbidden: musyrifah only', 403);
+        return handleMusyrifahRoutes(request, env, user, pathParts, url);
       }
 
       // Guru BK routes

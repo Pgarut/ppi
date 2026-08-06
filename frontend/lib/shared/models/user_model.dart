@@ -39,6 +39,7 @@ class UserModel {
   bool get isGuru => role == 'guru_mapel_wali_kelas';
   bool get isGuruBk => role == 'guru_bk';
   bool get isSiswa => role == 'siswa';
+  bool get isMusyrifah => role == 'musyrifah';
 
   static String roleDisplayName(String role) {
     switch (role) {
@@ -48,6 +49,7 @@ class UserModel {
       case 'guru_mapel_wali_kelas': return 'Asatidz Mapel / Wali Kelas';
       case 'guru_bk': return 'Asatidz BK';
       case 'siswa': return 'Santri';
+      case 'musyrifah': return 'Musyrifah Dauroh';
       default: return role;
     }
   }

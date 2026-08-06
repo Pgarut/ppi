@@ -5,6 +5,7 @@ import { handleJadwal } from './jadwal';
 import { handleAbsensi } from './absensi';
 import { handleNilai } from './nilai';
 import { handleMateri } from './materi';
+import { handleSiswaDauroh } from './dauroh';
 
 export async function handleSiswaRoutes(
   request: Request,
@@ -34,6 +35,10 @@ export async function handleSiswaRoutes(
 
   if (sub === 'materi' && method === 'GET') {
     return handleMateri(env, user, url);
+  }
+
+  if (sub === 'dauroh') {
+    return handleSiswaDauroh(request, env, user, pathParts, url);
   }
 
   return error('Endpoint tidak ditemukan', 404);

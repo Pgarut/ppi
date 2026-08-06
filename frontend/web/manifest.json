@@ -1,23 +1,28 @@
 {
-    "name": "ppi_frontend",
-    "short_name": "ppi_frontend",
-    "start_url": ".",
+    "name": "Sistem Informasi Madrasah PPI",
+    "short_name": "PPI Madrasah",
+    "description": "Sistem Informasi Manajemen Madrasah PPI - Absensi, Jadwal, Nilai, dan Lainnya",
+    "start_url": "/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#1A237E",
+    "theme_color": "#1A237E",
+    "orientation": "any",
     "prefer_related_applications": false,
+    "scope": "/",
+    "lang": "id",
+    "categories": ["education", "productivity"],
     "icons": [
         {
             "src": "icons/Icon-192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "icons/Icon-512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "icons/Icon-maskable-192.png",
@@ -30,6 +35,15 @@
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "maskable"
+        }
+    ],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "Login",
+            "short_name": "Login",
+            "url": "/login",
+            "description": "Halaman Login"
         }
     ]
 }

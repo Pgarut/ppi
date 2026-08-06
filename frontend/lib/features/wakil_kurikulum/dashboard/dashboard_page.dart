@@ -38,6 +38,7 @@ class _DashboardPageWKState extends State<DashboardPageWK> {
         FeatureItem('Absensi', 'absensi', Icons.checklist_outlined, 'Rekap kehadiran siswa & guru'),
         FeatureItem('Penjadwalan', 'penjadwalan', Icons.calendar_month_outlined, 'Atur jadwal pelajaran'),
         FeatureItem('Nilai', 'nilai', Icons.grading_outlined, 'Validasi & kelola nilai'),
+        FeatureItem('Dauroh', 'dauroh', Icons.bookmark_outlined, 'Monitoring nilai Dauroh'),
         FeatureItem('Kenaikan Kelas', 'kenaikan-kelas', Icons.trending_up_outlined, 'Proses kenaikan kelas'),
         FeatureItem('Laporan', 'laporan', Icons.description_outlined, 'Generate laporan akademik', isSecondary: true),
       ],

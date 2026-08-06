@@ -37,6 +37,7 @@ class _DashboardPageKSState extends State<DashboardPageKS> {
         StatItem(Icons.book_outlined, 'Mapel', '${stats['total_mapel'] ?? 0}', const Color(0xFFF9A825)),
       ],
       features: const [
+        FeatureItem('Dauroh', 'dauroh', Icons.bookmark_outlined, 'Monitoring nilai Dauroh'),
         FeatureItem('Laporan', 'laporan', Icons.description_outlined, 'Generate & unduh laporan'),
         FeatureItem('Monitoring', 'monitoring', Icons.trending_up_outlined, 'Pantau aktivitas sekolah'),
       ],

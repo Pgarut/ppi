@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../shared/widgets/dashboard_shell.dart';
 import 'dashboard/dashboard_page.dart';
 import 'master_data/master_data_page.dart';
+import 'dauroh/dauroh_page.dart';
 import 'absensi/absensi_page.dart';
 import 'nilai/nilai_page.dart';
 import 'rapor/rapor_page.dart';
@@ -25,6 +26,7 @@ class _AdminPageState extends State<AdminPage> {
       ),
       features: {
         'master-data': (_) => const MasterDataPage(),
+        'dauroh': (_) => const DaurohPage(),
         'absensi': (_) => const AbsensiPage(),
         'nilai': (_) => const NilaiPage(),
         'rapor': (_) => const RaporPage(),

@@ -49,6 +49,7 @@ class _DashboardSantriPageState extends State<DashboardSantriPage> {
         FeatureItem('Absensi', 'absensi', Icons.how_to_reg, 'Riwayat kehadiran'),
         FeatureItem('Nilai', 'nilai', Icons.grade, 'Nilai akademik'),
         FeatureItem('Materi', 'materi', Icons.menu_book, 'Materi pelajaran'),
+        FeatureItem('Dauroh', 'dauroh', Icons.bookmark, 'Program Dauroh & Nilai'),
       ],
       onFeatureTap: widget.onFeatureTap,
     );

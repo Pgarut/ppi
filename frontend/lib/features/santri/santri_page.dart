@@ -5,6 +5,7 @@ import 'jadwal/jadwal_santri_page.dart';
 import 'absensi/absensi_santri_page.dart';
 import 'nilai/nilai_santri_page.dart';
 import 'materi/materi_santri_page.dart';
+import 'dauroh/dauroh_santri_page.dart';
 import 'profil/profil_santri_page.dart';
 
 class SantriPage extends StatelessWidget {
@@ -22,6 +23,7 @@ class SantriPage extends StatelessWidget {
         'absensi': (_) => const AbsensiSantriPage(),
         'nilai': (_) => const NilaiSantriPage(),
         'materi': (_) => const MateriSantriPage(),
+        'dauroh': (_) => const DaurohSantriPage(),
       },
       profilePage: (_) => const ProfilSantriPage(),
     );

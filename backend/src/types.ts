@@ -20,7 +20,8 @@ export type Role =
   | 'wakil_kurikulum'
   | 'guru_mapel_wali_kelas'
   | 'guru_bk'
-  | 'siswa';
+  | 'siswa'
+  | 'musyrifah';
 
 export interface AuthenticatedRequest extends Request {
   user?: UserPayload;

@@ -53,4 +53,31 @@ class KepalaSekolahService {
     final res = await ApiClient.get('/kepala-sekolah/laporan', queryParams: params);
     return res['data'] as List<dynamic>;
   }
+
+  // ── Dauroh Monitoring Nilai ──
+
+  static Future<Map<String, dynamic>> getDaurohFilters() async {
+    final res = await ApiClient.get('/kepala-sekolah/dauroh/filters');
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getDaurohNilai({
+    int page = 1,
+    int perPage = 50,
+    String? jenjang,
+    String? kelasId,
+    String? programId,
+    String? search,
+  }) async {
+    final params = <String, String>{
+      'page': '$page',
+      'per_page': '$perPage',
+    };
+    if (jenjang != null && jenjang.isNotEmpty) params['jenjang'] = jenjang;
+    if (kelasId != null && kelasId.isNotEmpty) params['kelas_id'] = kelasId;
+    if (programId != null && programId.isNotEmpty) params['program_id'] = programId;
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    final res = await ApiClient.get('/kepala-sekolah/dauroh/nilai', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
+  }
 }

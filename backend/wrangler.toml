@@ -59,3 +59,9 @@ tag = "v2"
 
 [[migrations]]
 tag = "v3"
+
+[[migrations]]
+tag = "v4"
+
+[[migrations]]
+tag = "v5"
