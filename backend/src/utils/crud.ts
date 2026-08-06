@@ -89,10 +89,11 @@ export async function create(env: Env, cfg: CrudConfig, body: Record<string, unk
 
   for (const col of cfg.columns) {
     const val = body[col];
-    if (val === undefined || val === null) {
-      return badRequest(`Field '${col}' wajib diisi`);
+    if (val === undefined || val === null || val === '') {
+      vals.push(null);
+    } else {
+      vals.push(val);
     }
-    vals.push(val);
   }
 
   const placeholders = vals.map(() => '?').join(', ');

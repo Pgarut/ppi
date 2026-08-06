@@ -55,11 +55,11 @@ class _SantriFormState extends State<SantriForm> {
       _selectedJk = widget.editData!['jenis_kelamin']?.toString();
       final rawStatus = widget.editData!['status']?.toString() ?? '';
       if (rawStatus.toLowerCase() == 'aktif') {
-        _selectedStatus = 'Aktif';
-      } else if (rawStatus.toLowerCase() == 'tidak_aktif' || rawStatus.toLowerCase() == 'tidak aktif') {
-        _selectedStatus = 'Tidak Aktif';
-      } else if (rawStatus.toLowerCase() == 'pindah') {
-        _selectedStatus = 'Pindah';
+        _selectedStatus = 'aktif';
+      } else if (rawStatus.toLowerCase() == 'lulus') {
+        _selectedStatus = 'lulus';
+      } else if (rawStatus.toLowerCase() == 'keluar') {
+        _selectedStatus = 'keluar';
       } else {
         _selectedStatus = rawStatus.isNotEmpty ? rawStatus : null;
       }
@@ -164,9 +164,9 @@ class _SantriFormState extends State<SantriForm> {
               label: 'Status',
               icon: Icons.flag_outlined,
               items: const [
-                DropdownMenuItem(value: 'Aktif', child: Text('Aktif')),
-                DropdownMenuItem(value: 'Tidak Aktif', child: Text('Tidak Aktif')),
-                DropdownMenuItem(value: 'Pindah', child: Text('Pindah')),
+                DropdownMenuItem(value: 'aktif', child: Text('Aktif')),
+                DropdownMenuItem(value: 'lulus', child: Text('Lulus')),
+                DropdownMenuItem(value: 'keluar', child: Text('Keluar')),
               ],
               onChanged: (v) => setState(() => _selectedStatus = v),
             ),

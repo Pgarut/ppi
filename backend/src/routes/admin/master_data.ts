@@ -30,11 +30,11 @@ async function upsertUserForGuru(env: Env, guruId: number, username: string, pas
 }
 
 const configs: Record<string, CrudConfig> = {
-  'tahun-ajaran': { table: 'tahun_ajaran', columns: ['nama', 'tanggal_mulai', 'tanggal_selesai', 'is_aktif'], label: 'Tahun Ajaran', searchFields: ['nama'], timestamp: true },
+  'tahun-ajaran': { table: 'tahun_ajaran', columns: ['nama', 'is_aktif'], label: 'Tahun Ajaran', searchFields: ['nama'], timestamp: true },
   'semester': { table: 'semester', columns: ['tahun_ajaran_id', 'nama', 'is_aktif'], label: 'Semester', searchFields: ['nama'], timestamp: true },
   'jurusan': { table: 'jurusan', columns: ['nama', 'kode'], label: 'Jurusan', searchFields: ['nama', 'kode'], timestamp: true },
   'tingkat': { table: 'tingkat', columns: ['nama', 'jenjang'], label: 'Tingkat', searchFields: ['nama'], timestamp: true },
-  'kelas': { table: 'kelas', columns: ['nama', 'tingkat_id', 'jurusan_id', 'wali_kelas_id', 'ruangan_id', 'tahun_ajaran_id'], label: 'Kelas', searchFields: ['nama'], timestamp: true },
+  'kelas': { table: 'kelas', columns: ['nama', 'tingkat_id', 'jurusan_id', 'tahun_ajaran_id'], label: 'Kelas', searchFields: ['nama'], timestamp: true },
   'mata-pelajaran': { table: 'mata_pelajaran', columns: ['nama', 'kode'], label: 'Mata Pelajaran', searchFields: ['nama', 'kode'], timestamp: true },
   'guru': { table: 'guru', columns: ['nip', 'nama', 'jenis_kelamin', 'jabatan', 'status_aktif'], label: 'Asatidz', searchFields: ['nama', 'nip'], filterFields: ['jabatan'], timestamp: true },
   'siswa': { table: 'siswa', columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'status'], label: 'Santri', searchFields: ['nama', 'nis', 'nisn'], timestamp: true },

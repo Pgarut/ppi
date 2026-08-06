@@ -103,8 +103,8 @@ class _ProgramFormPageState extends State<ProgramFormPage> {
                   label: 'Jenis Program',
                   icon: Icons.category_outlined,
                   items: const [
-                    DropdownMenuItem(value: 'kelas', child: Text('Kelas (Semua siswa kelas)')),
-                    DropdownMenuItem(value: 'khusus', child: Text('Khusus (Pilihan siswa)')),
+                    DropdownMenuItem(value: 'kelas', child: Text('Kelas')),
+                    DropdownMenuItem(value: 'khusus', child: Text('Khusus')),
                   ],
                   onChanged: (v) => setState(() => _jenisProgram = v ?? 'kelas'),
                 ),

@@ -18,15 +18,15 @@ enum MasterDataType {
     label: 'Tahun Ajaran',
     resource: 'tahun-ajaran',
     icon: Icons.calendar_month_outlined,
-    columns: ['nama', 'tanggal_mulai', 'tanggal_selesai', 'is_aktif'],
-    displayCols: ['Nama', 'Tgl Mulai', 'Tgl Selesai', 'Aktif'],
+    columns: ['nama', 'is_aktif'],
+    displayCols: ['Nama', 'Aktif'],
   ),
   semester(
     label: 'Semester',
     resource: 'semester',
     icon: Icons.layers_outlined,
     columns: ['tahun_ajaran_id', 'nama', 'is_aktif'],
-    displayCols: ['Tahun Ajaran ID', 'Nama', 'Aktif'],
+    displayCols: ['Tahun Ajaran', 'Semester', 'Aktif'],
   ),
   jurusan(
     label: 'Jurusan',
@@ -47,7 +47,7 @@ enum MasterDataType {
     resource: 'kelas',
     icon: Icons.meeting_room_outlined,
     columns: ['nama', 'tingkat_id', 'jurusan_id', 'tahun_ajaran_id'],
-    displayCols: ['Nama', 'Tingkat ID', 'Jurusan ID', 'Thn Ajaran ID'],
+    displayCols: ['Nama', 'Tingkat', 'Jurusan', 'Tahun Ajaran'],
   ),
   mataPelajaran(
     label: 'Mata Pelajaran',
@@ -283,6 +283,18 @@ class _MasterDataPageState extends State<MasterDataPage> {
           _loading[type] = false;
         });
       }
+
+      // Load tahun ajaran data if viewing semester (for display)
+      if (type == MasterDataType.semester && (_data[MasterDataType.tahunAjaran]?.isEmpty ?? true)) {
+        try {
+          final taRes = await AdminService.list('tahun-ajaran', page: 1, perPage: 100);
+          if (mounted) {
+            setState(() {
+              _data[MasterDataType.tahunAjaran] = (taRes['items'] as List).cast<Map<String, dynamic>>();
+            });
+          }
+        } catch (_) {}
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -298,6 +310,14 @@ class _MasterDataPageState extends State<MasterDataPage> {
     if (col == 'password') return '\u2022\u2022\u2022\u2022\u2022\u2022';
     if (col == 'is_aktif' || col == 'status_aktif') return val == 1 ? 'Ya' : 'Tidak';
     if (col == 'jenis_kelamin') return val == 'L' ? 'Laki-laki' : 'Perempuan';
+    if (col == 'tahun_ajaran_id' && type == MasterDataType.semester) {
+      final taList = _data[MasterDataType.tahunAjaran] ?? [];
+      final ta = taList.cast<Map<String, dynamic>?>().firstWhere(
+        (t) => t?['id'] == val,
+        orElse: () => null,
+      );
+      return ta?['nama']?.toString() ?? val.toString();
+    }
     if (col == 'kelas_id' && (type == MasterDataType.mataPelajaran || type == MasterDataType.santri)) {
       final kelasList = _data[MasterDataType.kelas] ?? [];
       final k = kelasList.cast<Map<String, dynamic>?>().firstWhere(
@@ -345,6 +365,16 @@ class _MasterDataPageState extends State<MasterDataPage> {
     if (type == MasterDataType.tahunAjaran || type == MasterDataType.semester) {
       final val = edit?['is_aktif'];
       selectedAktif = val == 1 ? 'Aktif' : (val == 0 ? 'Tidak Aktif' : null);
+    }
+
+    int? yearAwal;
+    int? yearAkhir;
+    if (type == MasterDataType.tahunAjaran && edit != null && edit['nama'] != null) {
+      final parts = edit['nama'].toString().split('-');
+      if (parts.length == 2) {
+        yearAwal = int.tryParse(parts[0].trim());
+        yearAkhir = int.tryParse(parts[1].trim());
+      }
     }
 
     String? selectedNamaSemester;
@@ -396,6 +426,10 @@ class _MasterDataPageState extends State<MasterDataPage> {
             child: _buildGenericFormContent(type, ctx, ctrls, edit,
               selectedAktif: selectedAktif,
               onAktifChanged: (v) => selectedAktif = v,
+              yearAwal: yearAwal,
+              onYearAwalChanged: (v) => yearAwal = v,
+              yearAkhir: yearAkhir,
+              onYearAkhirChanged: (v) => yearAkhir = v,
               selectedNamaSemester: selectedNamaSemester,
               onNamaSemesterChanged: (v) => selectedNamaSemester = v,
               selectedTaId: selectedTaId,
@@ -417,7 +451,9 @@ class _MasterDataPageState extends State<MasterDataPage> {
               if (!formKey.currentState!.validate()) return;
               final body = <String, dynamic>{};
               for (final col in type.columns) {
-                if ((type == MasterDataType.tahunAjaran || type == MasterDataType.semester) && col == 'is_aktif') {
+                if (type == MasterDataType.tahunAjaran && col == 'nama') {
+                  body[col] = yearAwal != null && yearAkhir != null ? '$yearAwal-$yearAkhir' : '';
+                } else if ((type == MasterDataType.tahunAjaran || type == MasterDataType.semester) && col == 'is_aktif') {
                   body[col] = selectedAktif == 'Aktif' ? 1 : 0;
                 } else if ((type == MasterDataType.semester || type == MasterDataType.kelas) && col == 'tahun_ajaran_id') {
                   body[col] = selectedTaId;
@@ -457,6 +493,10 @@ class _MasterDataPageState extends State<MasterDataPage> {
     Map<String, dynamic>? edit, {
     String? selectedAktif,
     ValueChanged<String?>? onAktifChanged,
+    int? yearAwal,
+    ValueChanged<int?>? onYearAwalChanged,
+    int? yearAkhir,
+    ValueChanged<int?>? onYearAkhirChanged,
     String? selectedNamaSemester,
     ValueChanged<String?>? onNamaSemesterChanged,
     int? selectedTaId,
@@ -470,26 +510,58 @@ class _MasterDataPageState extends State<MasterDataPage> {
     List<Map<String, dynamic>>? jurusanList,
   }) {
     if (type == MasterDataType.tahunAjaran) {
-      return Column(mainAxisSize: MainAxisSize.min, children: [
-        ModernField(controller: ctrls['nama']!, label: 'Nama Tahun Ajaran', icon: Icons.calendar_month_outlined),
-        const SizedBox(height: 16),
-        FormRow(children: [
-          Expanded(child: ModernDateField(controller: ctrls['tanggal_mulai']!, label: 'Tanggal Mulai', context: ctx)),
-          const SizedBox(width: 16),
-          Expanded(child: ModernDateField(controller: ctrls['tanggal_selesai']!, label: 'Tanggal Selesai', context: ctx)),
+      return StatefulBuilder(
+        builder: (ctx, setInnerState) => Column(mainAxisSize: MainAxisSize.min, children: [
+          FormRow(children: [
+            Expanded(
+              child: ModernDropdown<int>(
+                value: yearAwal,
+                label: 'Tahun Awal',
+                icon: Icons.calendar_today_outlined,
+                items: List.generate(11, (i) => 2020 + i).map((y) => DropdownMenuItem(
+                  value: y,
+                  child: Text('$y'),
+                )).toList(),
+                onChanged: (v) {
+                  setInnerState(() {
+                    onYearAwalChanged?.call(v);
+                    yearAwal = v;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: ModernDropdown<int>(
+                value: yearAkhir,
+                label: 'Tahun Akhir',
+                icon: Icons.calendar_today_outlined,
+                items: List.generate(11, (i) => 2021 + i).map((y) => DropdownMenuItem(
+                  value: y,
+                  child: Text('$y'),
+                )).toList(),
+                onChanged: (v) {
+                  setInnerState(() {
+                    onYearAkhirChanged?.call(v);
+                    yearAkhir = v;
+                  });
+                },
+              ),
+            ),
+          ]),
+          const SizedBox(height: 16),
+          ModernDropdown<String>(
+            value: selectedAktif,
+            label: 'Status',
+            icon: Icons.toggle_on_outlined,
+            items: const [
+              DropdownMenuItem(value: 'Aktif', child: Text('Aktif')),
+              DropdownMenuItem(value: 'Tidak Aktif', child: Text('Tidak Aktif')),
+            ],
+            onChanged: onAktifChanged,
+          ),
         ]),
-        const SizedBox(height: 16),
-        ModernDropdown<String>(
-          value: selectedAktif,
-          label: 'Status',
-          icon: Icons.toggle_on_outlined,
-          items: const [
-            DropdownMenuItem(value: 'Aktif', child: Text('Aktif')),
-            DropdownMenuItem(value: 'Tidak Aktif', child: Text('Tidak Aktif')),
-          ],
-          onChanged: onAktifChanged,
-        ),
-      ]);
+      );
     }
 
     if (type == MasterDataType.semester) {
@@ -554,17 +626,40 @@ class _MasterDataPageState extends State<MasterDataPage> {
     }
 
     if (type == MasterDataType.tingkat) {
-      return DataCard(
-        header: Row(children: [
-          Icon(Icons.stairs_outlined, size: 20, color: Theme.of(ctx).colorScheme.primary),
-          const SizedBox(width: 8),
-          const Text('Data Tingkat', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-        ]),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          ModernField(controller: ctrls['nama']!, label: 'Nama Tingkat', icon: Icons.badge_outlined, hint: 'Contoh: X, XI, XII'),
-          const SizedBox(height: 16),
-          ModernField(controller: ctrls['jenjang']!, label: 'Jenjang', icon: Icons.school_outlined, hint: 'Contoh: SMA/SMK/MA'),
-        ]),
+      // Parse existing jenjang value
+      String? selectedJenjang;
+      if (edit != null && edit['jenjang'] != null) {
+        final val = edit['jenjang'].toString();
+        if (['MTs', 'MA/MLN'].contains(val)) {
+          selectedJenjang = val;
+        }
+      }
+
+      return StatefulBuilder(
+        builder: (ctx, setInnerState) => DataCard(
+          header: Row(children: [
+            Icon(Icons.stairs_outlined, size: 20, color: Theme.of(ctx).colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text('Data Tingkat', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          ]),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            ModernField(controller: ctrls['nama']!, label: 'Nama Tingkat', icon: Icons.badge_outlined, hint: 'VII, VIII, IX, X, XI, XII'),
+            const SizedBox(height: 16),
+            ModernDropdown<String>(
+              value: selectedJenjang,
+              label: 'Jenjang',
+              icon: Icons.school_outlined,
+              items: const [
+                DropdownMenuItem(value: 'MTs', child: Text('MTs')),
+                DropdownMenuItem(value: 'MA/MLN', child: Text('MA/MLN')),
+              ],
+              onChanged: (v) {
+                setInnerState(() => selectedJenjang = v);
+                ctrls['jenjang']!.text = v ?? '';
+              },
+            ),
+          ]),
+        ),
       );
     }
 
