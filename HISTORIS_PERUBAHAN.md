@@ -679,5 +679,37 @@ class AuthProvider extends ChangeNotifier {
 
 ---
 
-*Dokumen ini terakhir diperbarui: 3 Agustus 2026*
-*Total perubahan tercatat: 8 sesi kerja*
+## 14. Sesi 7 Agustus 2026
+
+### 14.1 Backend Penjadwalan — Filter Guru
+
+**Masalah:** Endpoint `referensi` dan `kesiapan` di `penjadwalan.ts` mengambil SEMUA guru tanpa filter jabatan. Guru BK, Kepala Sekolah, Wakil Kurikulum muncul di daftar.
+
+**Solusi:** Tambahkan `INNER JOIN guru_mapel gm ON g.id = gm.guru_id` di kedua endpoint.
+
+**File:** `backend/src/routes/wakil_kurikulum/penjadwalan.ts`
+
+### 14.2 Frontend Penjadwalan — Dropdown Multi-Select Hari
+
+**Masalah:** Tab Kesiapan menampilkan hari aktif guru menggunakan `FilterChip` (6 chip). Tampilan penuh.
+
+**Solusi:** Ubah `_HariCheckboxRow` menjadi dropdown multi-select dengan dialog.
+
+**File:** `frontend/lib/features/wakil_kurikulum/penjadwalan/penjadwalan_page.dart`
+
+### 14.3 Admin Settings — Logo & Background URL
+
+**Status:** Tidak ada bug. Sudah berfungsi dengan benar.
+
+**Keputusan:** Pakai Google Drive untuk hosting gambar. R2 akan diaktifkan saat dipublikasi ke beberapa madrasah.
+
+### 14.4 Deploy
+
+- Backend: `https://ppi-backend-production.pgarut77.workers.dev`
+- Frontend: `https://8d8da0c1.ppi-frontend-ayg.pages.dev`
+- Commit: `e5c3446`
+
+---
+
+*Dokumen ini terakhir diperbarui: 7 Agustus 2026*
+*Total perubahan tercatat: 9 sesi kerja*
