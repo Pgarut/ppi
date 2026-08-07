@@ -40,7 +40,7 @@ class _ProfilPageState extends State<ProfilPage> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
-    final name = user?.username ?? 'Pengguna';
+    final name = user?.displayName ?? 'Pengguna';
     final roleDisplay = UserModel.roleDisplayName(user?.role ?? '');
 
     return ListView(

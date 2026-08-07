@@ -95,13 +95,17 @@ class GuruService {
     return res['data'] as Map<String, dynamic>;
   }
 
-  static Future<Map<String, dynamic>> getDataSiswa() async {
-    final res = await ApiClient.get('/guru/data-siswa');
+  static Future<Map<String, dynamic>> getDataSiswa({String? bulanTahun}) async {
+    final params = <String, String>{};
+    if (bulanTahun != null && bulanTahun.isNotEmpty) params['bulan_tahun'] = bulanTahun;
+    final res = await ApiClient.get('/guru/data-siswa', queryParams: params);
     return res['data'] as Map<String, dynamic>;
   }
 
-  static Future<Map<String, dynamic>> getRekapAbsensi() async {
-    final res = await ApiClient.get('/guru/rekap-absensi');
+  static Future<Map<String, dynamic>> getRekapAbsensi({String? bulanTahun}) async {
+    final params = <String, String>{};
+    if (bulanTahun != null && bulanTahun.isNotEmpty) params['bulan_tahun'] = bulanTahun;
+    final res = await ApiClient.get('/guru/rekap-absensi', queryParams: params);
     return res['data'] as Map<String, dynamic>;
   }
 

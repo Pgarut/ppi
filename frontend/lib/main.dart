@@ -43,15 +43,18 @@ class PpiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sistem Informasi PPI',
+      title: 'MA PERSIS GARUT',
       theme: AppTheme.light,
       debugShowCheckedModeBanner: false,
       home: Consumer<AuthProvider>(
         builder: (_, auth, __) {
-          if (auth.status == AuthStatus.uninitialized || auth.status == AuthStatus.loading) {
-            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          if (auth.status == AuthStatus.uninitialized ||
+              auth.status == AuthStatus.loading) {
+            return const Scaffold(
+                body: Center(child: CircularProgressIndicator()));
           }
-          if (auth.status == AuthStatus.authenticated && auth.dashboardRoute != null) {
+          if (auth.status == AuthStatus.authenticated &&
+              auth.dashboardRoute != null) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               Navigator.of(context).pushReplacementNamed(auth.dashboardRoute!);
             });

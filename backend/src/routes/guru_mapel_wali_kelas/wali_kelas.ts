@@ -20,6 +20,15 @@ export async function handleWaliKelas(request: Request, env: Env, user: UserPayl
       "SELECT id, nama FROM semester WHERE is_aktif = 1 LIMIT 1"
     ).first<{ id: number; nama: string }>();
 
+    const bulanTahun = url.searchParams.get('bulan_tahun') || '';
+
+    let absensiWhere = 'WHERE kelas_id = ?';
+    const absensiBindings: unknown[] = [waliKelas.id];
+    if (bulanTahun) {
+      absensiWhere += ' AND substr(tanggal, 1, 7) = ?';
+      absensiBindings.push(bulanTahun);
+    }
+
     const rows = await env.DB.prepare(`
       SELECT
         s.id, s.nis, s.nisn, s.nama, s.jenis_kelamin, s.kelas_id,
@@ -42,7 +51,7 @@ export async function handleWaliKelas(request: Request, env: Env, user: UserPayl
           SUM(CASE WHEN status = 'sakit' THEN 1 ELSE 0 END) as sakit,
           SUM(CASE WHEN status = 'alpa' THEN 1 ELSE 0 END) as alpa
         FROM absensi_siswa
-        WHERE kelas_id = ?
+        ${absensiWhere}
         GROUP BY siswa_id
       ) a ON a.siswa_id = s.id
       LEFT JOIN (
@@ -56,7 +65,7 @@ export async function handleWaliKelas(request: Request, env: Env, user: UserPayl
       ) p ON p.siswa_id = s.id
       WHERE s.kelas_id = ? AND s.status = 'aktif'
       ORDER BY s.nama
-    `).bind(waliKelas.id, waliKelas.id, waliKelas.id).all<{
+    `).bind(...absensiBindings, waliKelas.id, waliKelas.id).all<{
       id: number; nis: string; nisn: string | null; nama: string;
       jenis_kelamin: string; kelas_id: number; kelas_nama: string;
       total_kehadiran: number; hadir: number; izin: number; sakit: number; alpa: number;
@@ -108,11 +117,20 @@ export async function handleWaliKelas(request: Request, env: Env, user: UserPayl
 
   // GET rekap absensi kelas (ringkasan per status — masih dipertahankan)
   if (subPath === 'rekap-absensi' && request.method === 'GET') {
+    const bulanTahun = url.searchParams.get('bulan_tahun') || '';
+
+    let where = 'WHERE a.kelas_id = ?';
+    const bindings: unknown[] = [waliKelas.id];
+    if (bulanTahun) {
+      where += ' AND substr(a.tanggal, 1, 7) = ?';
+      bindings.push(bulanTahun);
+    }
+
     const rows = await env.DB.prepare(
       `SELECT a.status, COUNT(*) as jumlah
-       FROM absensi_siswa a WHERE a.kelas_id = ?
+       FROM absensi_siswa a ${where}
        GROUP BY a.status`
-    ).bind(waliKelas.id).all();
+    ).bind(...bindings).all();
 
     return success({ kelas: waliKelas, rekap: rows.results });
   }

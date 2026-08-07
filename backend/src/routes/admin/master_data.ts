@@ -29,6 +29,23 @@ async function upsertUserForGuru(env: Env, guruId: number, username: string, pas
   }
 }
 
+async function upsertUserForSiswa(env: Env, siswaId: number, username: string, password: string, adminId: number, ip: string) {
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  const existing = await env.DB.prepare('SELECT id FROM users WHERE siswa_id = ?').bind(siswaId).first<{ id: number }>();
+  if (existing) {
+    await env.DB.prepare('UPDATE users SET username = ?, password_hash = ? WHERE siswa_id = ?')
+      .bind(username, passwordHash, siswaId).run();
+    await env.DB.prepare("INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'users', ?, ?)")
+      .bind(adminId, `Update user untuk siswa id=${siswaId}`, ip).run();
+  } else {
+    await env.DB.prepare("INSERT INTO users (username, password_hash, role, siswa_id, is_active) VALUES (?, ?, 'siswa', ?, 1)")
+      .bind(username, passwordHash, siswaId).run();
+    await env.DB.prepare("INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'create', 'users', ?, ?)")
+      .bind(adminId, `Buat user untuk siswa id=${siswaId} (${username})`, ip).run();
+  }
+}
+
 const configs: Record<string, CrudConfig> = {
   'tahun-ajaran': { table: 'tahun_ajaran', columns: ['nama', 'is_aktif'], label: 'Tahun Ajaran', searchFields: ['nama'] },
   'semester': { table: 'semester', columns: ['tahun_ajaran_id', 'nama', 'is_aktif'], label: 'Semester', searchFields: ['nama'] },
@@ -36,8 +53,14 @@ const configs: Record<string, CrudConfig> = {
   'tingkat': { table: 'tingkat', columns: ['nama', 'jenjang'], label: 'Tingkat', searchFields: ['nama'] },
   'kelas': { table: 'kelas', columns: ['nama', 'tingkat_id', 'jurusan_id', 'tahun_ajaran_id'], label: 'Kelas', searchFields: ['nama'] },
   'mata-pelajaran': { table: 'mata_pelajaran', columns: ['nama', 'kode'], label: 'Mata Pelajaran', searchFields: ['nama', 'kode'] },
-  'guru': { table: 'guru', columns: ['nip', 'nama', 'jenis_kelamin', 'jabatan', 'status_aktif'], label: 'Asatidz', searchFields: ['nama', 'nip'], filterFields: ['jabatan'] },
-  'siswa': { table: 'siswa', columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'status'], label: 'Santri', searchFields: ['nama', 'nis', 'nisn'] },
+  'guru': {
+    table: 'guru', columns: ['nip', 'nama', 'jenis_kelamin', 'jabatan', 'status_aktif'], label: 'Asatidz', searchFields: ['nama', 'nip'], filterFields: ['jabatan'],
+    leftJoin: { table: 'users', on: 'users.guru_id = guru.id', select: ["users.username"] },
+  },
+  'siswa': {
+    table: 'siswa', columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'status'], label: 'Santri', searchFields: ['nama', 'nis', 'nisn'],
+    leftJoin: { table: 'users', on: 'users.siswa_id = siswa.id', select: ["users.username"] },
+  },
   'ruangan': { table: 'ruangan', columns: ['nama', 'kapasitas'], label: 'Ruangan', searchFields: ['nama'] },
 };
 
@@ -72,19 +95,35 @@ export async function handleAdminMasterData(request: Request, env: Env, user: Us
           await upsertUserForGuru(env, guruId, username, password, (body['jabatan'] as string) || '', user.sub, ip);
         }
       }
+      if (resource === 'siswa') {
+        const resultBody = await result.clone().json() as { data?: { id?: number } };
+        const siswaId = resultBody?.data?.id;
+        const username = body['username'] as string | undefined;
+        const password = body['password'] as string | undefined;
+        if (siswaId && username && password) {
+          await upsertUserForSiswa(env, siswaId, username, password, user.sub, ip);
+        }
+      }
       return result;
     }
     if (isUpdate) {
       const body = await request.json() as Record<string, unknown>;
-      const guruId = parseInt(pathParts[3]);
-      const result = await update(env, cfg, guruId, body, user, ip);
+      const id = parseInt(pathParts[3]);
+      const result = await update(env, cfg, id, body, user, ip);
       if (resource === 'guru') {
         const username = body['username'] as string | undefined;
         const password = body['password'] as string | undefined;
         if (username && password) {
           const jabatan = body['jabatan'] as string | undefined;
-          const existingGuru = await env.DB.prepare('SELECT jabatan FROM guru WHERE id = ?').bind(guruId).first<{ jabatan: string }>();
-          await upsertUserForGuru(env, guruId, username, password, jabatan || existingGuru?.jabatan || '', user.sub, ip);
+          const existingGuru = await env.DB.prepare('SELECT jabatan FROM guru WHERE id = ?').bind(id).first<{ jabatan: string }>();
+          await upsertUserForGuru(env, id, username, password, jabatan || existingGuru?.jabatan || '', user.sub, ip);
+        }
+      }
+      if (resource === 'siswa') {
+        const username = body['username'] as string | undefined;
+        const password = body['password'] as string | undefined;
+        if (username && password) {
+          await upsertUserForSiswa(env, id, username, password, user.sub, ip);
         }
       }
       return result;
@@ -229,7 +268,7 @@ export async function handleSiswaTemplate(env: Env): Promise<Response> {
 
   const wsData = [
     ['NIS', 'NISN', 'Nama Santri', 'Jenis Kelamin', 'Kelas', 'Status'],
-    ['', '', '', 'L/P', '', 'Aktif / Tidak Aktif / Pindah'],
+    ['', '', '', 'L/P', '', 'Aktif / Lulus / Keluar'],
   ];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
   ws['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 22 }];
@@ -239,8 +278,8 @@ export async function handleSiswaTemplate(env: Env): Promise<Response> {
   const refRows: (string | undefined)[][] = [
     ['Jenis Kelamin', 'Status', ''],
     ['L', 'Aktif', ''],
-    ['P', 'Tidak Aktif', ''],
-    ['', 'Pindah', ''],
+    ['P', 'Lulus', ''],
+    ['', 'Keluar', ''],
     ['', '', ''],
     ['Daftar Kelas', '', ''],
   ];
@@ -307,7 +346,7 @@ export async function handleSiswaPreview(request: Request, env: Env): Promise<Re
     if (kelasNama && kelasId == null) errors.push(`Kelas "${kelasNama}" tidak ditemukan`);
 
     if (!status) errors.push('Status harus diisi');
-    else if (!['Aktif', 'Tidak Aktif', 'Pindah'].includes(status)) errors.push('Status harus Aktif, Tidak Aktif, atau Pindah');
+    else if (!['aktif', 'lulus', 'keluar'].includes(status.toLowerCase())) errors.push('Status harus Aktif, Lulus, atau Keluar');
 
     preview.push({
       row: i + 2,
@@ -317,7 +356,7 @@ export async function handleSiswaPreview(request: Request, env: Env): Promise<Re
       jenis_kelamin: jk,
       kelas_nama: kelasNama,
       kelas_id: kelasId,
-      status,
+      status: status.toLowerCase(),
       errors,
       valid: errors.length === 0,
     });
@@ -333,8 +372,7 @@ export async function handleSiswaBulk(request: Request, env: Env, user: UserPayl
   if (!Array.isArray(body.data) || body.data.length === 0) return badRequest('Field data harus array dan tidak boleh kosong');
 
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  const now = new Date().toISOString().replace('T', ' ').split('.')[0];
-  const cols = ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'status', 'created_at', 'updated_at'];
+  const cols = ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'status'];
   const placeholders = cols.map(() => '?').join(', ');
   const stmt = `INSERT INTO siswa (${cols.join(', ')}) VALUES (${placeholders})`;
 
@@ -350,8 +388,7 @@ export async function handleSiswaBulk(request: Request, env: Env, user: UserPayl
         row['nama'] ?? '',
         row['jenis_kelamin'] ?? '',
         row['kelas_id'] ?? null,
-        row['status'] ?? '',
-        now, now
+        row['status'] ?? ''
       ).run();
       inserted++;
     } catch (e) {
@@ -447,8 +484,7 @@ export async function handleMapelBulk(request: Request, env: Env, user: UserPayl
   if (!Array.isArray(body.data) || body.data.length === 0) return badRequest('Field data harus array dan tidak boleh kosong');
 
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  const now = new Date().toISOString().replace('T', ' ').split('.')[0];
-  const cols = ['nama', 'kode', 'created_at', 'updated_at'];
+  const cols = ['nama', 'kode'];
   const placeholders = cols.map(() => '?').join(', ');
   const stmt = `INSERT INTO mata_pelajaran (${cols.join(', ')}) VALUES (${placeholders})`;
 
@@ -460,8 +496,7 @@ export async function handleMapelBulk(request: Request, env: Env, user: UserPayl
     try {
       await env.DB.prepare(stmt).bind(
         row['nama'] ?? '',
-        row['kode'] ?? '',
-        now, now
+        row['kode'] ?? ''
       ).run();
       inserted++;
     } catch (e) {
@@ -535,6 +570,13 @@ export async function handleGuruPreview(request: Request, env: Env): Promise<Res
   const validJabatan = new Set(['guru_mapel', 'wali_kelas', 'kepala_sekolah', 'wakil_kurikulum', 'guru_bk']);
   const preview: Record<string, unknown>[] = [];
   const seenNip = new Set<string>();
+  const seenUsername = new Set<string>();
+
+  const existingNips = await env.DB.prepare('SELECT nip FROM guru').all<{ nip: string }>();
+  const existingNipSet = new Set(existingNips.results.map(r => (r.nip ?? '').toLowerCase().trim()));
+
+  const existingUsers = await env.DB.prepare('SELECT username FROM users').all<{ username: string }>();
+  const existingUsernameSet = new Set(existingUsers.results.map(r => (r.username ?? '').toLowerCase().trim()));
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -542,20 +584,25 @@ export async function handleGuruPreview(request: Request, env: Env): Promise<Res
     const nip = (r['NIP'] ?? '').toString().trim();
     const nama = (r['Nama'] ?? '').toString().trim();
     const jk = (r['Jenis Kelamin'] ?? '').toString().trim().toUpperCase();
-    const jabatan = (r['Jabatan'] ?? '').toString().trim();
+    const jabatan = (r['Jabatan'] ?? '').toString().trim().toLowerCase();
     const status = (r['Status Aktif'] ?? '').toString().trim();
+    const statusNormalized = status.toLowerCase();
     const username = (r['Username'] ?? '').toString().trim();
     const password = (r['Password'] ?? '').toString().trim();
 
     if (!nip) errors.push('NIP harus diisi');
-    else if (seenNip.has(nip)) errors.push(`NIP "${nip}" duplikat dalam file`);
-    else seenNip.add(nip);
+    else if (seenNip.has(nip.toLowerCase())) errors.push(`NIP "${nip}" duplikat dalam file`);
+    else if (existingNipSet.has(nip.toLowerCase())) errors.push(`NIP "${nip}" sudah ada di database`);
+    else seenNip.add(nip.toLowerCase());
 
     if (!nama) errors.push('Nama harus diisi');
     if (jk !== 'L' && jk !== 'P') errors.push('Jenis Kelamin harus L atau P');
-    if (jabatan && !validJabatan.has(jabatan)) errors.push(`Jabatan "${jabatan}" tidak dikenal`);
-    if (status && !['Aktif', 'Tidak Aktif'].includes(status)) errors.push('Status Aktif harus Aktif atau Tidak Aktif');
+    if (jabatan && !validJabatan.has(jabatan)) errors.push(`Jabatan "${jabatan}" tidak dikenal. Pilihan: guru_mapel, wali_kelas, kepala_sekolah, wakil_kurikulum, guru_bk`);
+    if (status && !['aktif', 'tidak aktif'].includes(statusNormalized)) errors.push('Status Aktif harus "Aktif" atau "Tidak Aktif"');
     if (!username) errors.push('Username harus diisi');
+    else if (seenUsername.has(username.toLowerCase())) errors.push(`Username "${username}" duplikat dalam file`);
+    else if (existingUsernameSet.has(username.toLowerCase())) errors.push(`Username "${username}" sudah ada di database`);
+    else seenUsername.add(username.toLowerCase());
     if (!password) errors.push('Password harus diisi');
 
     preview.push({
@@ -564,7 +611,7 @@ export async function handleGuruPreview(request: Request, env: Env): Promise<Res
       nama,
       jenis_kelamin: jk,
       jabatan,
-      status_aktif: status === 'Aktif' ? 1 : 0,
+      status_aktif: statusNormalized === 'aktif' ? 1 : 0,
       username,
       password,
       errors,
@@ -582,8 +629,7 @@ export async function handleGuruBulk(request: Request, env: Env, user: UserPaylo
   if (!Array.isArray(body.data) || body.data.length === 0) return badRequest('Field data harus array dan tidak boleh kosong');
 
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  const now = new Date().toISOString().replace('T', ' ').split('.')[0];
-  const cols = ['nip', 'nama', 'jenis_kelamin', 'jabatan', 'status_aktif', 'created_at', 'updated_at'];
+  const cols = ['nip', 'nama', 'jenis_kelamin', 'jabatan', 'status_aktif'];
   const placeholders = cols.map(() => '?').join(', ');
   const stmt = `INSERT INTO guru (${cols.join(', ')}) VALUES (${placeholders})`;
 
@@ -598,8 +644,7 @@ export async function handleGuruBulk(request: Request, env: Env, user: UserPaylo
         row['nama'] ?? '',
         row['jenis_kelamin'] ?? '',
         row['jabatan'] ?? '',
-        row['status_aktif'] ?? 1,
-        now, now
+        row['status_aktif'] ?? 1
       ).run();
 
       if (result.meta?.last_row_id && row['username'] && row['password']) {

@@ -39,13 +39,15 @@ class _PengaturanPageState extends State<PengaturanPage> with SingleTickerProvid
         automaticallyImplyLeading: false,
         bottom: TabBar(
           controller: _tabCtrl,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: const [
-            Tab(icon: Icon(Icons.security_outlined), text: 'Hak Akses'),
-            Tab(icon: Icon(Icons.history), text: 'Log'),
-            Tab(icon: Icon(Icons.backup_outlined), text: 'Backup'),
-            Tab(icon: Icon(Icons.restore_outlined), text: 'Restore'),
-            Tab(icon: Icon(Icons.school_outlined), text: 'Profil'),
-            Tab(icon: Icon(Icons.login_outlined), text: 'Tampilan'),
+            Tab(icon: Icon(Icons.security_outlined, size: 18), text: 'Hak Akses'),
+            Tab(icon: Icon(Icons.history, size: 18), text: 'Log'),
+            Tab(icon: Icon(Icons.backup_outlined, size: 18), text: 'Backup'),
+            Tab(icon: Icon(Icons.restore_outlined, size: 18), text: 'Restore'),
+            Tab(icon: Icon(Icons.school_outlined, size: 18), text: 'Profil'),
+            Tab(icon: Icon(Icons.login_outlined, size: 18), text: 'Tampilan'),
           ],
         ),
       ),
@@ -193,9 +195,14 @@ class _LogTabState extends State<_LogTab> {
   List<Map<String, dynamic>> _logs = [];
   bool _loading = true;
   int _page = 1, _totalPages = 1;
+  String? _filterModul;
+  final _searchCtrl = TextEditingController();
 
   @override
   void initState() { super.initState(); _load(); }
+
+  @override
+  void dispose() { _searchCtrl.dispose(); super.dispose(); }
 
   Future<void> _load() async {
     setState(() => _loading = true);
@@ -207,6 +214,21 @@ class _LogTabState extends State<_LogTab> {
         _loading = false;
       }); }
     } catch (e) { if (mounted) setState(() => _loading = false); }
+  }
+
+  List<Map<String, dynamic>> get _filteredLogs {
+    var result = _logs;
+    if (_filterModul != null && _filterModul!.isNotEmpty) {
+      result = result.where((l) => l['modul']?.toString() == _filterModul).toList();
+    }
+    if (_searchCtrl.text.isNotEmpty) {
+      final q = _searchCtrl.text.toLowerCase();
+      result = result.where((l) =>
+        (l['detail']?.toString() ?? '').toLowerCase().contains(q) ||
+        (l['username']?.toString() ?? '').toLowerCase().contains(q)
+      ).toList();
+    }
+    return result;
   }
 
   IconData aksiIcon(String? aksi) {
@@ -224,15 +246,59 @@ class _LogTabState extends State<_LogTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
+    final filteredLogs = _filteredLogs;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(children: [
-        Expanded(child: _logs.isEmpty
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            SizedBox(
+              width: 180,
+              child: DropdownButtonHideUnderline(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppTheme.grey300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButton<String>(
+                    value: _filterModul,
+                    hint: const Text('Semua Modul', style: TextStyle(fontSize: 13)),
+                    isExpanded: true,
+                    items: ['absensi', 'guru', 'siswa', 'users', 'backup', 'restore', 'nilai', 'rapor', 'pengaduan', 'master_data', 'pengaturan']
+                        .map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(fontSize: 13))))
+                        .toList(),
+                    onChanged: (v) { setState(() => _filterModul = v); },
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 200,
+              child: TextField(
+                controller: _searchCtrl,
+                decoration: InputDecoration(
+                  hintText: 'Cari detail...',
+                  prefixIcon: const Icon(Icons.search, size: 18),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Expanded(child: filteredLogs.isEmpty
             ? const EmptyState(icon: Icons.history, message: 'Belum ada log.')
             : ListView.builder(
-                itemCount: _logs.length,
+                itemCount: filteredLogs.length,
                 itemBuilder: (_, i) {
-                  final log = _logs[i];
+                  final log = filteredLogs[i];
                   final aksi = log['aksi']?.toString();
                   final color = AuditAction.colorFor(aksi ?? '');
                   return Card(
@@ -537,32 +603,37 @@ class _ProfilTabState extends State<_ProfilTab> {
     if (_loading) return const Center(child: CircularProgressIndicator());
     return SingleChildScrollView(
       padding: const EdgeInsets.all(32),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          DataCard(
-            header: const Row(children: [
-              Icon(Icons.school_outlined, size: 20, color: AppTheme.primary),
-              SizedBox(width: 8),
-              Text('Profil Sekolah', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-            ]),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: _namaCtrl, decoration: inputDecoration('Nama Sekolah', Icons.badge_outlined)),
-              const SizedBox(height: 16),
-              TextField(controller: _alamatCtrl, maxLines: 3, decoration: inputDecoration('Alamat', Icons.location_on_outlined)),
-              const SizedBox(height: 16),
-              TextField(controller: _telpCtrl, decoration: inputDecoration('Telepon', Icons.phone_outlined)),
-              const SizedBox(height: 16),
-              TextField(controller: _emailCtrl, decoration: inputDecoration('Email', Icons.email_outlined)),
-              const SizedBox(height: 20),
-              Row(children: [
-                FilledButton.icon(onPressed: _save, icon: const Icon(Icons.save, size: 18), label: const Text('Simpan Profil')),
-                const SizedBox(width: 16),
-                OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh, size: 18), label: const Text('Reset')),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            DataCard(
+              header: const Row(children: [
+                Icon(Icons.school_outlined, size: 20, color: AppTheme.primary),
+                SizedBox(width: 8),
+                Text('Profil Sekolah', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
               ]),
-            ]),
-          ),
-        ]),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                TextField(controller: _namaCtrl, decoration: inputDecoration('Nama Sekolah', Icons.badge_outlined)),
+                const SizedBox(height: 16),
+                TextField(controller: _alamatCtrl, maxLines: 3, decoration: inputDecoration('Alamat', Icons.location_on_outlined)),
+                const SizedBox(height: 16),
+                TextField(controller: _telpCtrl, decoration: inputDecoration('Telepon', Icons.phone_outlined)),
+                const SizedBox(height: 16),
+                TextField(controller: _emailCtrl, decoration: inputDecoration('Email', Icons.email_outlined)),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.icon(onPressed: _save, icon: const Icon(Icons.save, size: 18), label: const Text('Simpan Profil')),
+                    OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh, size: 18), label: const Text('Reset')),
+                  ],
+                ),
+              ]),
+            ),
+          ]),
+        ),
       ),
     );
   }
@@ -625,58 +696,63 @@ class _TampilanLoginTabState extends State<_TampilanLoginTab> {
     if (_loading) return const Center(child: CircularProgressIndicator());
     return SingleChildScrollView(
       padding: const EdgeInsets.all(32),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          DataCard(
-            header: const Row(children: [
-              Icon(Icons.login_outlined, size: 20, color: AppTheme.primary),
-              SizedBox(width: 8),
-              Text('Tampilan Halaman Login', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-            ]),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: _heroTitleCtrl, decoration: inputDecoration('Judul Hero', Icons.title)),
-              const SizedBox(height: 16),
-              TextField(controller: _heroSubtitleCtrl, maxLines: 3, decoration: inputDecoration('Subtitle Hero', Icons.description_outlined)),
-              const SizedBox(height: 16),
-              TextField(controller: _logoUrlCtrl, decoration: inputDecoration('URL Logo', Icons.image_outlined).copyWith(hintText: 'https://...')),
-              const SizedBox(height: 16),
-              TextField(controller: _bgUrlCtrl, decoration: inputDecoration('URL Background', Icons.wallpaper_outlined).copyWith(hintText: 'https://...')),
-              const SizedBox(height: 20),
-              Row(children: [
-                FilledButton.icon(onPressed: _save, icon: const Icon(Icons.save, size: 18), label: const Text('Simpan')),
-                const SizedBox(width: 16),
-                OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh, size: 18), label: const Text('Reset')),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            DataCard(
+              header: const Row(children: [
+                Icon(Icons.login_outlined, size: 20, color: AppTheme.primary),
+                SizedBox(width: 8),
+                Text('Tampilan Halaman Login', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
               ]),
-            ]),
-          ),
-          const SizedBox(height: 16),
-          Text('Pratinjau', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 12),
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [AppTheme.primaryDark, AppTheme.secondary]),
-              borderRadius: BorderRadius.circular(12),
-              image: _bgUrlCtrl.text.isNotEmpty
-                  ? DecorationImage(image: NetworkImage(_bgUrlCtrl.text), fit: BoxFit.cover, opacity: 0.3)
-                  : null,
-            ),
-            child: Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                _logoUrlCtrl.text.isNotEmpty
-                    ? Image.network(_logoUrlCtrl.text, width: 40, height: 40, color: Colors.white)
-                    : const Icon(Icons.school, size: 40, color: Colors.white),
-                const SizedBox(height: 12),
-                Text(_heroTitleCtrl.text.isNotEmpty ? _heroTitleCtrl.text : 'Judul',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(height: 4),
-                Text(_heroSubtitleCtrl.text.isNotEmpty ? _heroSubtitleCtrl.text : 'Subtitle',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                TextField(controller: _heroTitleCtrl, decoration: inputDecoration('Judul Hero', Icons.title)),
+                const SizedBox(height: 16),
+                TextField(controller: _heroSubtitleCtrl, maxLines: 3, decoration: inputDecoration('Subtitle Hero', Icons.description_outlined)),
+                const SizedBox(height: 16),
+                TextField(controller: _logoUrlCtrl, decoration: inputDecoration('URL Logo', Icons.image_outlined).copyWith(hintText: 'https://...')),
+                const SizedBox(height: 16),
+                TextField(controller: _bgUrlCtrl, decoration: inputDecoration('URL Background', Icons.wallpaper_outlined).copyWith(hintText: 'https://...')),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.icon(onPressed: _save, icon: const Icon(Icons.save, size: 18), label: const Text('Simpan')),
+                    OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh, size: 18), label: const Text('Reset')),
+                  ],
+                ),
               ]),
             ),
-          ),
-        ]),
+            const SizedBox(height: 16),
+            Text('Pratinjau', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            Container(
+              height: 200,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [AppTheme.primaryDark, AppTheme.secondary]),
+                borderRadius: BorderRadius.circular(12),
+                image: _bgUrlCtrl.text.isNotEmpty
+                    ? DecorationImage(image: NetworkImage(_bgUrlCtrl.text), fit: BoxFit.cover, opacity: 0.3)
+                    : null,
+              ),
+              child: Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  _logoUrlCtrl.text.isNotEmpty
+                      ? Image.network(_logoUrlCtrl.text, width: 40, height: 40, color: Colors.white)
+                      : const Icon(Icons.school, size: 40, color: Colors.white),
+                  const SizedBox(height: 12),
+                  Text(_heroTitleCtrl.text.isNotEmpty ? _heroTitleCtrl.text : 'Judul',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 4),
+                  Text(_heroSubtitleCtrl.text.isNotEmpty ? _heroSubtitleCtrl.text : 'Subtitle',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12)),
+                ]),
+              ),
+            ),
+          ]),
+        ),
       ),
     );
   }

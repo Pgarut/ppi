@@ -28,7 +28,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
   if (subPath === 'referensi' && request.method === 'GET') {
     const [kelas, guru, mapel, ruangan, semester, tingkat] = await Promise.all([
       env.DB.prepare('SELECT id, nama, ruangan_id FROM kelas ORDER BY nama').all(),
-      env.DB.prepare("SELECT id, nama, nip FROM guru WHERE status_aktif = 1 ORDER BY nama").all(),
+      env.DB.prepare("SELECT DISTINCT g.id, g.nama, g.nip FROM guru g INNER JOIN guru_mapel gm ON g.id = gm.guru_id WHERE g.status_aktif = 1 ORDER BY g.nama").all(),
       env.DB.prepare('SELECT id, nama, kode FROM mata_pelajaran ORDER BY nama').all(),
       env.DB.prepare('SELECT id, nama FROM ruangan ORDER BY nama').all(),
       env.DB.prepare('SELECT id, nama, tahun_ajaran_id FROM semester ORDER BY tahun_ajaran_id DESC, id').all(),
@@ -91,8 +91,10 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
                         LEFT JOIN mata_pelajaran mp ON gm.mata_pelajaran_id = mp.id
                         WHERE gm.guru_id = g.id), '[]') as mapel_diampu
        FROM guru g
+       INNER JOIN guru_mapel gm ON g.id = gm.guru_id
        LEFT JOIN guru_mata_pelajaran gmp ON g.id = gmp.guru_id AND gmp.semester_id = ?
        WHERE g.status_aktif = 1
+       GROUP BY g.id
        ORDER BY g.nama`
     ).bind(parseInt(semesterId)).all();
 

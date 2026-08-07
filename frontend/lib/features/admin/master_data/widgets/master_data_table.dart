@@ -5,13 +5,13 @@ import '../../../../shared/widgets/common_widgets.dart';
 class MasterDataTableColumn {
   final String key;
   final String label;
-  final double width;
+  final int flex;
   final String Function(dynamic value, Map<String, dynamic> row)? displayFn;
 
   const MasterDataTableColumn({
     required this.key,
     required this.label,
-    this.width = 150,
+    this.flex = 1,
     this.displayFn,
   });
 }
@@ -54,9 +54,6 @@ class MasterDataTable extends StatelessWidget {
       return const EmptyState(icon: Icons.inbox_outlined, message: 'Belum ada data.');
     }
 
-    final actionsWidth = showActions ? 80.0 : 0.0;
-    final totalContentWidth = columns.fold<double>(0, (sum, c) => sum + c.width) + actionsWidth;
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -64,47 +61,55 @@ class MasterDataTable extends StatelessWidget {
         border: Border.all(color: AppTheme.grey200),
       ),
       child: Column(children: [
-        _buildHeader(totalContentWidth),
-        Expanded(child: _buildBody(totalContentWidth)),
+        _buildHeader(),
+        Expanded(child: _buildBody()),
         if (totalPages > 1) _buildPagination(),
       ]),
     );
   }
 
-  Widget _buildHeader(double totalWidth) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: const BoxDecoration(
-        color: AppTheme.grey50,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
-        border: Border(bottom: BorderSide(color: AppTheme.grey200)),
-      ),
-      child: SizedBox(
-        width: totalWidth,
-        child: Row(children: [
-          ...columns.map((col) => SizedBox(
-            width: col.width,
-            child: Text(
-              col.label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.grey700),
-            ),
-          )),
-          if (showActions)
-            const SizedBox(
-              width: 80,
-              child: Text('Aksi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.grey700)),
-            ),
-        ]),
-      ),
+  Widget _buildHeader() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final actionsWidth = showActions ? 80.0 : 0.0;
+        final totalFlex = columns.fold<int>(0, (sum, c) => sum + c.flex);
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: const BoxDecoration(
+            color: AppTheme.grey50,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
+            border: Border(bottom: BorderSide(color: AppTheme.grey200)),
+          ),
+          child: Row(children: [
+            ...columns.map((col) {
+              final colWidth = (constraints.maxWidth - actionsWidth) * col.flex / totalFlex;
+              return SizedBox(
+                width: colWidth,
+                child: Text(
+                  col.label,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.grey700),
+                ),
+              );
+            }),
+            if (showActions)
+              const SizedBox(
+                width: 80,
+                child: Text('Aksi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.grey700)),
+              ),
+          ]),
+        );
+      },
     );
   }
 
-  Widget _buildBody(double totalWidth) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: totalWidth,
-        child: ListView.separated(
+  Widget _buildBody() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final actionsWidth = showActions ? 80.0 : 0.0;
+        final totalFlex = columns.fold<int>(0, (sum, c) => sum + c.flex);
+
+        return ListView.separated(
           itemCount: data.length,
           separatorBuilder: (_, __) => const Divider(height: 1),
           itemBuilder: (_, i) {
@@ -117,37 +122,38 @@ class MasterDataTable extends StatelessWidget {
                   final val = col.displayFn != null
                       ? col.displayFn!(row[col.key], row)
                       : (row[col.key]?.toString() ?? '-');
+                  final colWidth = (constraints.maxWidth - actionsWidth) * col.flex / totalFlex;
                   return SizedBox(
-                    width: col.width,
+                    width: colWidth,
                     child: Text(val, style: const TextStyle(fontSize: 13, overflow: TextOverflow.ellipsis)),
                   );
                 }),
                 if (showActions)
                   SizedBox(
-                    width: 80,
+                    width: actionsWidth,
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       if (onEdit != null)
                         IconButton(
                           icon: const Icon(Icons.edit_outlined, size: 18, color: AppTheme.grey500),
                           onPressed: () => onEdit!(row),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+                          padding: const EdgeInsets.all(4),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                         ),
                       const SizedBox(width: 4),
                       if (onDelete != null)
                         IconButton(
                           icon: const Icon(Icons.delete_outline, size: 18, color: AppTheme.error),
                           onPressed: () => onDelete!(row),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+                          padding: const EdgeInsets.all(4),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                         ),
                     ]),
                   ),
               ]),
             );
           },
-        ),
-      ),
+        );
+      },
     );
   }
 

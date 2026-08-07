@@ -403,6 +403,14 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
   await bruteForceRecordSuccess(credential, env);
 
   const isSiswa = result.role === 'siswa';
+
+  // Ambil nama guru dari table guru jika ada guru_id
+  let guruNama: string | null = null;
+  if (result.guru_id) {
+    const guruData = await env.DB.prepare('SELECT nama FROM guru WHERE id = ?').bind(result.guru_id).first<{ nama: string }>();
+    guruNama = guruData?.nama ?? null;
+  }
+
   const userPayload = {
     sub: result.id,
     username: result.username,
@@ -430,6 +438,7 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
     username: result.username,
     role: result.role,
     guru_id: result.guru_id,
+    nama: guruNama,
   };
 
   if (isSiswa && siswaInfo) {

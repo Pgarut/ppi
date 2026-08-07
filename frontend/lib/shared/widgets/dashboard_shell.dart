@@ -349,7 +349,7 @@ class _DashboardShellState extends State<DashboardShell> {
           // ── User Info ──
           Consumer<AuthProvider>(
             builder: (_, auth, __) {
-              final username = auth.user?.username ?? 'User';
+              final displayName = auth.user?.displayName ?? 'User';
               return Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 padding: const EdgeInsets.all(12),
@@ -364,7 +364,7 @@ class _DashboardShellState extends State<DashboardShell> {
                       radius: 18,
                       backgroundColor: AppTheme.primary.withValues(alpha: 0.2),
                       child: Text(
-                        username[0].toUpperCase(),
+                        displayName[0].toUpperCase(),
                         style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                     ),
@@ -374,7 +374,7 @@ class _DashboardShellState extends State<DashboardShell> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            username,
+                            displayName,
                             style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -589,14 +589,14 @@ class _DashboardShellState extends State<DashboardShell> {
                 children: [
                   Consumer<AuthProvider>(
                     builder: (_, auth, __) {
-                      final username = auth.user?.username ?? 'User';
+                      final displayName = auth.user?.displayName ?? 'User';
                       return Row(
                         children: [
                           CircleAvatar(
                             radius: 24,
                             backgroundColor: AppTheme.primary.withValues(alpha: 0.3),
                             child: Text(
-                              username[0].toUpperCase(),
+                              displayName[0].toUpperCase(),
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
                             ),
                           ),
@@ -606,7 +606,7 @@ class _DashboardShellState extends State<DashboardShell> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  username,
+                                  displayName,
                                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                                 ),
                                 const SizedBox(height: 2),

@@ -103,8 +103,8 @@ enum MasterDataType {
     label: 'Santri',
     resource: 'siswa',
     icon: Icons.person_outline,
-    columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'nama_ayah', 'nama_ibu', 'pekerjaan_ayah', 'pekerjaan_ibu', 'whatsapp', 'username', 'password', 'status'],
-    displayCols: ['NIS', 'NISN', 'Nama', 'JK', 'Kelas', 'Nama Ayah', 'Nama Ibu', 'Pekerjaan Ayah', 'Pekerjaan Ibu', 'WhatsApp', 'Username', 'Password', 'Status'],
+    columns: ['nis', 'nama', 'jenis_kelamin', 'kelas_id', 'username', 'status'],
+    displayCols: ['NIS', 'Nama', 'JK', 'Kelas', 'Username', 'Status'],
     hasTemplate: true,
     hasFilters: true,
     templateFileName: 'template_siswa.xlsx',
@@ -879,45 +879,45 @@ class _MasterDataPageState extends State<MasterDataPage> {
             Text(type.label, style: Theme.of(context).textTheme.titleLarge),
             if (totalData > 0) Text('$totalData data', style: const TextStyle(fontSize: 12, color: AppTheme.grey500)),
           ]),
-          if (!type.isReadonly) Row(children: [
-            if (type.hasTemplate) ...[
-              OutlinedButton.icon(
-                onPressed: () => _downloadTemplate(type),
-                icon: const Icon(Icons.download, size: 18),
-                label: const Text('Template'),
-                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10)),
+          if (!type.isReadonly) Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (type.hasTemplate) ...[
+                OutlinedButton.icon(
+                  onPressed: () => _downloadTemplate(type),
+                  icon: const Icon(Icons.download, size: 18),
+                  label: const Text('Template'),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10)),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _handleUpload(type),
+                  icon: const Icon(Icons.upload_file, size: 18),
+                  label: const Text('Upload Excel'),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10)),
+                ),
+              ],
+              if (type.hasFilters) ...[
+                _buildFilterTingkat(),
+                _buildFilterKelas(),
+              ],
+              SizedBox(
+                width: 220,
+                child: TextField(
+                  controller: _searchCtrl[type],
+                  decoration: _searchDeco(),
+                  onSubmitted: (_) => _load(type, refresh: true),
+                ),
               ),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: () => _handleUpload(type),
-                icon: const Icon(Icons.upload_file, size: 18),
-                label: const Text('Upload Excel'),
-                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10)),
+              FilledButton.icon(
+                onPressed: () => _showForm(type),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Tambah'),
+                style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
               ),
-              const SizedBox(width: 12),
             ],
-            if (type.hasFilters) ...[
-              _buildFilterTingkat(),
-              const SizedBox(width: 8),
-              _buildFilterKelas(),
-              const SizedBox(width: 8),
-            ],
-            SizedBox(
-              width: 220,
-              child: TextField(
-                controller: _searchCtrl[type],
-                decoration: _searchDeco(),
-                onSubmitted: (_) => _load(type, refresh: true),
-              ),
-            ),
-            const SizedBox(width: 12),
-            FilledButton.icon(
-              onPressed: () => _showForm(type),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Tambah'),
-              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
-            ),
-          ]),
+          ),
         ]),
         const SizedBox(height: 16),
         Expanded(child: _buildTable(type)),

@@ -19,11 +19,21 @@ class KepalaSekolahService {
     return res;
   }
 
-  static Future<Map<String, dynamic>> getAbsensi({String? kelasId}) async {
-    final params = <String, String>{};
-    if (kelasId != null) params['kelas_id'] = kelasId;
-    final res = await ApiClient.get('/kepala-sekolah/absensi', queryParams: params);
-    return res;
+  static Future<Map<String, dynamic>> getAbsensiGuru({int page = 1, int perPage = 20, String? tanggal, String? status}) async {
+    final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
+    if (tanggal != null && tanggal.isNotEmpty) params['tanggal'] = tanggal;
+    if (status != null && status.isNotEmpty) params['status'] = status;
+    final res = await ApiClient.get('/kepala-sekolah/absensi/guru', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getAbsensiSiswa({int page = 1, int perPage = 20, String? kelasId, String? tanggal, String? status}) async {
+    final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
+    if (kelasId != null && kelasId.isNotEmpty) params['kelas_id'] = kelasId;
+    if (tanggal != null && tanggal.isNotEmpty) params['tanggal'] = tanggal;
+    if (status != null && status.isNotEmpty) params['status'] = status;
+    final res = await ApiClient.get('/kepala-sekolah/absensi/siswa', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
   }
 
   static Future<Map<String, dynamic>> getNilai({String? kelasId}) async {
@@ -52,6 +62,11 @@ class KepalaSekolahService {
     if (semesterId != null) params['semester_id'] = semesterId;
     final res = await ApiClient.get('/kepala-sekolah/laporan', queryParams: params);
     return res['data'] as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getReferensi() async {
+    final res = await ApiClient.get('/referensi');
+    return res['data'] as Map<String, dynamic>;
   }
 
   // ── Dauroh Monitoring Nilai ──

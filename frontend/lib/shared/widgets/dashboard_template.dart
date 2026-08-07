@@ -91,7 +91,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
-    final name = user?.username ?? 'Pengguna';
+    final name = user?.displayName ?? 'Pengguna';
     final roleDisplay = UserModel.roleDisplayName(user?.role ?? '');
 
     final hour = DateTime.now().hour;

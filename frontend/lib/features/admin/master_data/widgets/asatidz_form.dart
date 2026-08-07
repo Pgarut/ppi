@@ -31,6 +31,7 @@ class _AsatidzFormState extends State<AsatidzForm> {
   List<Map<String, dynamic>> _kelasList = [];
   List<Map<String, dynamic>> _mapelList = [];
   bool _isLoadingData = false;
+  bool _passwordObscure = true;
 
   bool get isEditing => widget.editData != null;
 
@@ -47,8 +48,8 @@ class _AsatidzFormState extends State<AsatidzForm> {
     super.initState();
     _nipCtrl = TextEditingController(text: widget.editData?['nip']?.toString() ?? '');
     _namaCtrl = TextEditingController(text: widget.editData?['nama']?.toString() ?? '');
-    _usernameCtrl = TextEditingController(text: widget.editData?['_username']?.toString() ?? '');
-    _passwordCtrl = TextEditingController(text: widget.editData?['_password']?.toString() ?? '');
+    _usernameCtrl = TextEditingController(text: widget.editData?['username']?.toString() ?? '');
+    _passwordCtrl = TextEditingController(text: '');
 
     if (isEditing) {
       _selectedJk = widget.editData!['jenis_kelamin']?.toString();
@@ -206,15 +207,19 @@ class _AsatidzFormState extends State<AsatidzForm> {
         Expanded(
           child: TextField(
             controller: _passwordCtrl,
-            obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Password',
-              prefixIcon: Icon(Icons.lock_outline),
-              border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
+            obscureText: _passwordObscure,
+            decoration: InputDecoration(
+              labelText: isEditing ? 'Password (kosongkan jika tidak diubah)' : 'Password',
+              prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(_passwordObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                onPressed: () => setState(() => _passwordObscure = !_passwordObscure),
+              ),
+              border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
               filled: true,
               fillColor: Colors.white,
               isDense: true,
-              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             ),
           ),
         ),
@@ -293,9 +298,14 @@ class _AsatidzFormState extends State<AsatidzForm> {
       'jenis_kelamin': _selectedJk,
       'jabatan': _selectedJabatan.join(','),
       'status_aktif': _selectedStatus == 'Aktif' ? 1 : 0,
-      'username': _usernameCtrl.text,
-      'password': _passwordCtrl.text,
     };
+
+    if (_usernameCtrl.text.isNotEmpty) {
+      body['username'] = _usernameCtrl.text;
+    }
+    if (_passwordCtrl.text.isNotEmpty) {
+      body['password'] = _passwordCtrl.text;
+    }
 
     try {
       int? savedId;

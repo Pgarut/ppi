@@ -56,7 +56,7 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
       );
       if (mounted) {
         setState(() {
-          _data = (res as List).cast<Map<String, dynamic>>();
+          _data = res;
           _loading = false;
         });
       }

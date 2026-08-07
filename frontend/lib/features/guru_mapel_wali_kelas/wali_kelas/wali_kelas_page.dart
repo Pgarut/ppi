@@ -20,6 +20,9 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
   late AnimationController _animCtrl;
   late Animation<double> _fadeAnim;
 
+  String? _selectedBulan;
+  String? _selectedTahun;
+
   @override
   void initState() {
     super.initState();
@@ -37,10 +40,17 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
     super.dispose();
   }
 
+  String? get _bulanTahun {
+    if (_selectedBulan != null && _selectedTahun != null) {
+      return '$_selectedTahun-${_selectedBulan!.padLeft(2, '0')}';
+    }
+    return null;
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final data = await GuruService.getDataSiswa();
+      final data = await GuruService.getDataSiswa(bulanTahun: _bulanTahun);
       if (!mounted) return;
       if (data['wali_kelas'] == null && data['kelas'] == null) {
         setState(() {
@@ -143,6 +153,8 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildHeader(),
+        const SizedBox(height: 16),
+        _buildFilterBar(),
         const SizedBox(height: 20),
         _buildSummaryRow(),
         const SizedBox(height: 20),
@@ -159,6 +171,8 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildHeader(),
+        const SizedBox(height: 12),
+        _buildFilterBar(),
         const SizedBox(height: 16),
         _buildSummaryRow(),
         const SizedBox(height: 12),
@@ -166,6 +180,79 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
         const SizedBox(height: 12),
         _buildCardList(),
       ],
+    );
+  }
+
+  // ─── FILTER BAR ─────────────────────────────────────────
+  Widget _buildFilterBar() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 12,
+        children: [
+          SizedBox(
+            width: 180,
+            child: DropdownButtonFormField<String>(
+              value: _selectedBulan,
+              isDense: true,
+              decoration: InputDecoration(
+                labelText: 'Bulan',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                prefixIcon: const Icon(Icons.calendar_today_outlined, size: 20),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                isDense: true,
+              ),
+              items: const [
+                DropdownMenuItem(value: null, child: Text('Semua Bulan', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: '1', child: Text('Januari', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: '2', child: Text('Februari', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: '3', child: Text('Maret', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: '4', child: Text('April', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: '5', child: Text('Mei', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: '6', child: Text('Juni', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: '7', child: Text('Juli', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: '8', child: Text('Agustus', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: '9', child: Text('September', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: '10', child: Text('Oktober', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: '11', child: Text('November', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: '12', child: Text('Desember', style: TextStyle(fontSize: 13))),
+              ],
+              onChanged: (v) => setState(() => _selectedBulan = v),
+            ),
+          ),
+          SizedBox(
+            width: 150,
+            child: DropdownButtonFormField<String>(
+              value: _selectedTahun,
+              isDense: true,
+              decoration: InputDecoration(
+                labelText: 'Tahun',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                prefixIcon: const Icon(Icons.date_range_outlined, size: 20),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                isDense: true,
+              ),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('Semua Tahun', style: TextStyle(fontSize: 13))),
+                for (int y = DateTime.now().year; y >= DateTime.now().year - 5; y--)
+                  DropdownMenuItem(value: '$y', child: Text('$y', style: const TextStyle(fontSize: 13))),
+              ],
+              onChanged: (v) => setState(() => _selectedTahun = v),
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: _load,
+            icon: const Icon(Icons.search, size: 18),
+            label: const Text('Tampilkan'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -552,6 +639,24 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
     }
   }
 
+  String _getNamaBulan(String? bulan) {
+    switch (bulan) {
+      case '1': return 'Januari';
+      case '2': return 'Februari';
+      case '3': return 'Maret';
+      case '4': return 'April';
+      case '5': return 'Mei';
+      case '6': return 'Juni';
+      case '7': return 'Juli';
+      case '8': return 'Agustus';
+      case '9': return 'September';
+      case '10': return 'Oktober';
+      case '11': return 'November';
+      case '12': return 'Desember';
+      default: return '';
+    }
+  }
+
   // ─── PDF GENERATION ─────────────────────────────────────
   Future<void> _downloadPdf() async {
     try {
@@ -603,12 +708,21 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
         header: (context) => pw.Container(
           alignment: pw.Alignment.center,
           margin: const pw.EdgeInsets.only(bottom: 8),
-          child: pw.Text(
-            'PERSENTASE KEHADIRAN SELURUH SANTRI',
-            style: pw.TextStyle(
-              fontSize: 14,
-              fontWeight: pw.FontWeight.bold,
-            ),
+          child: pw.Column(
+            children: [
+              pw.Text(
+                'PERSENTASE KEHADIRAN SELURUH SANTRI',
+                style: pw.TextStyle(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              if (_bulanTahun != null)
+                pw.Text(
+                  'Periode: ${_getNamaBulan(_selectedBulan)} $_selectedTahun',
+                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+                ),
+            ],
           ),
         ),
         build: (context) => [

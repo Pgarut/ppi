@@ -4,6 +4,7 @@ class UserModel {
   final String role;
   final int? guruId;
   final int? siswaId;
+  final String? nama;
 
   UserModel({
     required this.id,
@@ -11,6 +12,7 @@ class UserModel {
     required this.role,
     this.guruId,
     this.siswaId,
+    this.nama,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class UserModel {
       role: json['role'] as String,
       guruId: json['guru_id'] as int?,
       siswaId: json['siswa_id'] as int?,
+      nama: json['nama'] as String?,
     );
   }
 
@@ -30,8 +33,11 @@ class UserModel {
       'role': role,
       'guru_id': guruId,
       'siswa_id': siswaId,
+      'nama': nama,
     };
   }
+
+  String get displayName => nama?.isNotEmpty == true ? nama! : username;
 
   bool get isAdmin => role == 'admin';
   bool get isKepalaSekolah => role == 'kepala_sekolah';

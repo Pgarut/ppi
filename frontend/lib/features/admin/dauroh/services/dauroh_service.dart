@@ -146,7 +146,7 @@ class DaurohService {
     return res['data'] as Map<String, dynamic>;
   }
 
-  static Future<Map<String, dynamic>> monitoringNilai({
+  static Future<List<Map<String, dynamic>>> monitoringNilai({
     String? jenjang,
     String? kelasId,
     String? programId,
@@ -156,7 +156,7 @@ class DaurohService {
     if (kelasId != null && kelasId.isNotEmpty) params['kelas_id'] = kelasId;
     if (programId != null && programId.isNotEmpty) params['program_id'] = programId;
     final res = await ApiClient.get('/admin/dauroh/monitoring/nilai', queryParams: params);
-    return res['data'] as Map<String, dynamic>;
+    return (res['data'] as List).cast<Map<String, dynamic>>();
   }
 
   // ═══════════════════════════════════════════════════════════════

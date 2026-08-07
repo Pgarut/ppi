@@ -11,6 +11,7 @@ export interface CrudConfig {
   searchFields?: string[];
   filterFields?: string[];
   timestamp?: boolean;
+  leftJoin?: { table: string; on: string; alias?: string; select?: string[] };
 }
 
 function logAction(env: Env, userId: number, aksi: string, modul: string, detail: string, ip: string) {
@@ -52,9 +53,17 @@ export async function list(env: Env, cfg: CrudConfig, url: URL, user: UserPayloa
 
   const total = countResult?.total || 0;
 
+  let selectCols = `${cfg.table}.*`;
+  let joinClause = '';
+  if (cfg.leftJoin) {
+    const j = cfg.leftJoin;
+    joinClause = ` LEFT JOIN ${j.table} ON ${j.on}`;
+    if (j.select) selectCols += `, ${j.select.join(', ')}`;
+  }
+
   bindings.push(perPage, offset);
   const rows = await env.DB.prepare(
-    `SELECT * FROM ${cfg.table} ${where} ORDER BY id DESC LIMIT ? OFFSET ?`
+    `SELECT ${selectCols} FROM ${cfg.table}${joinClause} ${where} ORDER BY ${cfg.table}.id DESC LIMIT ? OFFSET ?`
   ).bind(...bindings).all();
 
   return success({
@@ -69,8 +78,16 @@ export async function list(env: Env, cfg: CrudConfig, url: URL, user: UserPayloa
 }
 
 export async function getById(env: Env, cfg: CrudConfig, id: number) {
+  let selectCols = `${cfg.table}.*`;
+  let joinClause = '';
+  if (cfg.leftJoin) {
+    const j = cfg.leftJoin;
+    joinClause = ` LEFT JOIN ${j.table} ON ${j.on}`;
+    if (j.select) selectCols += `, ${j.select.join(', ')}`;
+  }
+
   const row = await env.DB.prepare(
-    `SELECT * FROM ${cfg.table} WHERE id = ?`
+    `SELECT ${selectCols} FROM ${cfg.table}${joinClause} WHERE ${cfg.table}.id = ?`
   ).bind(id).first<Row>();
 
   if (!row) return notFound(cfg.label);
