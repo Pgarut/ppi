@@ -532,60 +532,75 @@ export async function handleSiswaBulk(request: Request, env: Env, user: UserPayl
   let usersCreated = 0;
   const errors: { row: number; nis: string; error: string }[] = [];
 
+  // Validasi dan persiapkan data terlebih dahulu
+  const validRows: { index: number; row: Record<string, unknown>; nis: string; nisn: string; taId: number }[] = [];
   for (let i = 0; i < body.data.length; i++) {
     const row = body.data[i];
+    const nis = (row['nis'] ?? '').toString().trim();
+    if (!nis) {
+      errors.push({ row: i + 2, nis: '', error: 'NIS kosong' });
+      continue;
+    }
+    const nisn = (row['nisn'] ?? '').toString().trim();
+    const taId = (row['tahun_ajaran_id'] as number) || defaultTaId;
+    if (taId == null) {
+      errors.push({ row: i + 2, nis, error: 'Tahun Ajaran aktif tidak tersedia' });
+      continue;
+    }
+    validRows.push({ index: i, row, nis, nisn, taId });
+  }
+
+  // Batch check existing NIS (sekali query untuk semua NIS)
+  const nisList = validRows.map(r => r.nis);
+  const existingNisSet = new Set<string>();
+  if (nisList.length > 0) {
+    const placeholdersCheck = nisList.map(() => '?').join(',');
+    const existingRows = await env.DB.prepare(
+      `SELECT nis FROM siswa WHERE nis IN (${placeholdersCheck})`
+    ).bind(...nisList).all<{ nis: string }>();
+    for (const r of existingRows.results) existingNisSet.add(r.nis);
+  }
+
+  // Proses insert/update dalam batch
+  const BATCH_SIZE = 50;
+  for (let b = 0; b < validRows.length; b += BATCH_SIZE) {
+    const batch = validRows.slice(b, b + BATCH_SIZE);
+    const statements: ReturnType<typeof env.DB.prepare>[] = [];
+
+    for (const { row, nis, nisn, taId } of batch) {
+      statements.push(
+        env.DB.prepare(stmt).bind(
+          nis, nisn, row['nama'] ?? '', row['jenis_kelamin'] ?? '',
+          row['kelas_id'] ?? null, taId, row['status'] ?? '',
+          row['nama_ayah'] ?? '', row['nama_ibu'] ?? '',
+          row['pekerjaan_ayah'] ?? '', row['pekerjaan_ibu'] ?? '', row['whatsapp'] ?? ''
+        )
+      );
+    }
+
     try {
-      const nis = (row['nis'] ?? '').toString().trim();
-      if (!nis) {
-        errors.push({ row: i + 2, nis: '', error: 'NIS kosong' });
-        continue;
-      }
-
-      const nisn = (row['nisn'] ?? '').toString().trim();
-      const taId = row['tahun_ajaran_id'] || defaultTaId;
-      if (taId == null) {
-        errors.push({ row: i + 2, nis, error: 'Tahun Ajaran aktif tidak tersedia' });
-        continue;
-      }
-
-      // Cek apakah NIS sudah ada sebelum upsert
-      const existing = await env.DB.prepare('SELECT id FROM siswa WHERE nis = ?').bind(nis).first();
-
-      const result = await env.DB.prepare(stmt).bind(
-        nis,
-        nisn,
-        row['nama'] ?? '',
-        row['jenis_kelamin'] ?? '',
-        row['kelas_id'] ?? null,
-        taId,
-        row['status'] ?? '',
-        row['nama_ayah'] ?? '',
-        row['nama_ibu'] ?? '',
-        row['pekerjaan_ayah'] ?? '',
-        row['pekerjaan_ibu'] ?? '',
-        row['whatsapp'] ?? ''
-      ).run();
-
-      if (existing) {
-        updated++;
-      } else {
-        inserted++;
-        // Auto-create user account untuk siswa baru
-        const siswaId = result.meta?.last_row_id;
-        if (siswaId && nis) {
-          const username = nis;
-          const password = nis; // Default password = NIS
-          try {
-            await upsertUserForSiswa(env, siswaId as number, username, password, user.sub, ip);
-            usersCreated++;
-          } catch (userErr) {
-            // User creation gagal bukan fatal, siswa tetap terinsert
+      const results = await env.DB.batch(statements);
+      for (let j = 0; j < batch.length; j++) {
+        const { nis } = batch[j];
+        const result = results[j];
+        if (existingNisSet.has(nis)) {
+          updated++;
+        } else {
+          inserted++;
+          const siswaId = result?.meta?.last_row_id;
+          if (siswaId && nis) {
+            try {
+              await upsertUserForSiswa(env, siswaId as number, nis, nis, user.sub, ip);
+              usersCreated++;
+            } catch (_) {}
           }
         }
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Database error';
-      errors.push({ row: i + 2, nis: (row['nis'] ?? '').toString(), error: msg });
+      for (const { index, nis } of batch) {
+        errors.push({ row: index + 2, nis, error: msg });
+      }
     }
   }
 
