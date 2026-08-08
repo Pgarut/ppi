@@ -47,7 +47,11 @@ export async function list(env: Env, cfg: CrudConfig, url: URL, user: UserPayloa
     }
   }
 
-  const fullWhere = where + (extraWhere || '');
+  let fullExtra = extraWhere || '';
+  if (!where && fullExtra.startsWith(' AND')) {
+    fullExtra = 'WHERE' + fullExtra.substring(4);
+  }
+  const fullWhere = where + fullExtra;
   const fullBindings = [...bindings, ...(extraBindings || [])];
 
   const countResult = await env.DB.prepare(
