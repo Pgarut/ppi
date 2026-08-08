@@ -58,7 +58,7 @@ const configs: Record<string, CrudConfig> = {
     leftJoin: { table: 'users', on: 'users.guru_id = guru.id', select: ["users.username"] },
   },
   'siswa': {
-    table: 'siswa', columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'tahun_ajaran_id', 'status', 'nama_ayah', 'nama_ibu', 'pekerjaan_ayah', 'pekerjaan_ibu', 'whatsapp'], label: 'Santri', searchFields: ['nama', 'nis', 'nisn'],
+    table: 'siswa', columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'tahun_ajaran_id', 'status', 'nama_ayah', 'nama_ibu', 'pekerjaan_ayah', 'pekerjaan_ibu', 'whatsapp'], label: 'Santri', searchFields: ['nama', 'nis', 'nisn'], filterFields: ['kelas_id'],
     leftJoin: { table: 'users', on: 'users.siswa_id = siswa.id', select: ["users.username"] },
   },
   'ruangan': { table: 'ruangan', columns: ['nama', 'kapasitas'], label: 'Ruangan', searchFields: ['nama'] },
@@ -81,7 +81,19 @@ export async function handleAdminMasterData(request: Request, env: Env, user: Us
   if (!cfg) return badRequest(`Resource '${resource}' tidak dikenal`);
 
   try {
-    if (isList) return list(env, cfg, url, user);
+    if (isList) {
+      // Siswa: support tingkat_id filter via kelas subquery
+      let extraWhere = '';
+      const extraBindings: unknown[] = [];
+      if (resource === 'siswa') {
+        const tingkatId = url.searchParams.get('tingkat_id');
+        if (tingkatId) {
+          extraWhere += ' AND siswa.kelas_id IN (SELECT kelas.id FROM kelas WHERE kelas.tingkat_id = ?)';
+          extraBindings.push(tingkatId);
+        }
+      }
+      return list(env, cfg, url, user, extraWhere || undefined, extraBindings.length > 0 ? extraBindings : undefined);
+    }
     if (isById) return getById(env, cfg, parseInt(pathParts[3]));
     if (isCreate) {
       const body = await request.json() as Record<string, unknown>;

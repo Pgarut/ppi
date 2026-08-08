@@ -30,9 +30,11 @@ class _SantriFormState extends State<SantriForm> {
   String? _selectedJk;
   String? _selectedStatus;
   int? _selectedKelasId;
+  int? _selectedTingkatId;
   bool _passwordObscure = true;
 
   List<Map<String, dynamic>> _kelasList = [];
+  List<Map<String, dynamic>> _tingkatList = [];
   bool _isLoadingKelas = false;
 
   bool get isEditing => widget.editData != null;
@@ -86,13 +88,26 @@ class _SantriFormState extends State<SantriForm> {
   Future<void> _loadKelas() async {
     setState(() => _isLoadingKelas = true);
     try {
-      final res = await AdminService.list('kelas', page: 1, perPage: 100);
+      final tingkatRes = await AdminService.list('tingkat', perPage: 100);
+      _tingkatList = (tingkatRes['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    } catch (_) {
+      _tingkatList = [];
+    }
+    try {
+      final res = await AdminService.list('kelas', page: 1, perPage: 200);
       _kelasList = (res['items'] as List).cast<Map<String, dynamic>>();
     } catch (_) {
       _kelasList = [];
     }
     if (isEditing && widget.editData != null) {
       _selectedKelasId = int.tryParse(widget.editData!['kelas_id']?.toString() ?? '');
+      if (_selectedKelasId != null) {
+        final matchedKelas = _kelasList.firstWhere(
+          (k) => k['id'] == _selectedKelasId,
+          orElse: () => {},
+        );
+        _selectedTingkatId = matchedKelas['tingkat_id'] as int?;
+      }
       if (_selectedKelasId != null && !_kelasList.any((k) => k['id'] == _selectedKelasId)) {
         _selectedKelasId = null;
       }
@@ -177,6 +192,10 @@ class _SantriFormState extends State<SantriForm> {
   }
 
   Widget _buildPenempatanKelasCard() {
+    final filteredKelas = _selectedTingkatId == null
+        ? _kelasList
+        : _kelasList.where((k) => k['tingkat_id'] == _selectedTingkatId).toList();
+
     return DataCard(
       header: Row(children: [
         Icon(Icons.meeting_room_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
@@ -185,15 +204,39 @@ class _SantriFormState extends State<SantriForm> {
       ]),
       child: _isLoadingKelas
           ? const Text('Memuat data kelas...', style: TextStyle(color: AppTheme.grey500))
-          : ModernDropdown<int>(
-              value: _selectedKelasId,
-              label: 'Kelas',
-              icon: Icons.school_outlined,
-              items: _kelasList.map((k) => DropdownMenuItem<int>(
-                value: k['id'] as int,
-                child: Text(k['nama']?.toString() ?? ''),
-              )).toList(),
-              onChanged: (v) => setState(() => _selectedKelasId = v),
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ModernDropdown<int>(
+                  value: _selectedTingkatId,
+                  label: 'Jenjang / Tingkat',
+                  icon: Icons.stairs_outlined,
+                  items: _tingkatList.map((t) => DropdownMenuItem<int>(
+                    value: t['id'] as int,
+                    child: Text('${t['nama']} (${t['jenjang']})', style: const TextStyle(fontSize: 14)),
+                  )).toList(),
+                  onChanged: (v) {
+                    setState(() {
+                      _selectedTingkatId = v;
+                      if (_selectedKelasId != null) {
+                        final stillValid = filteredKelas.any((k) => k['id'] == _selectedKelasId);
+                        if (!stillValid) _selectedKelasId = null;
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                ModernDropdown<int>(
+                  value: _selectedKelasId,
+                  label: 'Kelas',
+                  icon: Icons.school_outlined,
+                  items: filteredKelas.map((k) => DropdownMenuItem<int>(
+                    value: k['id'] as int,
+                    child: Text(k['nama']?.toString() ?? '', style: const TextStyle(fontSize: 14)),
+                  )).toList(),
+                  onChanged: (v) => setState(() => _selectedKelasId = v),
+                ),
+              ],
             ),
     );
   }

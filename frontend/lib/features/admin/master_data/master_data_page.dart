@@ -328,7 +328,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
       return ta?['nama']?.toString() ?? val.toString();
     }
     if (col == 'kelas_id' && (type == MasterDataType.mataPelajaran || type == MasterDataType.santri)) {
-      final kelasList = _data[MasterDataType.kelas] ?? [];
+      final kelasList = type == MasterDataType.santri ? _kelasList : (_data[MasterDataType.kelas] ?? []);
       final k = kelasList.cast<Map<String, dynamic>?>().firstWhere(
         (k) => k?['id'] == val,
         orElse: () => null,

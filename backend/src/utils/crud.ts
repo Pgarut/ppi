@@ -20,7 +20,7 @@ function logAction(env: Env, userId: number, aksi: string, modul: string, detail
   ).bind(userId, aksi, modul, detail, ip).run();
 }
 
-export async function list(env: Env, cfg: CrudConfig, url: URL, user: UserPayload) {
+export async function list(env: Env, cfg: CrudConfig, url: URL, user: UserPayload, extraWhere?: string, extraBindings?: unknown[]) {
   const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
   const perPage = Math.min(100, Math.max(1, parseInt(url.searchParams.get('per_page') || '20')));
   const search = url.searchParams.get('search') || '';
@@ -47,9 +47,12 @@ export async function list(env: Env, cfg: CrudConfig, url: URL, user: UserPayloa
     }
   }
 
+  const fullWhere = where + (extraWhere || '');
+  const fullBindings = [...bindings, ...(extraBindings || [])];
+
   const countResult = await env.DB.prepare(
-    `SELECT COUNT(*) as total FROM ${cfg.table} ${where}`
-  ).bind(...bindings).first<{ total: number }>();
+    `SELECT COUNT(*) as total FROM ${cfg.table} ${fullWhere}`
+  ).bind(...fullBindings).first<{ total: number }>();
 
   const total = countResult?.total || 0;
 
@@ -61,10 +64,10 @@ export async function list(env: Env, cfg: CrudConfig, url: URL, user: UserPayloa
     if (j.select) selectCols += `, ${j.select.join(', ')}`;
   }
 
-  bindings.push(perPage, offset);
+  fullBindings.push(perPage, offset);
   const rows = await env.DB.prepare(
-    `SELECT ${selectCols} FROM ${cfg.table}${joinClause} ${where} ORDER BY ${cfg.table}.id DESC LIMIT ? OFFSET ?`
-  ).bind(...bindings).all();
+    `SELECT ${selectCols} FROM ${cfg.table}${joinClause} ${fullWhere} ORDER BY ${cfg.table}.id DESC LIMIT ? OFFSET ?`
+  ).bind(...fullBindings).all();
 
   return success({
     items: rows.results,
