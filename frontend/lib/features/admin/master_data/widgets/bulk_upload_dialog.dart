@@ -186,8 +186,8 @@ class BulkUploadDialog extends StatelessWidget {
       final msg = StringBuffer('Berhasil: ${parts.join(', ')}');
       if (errors.isNotEmpty) {
         final firstErrors = errors.take(3).map((e) {
-          final row = (e as Map)['row'] ?? '?';
-          final err = (e as Map)['error'] ?? 'Unknown error';
+          final row = e['row'] ?? '?';
+          final err = e['error'] ?? 'Unknown error';
           return '  Row $row: $err';
         }).join('\n');
         msg.write('\n$firstErrors');
