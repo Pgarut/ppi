@@ -17,6 +17,22 @@ export async function handleNilai(
     if (activeSem.length > 0) semId = String((activeSem[0] as any).id);
   }
 
+  // Cek apakah nilai sudah dipublikasikan untuk semester ini
+  if (semId) {
+    const sem = await env.DB.prepare(
+      'SELECT nilai_published FROM semester WHERE id = ?'
+    ).bind(semId).first<{ nilai_published: number }>();
+    if (sem && sem.nilai_published === 0) {
+      return success({
+        rekap: [],
+        rata_rata_keseluruhan: 0,
+        semester_id: semId,
+        published: false,
+        message: 'Nilai belum dipublikasikan oleh administrator',
+      });
+    }
+  }
+
   // Ambil data siswa
   const { results: siswaData } = await env.DB.prepare(
     'SELECT kelas_id FROM siswa WHERE id = ?'
@@ -50,20 +66,20 @@ export async function handleNilai(
     grouped[n.mapel_nama].push(n);
   }
 
-    // Hitung rata-rata per mapel
+    // Hitung rata-rata per mapel (simple average, tanpa bobot)
     const rekap = Object.entries(grouped).map(([mapel, nilaiList]) => {
-      const bobotMap: Record<string, number> = { harian: 0, tugas: 0, uts: 0, uas: 0, pts1: 0, pas: 0, pts2: 0, pat: 0 };
+      const countMap: Record<string, number> = { harian: 0, tugas: 0, uts: 0, uas: 0, pts1: 0, pas: 0, pts2: 0, pat: 0 };
       const totalMap: Record<string, number> = { harian: 0, tugas: 0, uts: 0, uas: 0, pts1: 0, pas: 0, pts2: 0, pat: 0 };
 
       for (const n of nilaiList) {
         const jenis = n.jenis as string;
-        if (jenis in bobotMap) {
-          bobotMap[jenis] += n.bobot ?? 1;
-          totalMap[jenis] += n.nilai * (n.bobot ?? 1);
+        if (jenis in countMap) {
+          countMap[jenis] += 1;
+          totalMap[jenis] += n.nilai;
         }
       }
 
-      const avg = (key: string) => bobotMap[key] > 0 ? totalMap[key] / bobotMap[key] : 0;
+      const avg = (key: string) => countMap[key] > 0 ? totalMap[key] / countMap[key] : 0;
 
       const avgHarian = avg('harian');
       const avgTugas = avg('tugas');

@@ -61,10 +61,11 @@ CREATE TABLE tahun_ajaran (
 );
 
 CREATE TABLE semester (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    tahun_ajaran_id INTEGER NOT NULL REFERENCES tahun_ajaran(id),
-    nama            TEXT NOT NULL CHECK (nama IN ('Ganjil','Genap')),
-    is_aktif        INTEGER NOT NULL DEFAULT 0,
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    tahun_ajaran_id     INTEGER NOT NULL REFERENCES tahun_ajaran(id),
+    nama                TEXT NOT NULL CHECK (nama IN ('Ganjil','Genap')),
+    is_aktif            INTEGER NOT NULL DEFAULT 0,
+    nilai_published     INTEGER NOT NULL DEFAULT 0,
     UNIQUE (tahun_ajaran_id, nama)
 );
 
@@ -88,7 +89,7 @@ CREATE TABLE ruangan (
 
 CREATE TABLE mata_pelajaran (
     id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    nama TEXT NOT NULL,
+    nama TEXT NOT NULL UNIQUE,
     kode TEXT UNIQUE
 );
 
@@ -145,6 +146,11 @@ CREATE TABLE siswa (
     tanggal_lahir   TEXT,
     alamat          TEXT,
     no_hp_ortu      TEXT,
+    nama_ayah       TEXT,
+    nama_ibu        TEXT,
+    pekerjaan_ayah  TEXT,
+    pekerjaan_ibu   TEXT,
+    whatsapp        TEXT,
     kelas_id        INTEGER REFERENCES kelas(id),
     tahun_ajaran_id INTEGER NOT NULL REFERENCES tahun_ajaran(id),
     status          TEXT NOT NULL DEFAULT 'aktif'
@@ -244,7 +250,8 @@ CREATE TABLE nilai (
     status_validasi     TEXT NOT NULL DEFAULT 'draft'
                             CHECK (status_validasi IN ('draft','tervalidasi')),
     created_at          TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at          TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(siswa_id, mata_pelajaran_id, semester_id, jenis, diinput_oleh)
 );
 
 CREATE TABLE nilai_rapor (

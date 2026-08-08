@@ -169,6 +169,16 @@ class AdminService {
     return res['data'] as Map<String, dynamic>;
   }
 
+  // ── Publikasi Nilai ──
+  static Future<Map<String, dynamic>> getPublikasiStatus() async {
+    final res = await ApiClient.get('/admin/rapor/status-publikasi');
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<void> togglePublikasiNilai(int semesterId, bool published) async {
+    await ApiClient.put('/admin/rapor/$semesterId/publikasi-nilai', body: {'nilai_published': published});
+  }
+
   // ── Profil Sekolah ──
   static Future<Map<String, dynamic>> getProfil() async {
     final res = await ApiClient.get('/admin/profil');

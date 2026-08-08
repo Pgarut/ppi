@@ -78,7 +78,7 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: TextStyle(
+      style: const TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.bold,
         color: AppTheme.grey800,
@@ -94,7 +94,7 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
         child: Center(
           child: Text(
             message,
-            style: TextStyle(        color: AppTheme.grey500, fontSize: 14),
+            style: const TextStyle(        color: AppTheme.grey500, fontSize: 14),
           ),
         ),
       ),
@@ -128,7 +128,7 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
                   ),
                   child: Text(
                     jenis.toUpperCase(),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primary,
@@ -156,7 +156,7 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
             const SizedBox(height: 12),
             Text(
               nama,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.grey800,
@@ -180,7 +180,7 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
         Expanded(
           child: Text(
             text,
-            style: TextStyle(fontSize: 13, color: AppTheme.grey500),
+            style: const TextStyle(fontSize: 13, color: AppTheme.grey500),
           ),
         ),
       ],

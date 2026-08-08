@@ -57,6 +57,10 @@ class GuruService {
     await ApiClient.put('/guru/nilai/$id', body: body);
   }
 
+  static Future<void> deleteNilai(int id) async {
+    await ApiClient.delete('/guru/nilai/$id');
+  }
+
   static Future<Map<String, dynamic>> getSiswaPerKelasNilai(String kelasId, String mapelId, String semesterId, {String jenis = 'harian'}) async {
     final res = await ApiClient.get('/guru/nilai/siswa-per-kelas',
         queryParams: {'kelas_id': kelasId, 'mata_pelajaran_id': mapelId, 'semester_id': semesterId, 'jenis': jenis});

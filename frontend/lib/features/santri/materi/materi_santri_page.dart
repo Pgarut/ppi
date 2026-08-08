@@ -70,13 +70,13 @@ class _MateriSantriPageState extends State<MateriSantriPage> {
   Widget _buildMapelList() {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
+        const Padding(
+          padding: EdgeInsets.all(16),
           child: Row(
             children: [
-              const Icon(Icons.menu_book, color: AppTheme.primary, size: 20),
-              const SizedBox(width: 8),
-              const Text('Materi Pelajaran', style: TextStyle(
+              Icon(Icons.menu_book, color: AppTheme.primary, size: 20),
+              SizedBox(width: 8),
+              Text('Materi Pelajaran', style: TextStyle(
                 fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.primaryDark,
               )),
             ],

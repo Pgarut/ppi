@@ -279,9 +279,13 @@ class _NilaiDaurohPageState extends State<NilaiDaurohPage> {
     final num = double.tryParse(nilai.toString());
     Color color = AppTheme.grey600;
     if (num != null) {
-      if (num >= 80) color = AppTheme.primary;
-      else if (num >= 60) color = AppTheme.orange;
-      else color = AppTheme.error;
+      if (num >= 80) {
+        color = AppTheme.primary;
+      } else if (num >= 60) {
+        color = AppTheme.orange;
+      } else {
+        color = AppTheme.error;
+      }
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

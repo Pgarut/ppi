@@ -136,7 +136,7 @@ class DaurohMultiSelect<T> extends StatelessWidget {
               children: items.map((item) {
                 final isSelected = selectedIds.contains(item);
                 return FilterChip(
-                  label: Text(labelFn(item), style: TextStyle(fontSize: 12)),
+                  label: Text(labelFn(item), style: const TextStyle(fontSize: 12)),
                   selected: isSelected,
                   onSelected: (_) => onChanged(item),
                   selectedColor: AppTheme.primaryLight,

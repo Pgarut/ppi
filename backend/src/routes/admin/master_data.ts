@@ -58,7 +58,7 @@ const configs: Record<string, CrudConfig> = {
     leftJoin: { table: 'users', on: 'users.guru_id = guru.id', select: ["users.username"] },
   },
   'siswa': {
-    table: 'siswa', columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'status'], label: 'Santri', searchFields: ['nama', 'nis', 'nisn'],
+    table: 'siswa', columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'tahun_ajaran_id', 'status', 'nama_ayah', 'nama_ibu', 'pekerjaan_ayah', 'pekerjaan_ibu', 'whatsapp'], label: 'Santri', searchFields: ['nama', 'nis', 'nisn'],
     leftJoin: { table: 'users', on: 'users.siswa_id = siswa.id', select: ["users.username"] },
   },
   'ruangan': { table: 'ruangan', columns: ['nama', 'kapasitas'], label: 'Ruangan', searchFields: ['nama'] },
@@ -85,6 +85,13 @@ export async function handleAdminMasterData(request: Request, env: Env, user: Us
     if (isById) return getById(env, cfg, parseInt(pathParts[3]));
     if (isCreate) {
       const body = await request.json() as Record<string, unknown>;
+
+      // Auto-fill tahun_ajaran_id untuk siswa dari tahun ajaran aktif
+      if (resource === 'siswa' && !body['tahun_ajaran_id']) {
+        const taAktif = await env.DB.prepare('SELECT id FROM tahun_ajaran WHERE is_aktif = 1 LIMIT 1').first<{ id: number }>();
+        if (taAktif) body['tahun_ajaran_id'] = taAktif.id;
+      }
+
       const result = await create(env, cfg, body, user, ip);
 
       // Enforce: hanya 1 tahun ajaran aktif
@@ -154,6 +161,13 @@ export async function handleAdminMasterData(request: Request, env: Env, user: Us
       const body = await request.json() as Record<string, unknown>;
       const id = parseInt(pathParts[3]);
       if (isNaN(id)) return badRequest('ID tidak valid');
+
+      // Auto-fill tahun_ajaran_id untuk siswa dari tahun ajaran aktif
+      if (resource === 'siswa' && !body['tahun_ajaran_id']) {
+        const taAktif = await env.DB.prepare('SELECT id FROM tahun_ajaran WHERE is_aktif = 1 LIMIT 1').first<{ id: number }>();
+        if (taAktif) body['tahun_ajaran_id'] = taAktif.id;
+      }
+
       const result = await update(env, cfg, id, body, user, ip);
 
       // Enforce: hanya 1 tahun ajaran aktif
@@ -326,11 +340,11 @@ export async function handleSiswaTemplate(env: Env): Promise<Response> {
   const taDefault = taAktif?.nama || '';
 
   const wsData = [
-    ['NIS', 'NISN', 'Nama Santri', 'Jenis Kelamin', 'Kelas', 'Status', 'Tahun Ajaran'],
-    ['', '', '', 'L/P', '', 'Aktif / Lulus / Pindah / Keluar', taDefault],
+    ['NIS', 'NISN', 'Nama Santri', 'Jenis Kelamin', 'Kelas', 'Status', 'Tahun Ajaran', 'Nama Ayah', 'Nama Ibu', 'Pekerjaan Ayah', 'Pekerjaan Ibu', 'WhatsApp'],
+    ['', '', '', 'L/P', '', 'Aktif / Lulus / Pindah / Keluar', taDefault, '', '', '', '', ''],
   ];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 20 }];
+  ws['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
   XLSX.utils.book_append_sheet(wb, ws, 'Data Santri');
 
   const kelas = await env.DB.prepare('SELECT nama FROM kelas ORDER BY nama').all<{ nama: string }>();
@@ -418,6 +432,11 @@ export async function handleSiswaPreview(request: Request, env: Env): Promise<Re
     const kelasNama = (r['Kelas'] ?? '').toString().trim();
     const status = (r['Status'] ?? '').toString().trim();
     const taNama = (r['Tahun Ajaran'] ?? '').toString().trim();
+    const namaAyah = (r['Nama Ayah'] ?? '').toString().trim();
+    const namaIbu = (r['Nama Ibu'] ?? '').toString().trim();
+    const pekerjaanAyah = (r['Pekerjaan Ayah'] ?? '').toString().trim();
+    const pekerjaanIbu = (r['Pekerjaan Ibu'] ?? '').toString().trim();
+    const whatsapp = (r['WhatsApp'] ?? '').toString().trim();
 
     if (!nis) errors.push('NIS harus diisi');
     else if (seenNis.has(nis)) errors.push(`NIS "${nis}" duplikat dalam file`);
@@ -466,6 +485,11 @@ export async function handleSiswaPreview(request: Request, env: Env): Promise<Re
       kelas_id: kelasId,
       tahun_ajaran_id: taId,
       status: status.toLowerCase(),
+      nama_ayah: namaAyah,
+      nama_ibu: namaIbu,
+      pekerjaan_ayah: pekerjaanAyah,
+      pekerjaan_ibu: pekerjaanIbu,
+      whatsapp,
       is_update: isUpdate,
       errors,
       valid: errors.length === 0,
@@ -487,7 +511,7 @@ export async function handleSiswaBulk(request: Request, env: Env, user: UserPayl
   const taAktif = await env.DB.prepare('SELECT id FROM tahun_ajaran WHERE is_aktif = 1 LIMIT 1').first<{ id: number }>();
   const defaultTaId = taAktif?.id ?? null;
 
-  const cols = ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'tahun_ajaran_id', 'status'];
+  const cols = ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'tahun_ajaran_id', 'status', 'nama_ayah', 'nama_ibu', 'pekerjaan_ayah', 'pekerjaan_ibu', 'whatsapp'];
   const placeholders = cols.map(() => '?').join(', ');
   const stmt = `INSERT INTO siswa (${cols.join(', ')}) VALUES (${placeholders})
     ON CONFLICT(nis) DO UPDATE SET
@@ -496,7 +520,12 @@ export async function handleSiswaBulk(request: Request, env: Env, user: UserPayl
       jenis_kelamin = excluded.jenis_kelamin,
       kelas_id = excluded.kelas_id,
       tahun_ajaran_id = excluded.tahun_ajaran_id,
-      status = excluded.status`;
+      status = excluded.status,
+      nama_ayah = excluded.nama_ayah,
+      nama_ibu = excluded.nama_ibu,
+      pekerjaan_ayah = excluded.pekerjaan_ayah,
+      pekerjaan_ibu = excluded.pekerjaan_ibu,
+      whatsapp = excluded.whatsapp`;
 
   let inserted = 0;
   let updated = 0;
@@ -529,7 +558,12 @@ export async function handleSiswaBulk(request: Request, env: Env, user: UserPayl
         row['jenis_kelamin'] ?? '',
         row['kelas_id'] ?? null,
         taId,
-        row['status'] ?? ''
+        row['status'] ?? '',
+        row['nama_ayah'] ?? '',
+        row['nama_ibu'] ?? '',
+        row['pekerjaan_ayah'] ?? '',
+        row['pekerjaan_ibu'] ?? '',
+        row['whatsapp'] ?? ''
       ).run();
 
       if (existing) {

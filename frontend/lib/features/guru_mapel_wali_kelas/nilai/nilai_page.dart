@@ -1093,6 +1093,38 @@ class __RiwayatNilaiPageState extends State<_RiwayatNilaiPage> {
                                     ],
                                   ),
                                 ),
+                                if (n['status_validasi'] != 'tervalidasi')
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: const Text('Hapus Nilai'),
+                                          content: Text('Hapus nilai ${n['siswa_nama']}?'),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+                                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hapus', style: TextStyle(color: Colors.red))),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true) {
+                                        try {
+                                          await GuruService.deleteNilai(n['id'] as int);
+                                          if (!mounted) return;
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('Nilai dihapus')));
+                                          }
+                                          _load();
+                                        } catch (e) {
+                                          if (!mounted) return;
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+                                          }
+                                        }
+                                      }
+                                    },
+                                  ),
                               ],
                             ),
                           );
@@ -1147,7 +1179,8 @@ class __AnalisisNilaiPageState extends State<_AnalisisNilaiPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final data = await GuruService.getNilai(page: 1, perPage: 1);
+      // Load semua data untuk analisis yang akurat
+      final data = await GuruService.getNilai(page: 1, perPage: 1000);
       final items = data['items'] as List<dynamic>? ?? [];
       final total = data['pagination'] is Map ? (data['pagination'] as Map)['total'] as int? ?? 0 : 0;
       double avg = 0;

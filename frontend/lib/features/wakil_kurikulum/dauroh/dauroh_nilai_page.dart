@@ -193,7 +193,8 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Filter', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.grey800)),
+          // ignore: prefer_const_constructors
+          Text('Filter', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.grey800)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -334,7 +335,7 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
           children: [
             Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
             const SizedBox(height: 2),
-            Text(label, style: TextStyle(fontSize: 11, color: AppTheme.grey600)),
+            Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.grey600)),
           ],
         ),
       ),
@@ -347,12 +348,12 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
     }
 
     if (_items.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.inbox_outlined, size: 64, color: AppTheme.grey400),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text('Tidak ada data nilai dauroh', style: TextStyle(fontSize: 16, color: AppTheme.grey500)),
           ],
         ),
@@ -452,7 +453,7 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Halaman $_currentPage / $_totalPages', style: TextStyle(color: AppTheme.grey700)),
+            child: Text('Halaman $_currentPage / $_totalPages', style: const TextStyle(color: AppTheme.grey700)),
           ),
           OutlinedButton(
             onPressed: _currentPage < _totalPages

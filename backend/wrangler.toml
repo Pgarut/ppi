@@ -3,12 +3,11 @@ main = "src/index.ts"
 compatibility_date = "2025-07-01"
 compatibility_flags = ["nodejs_compat"]
 
-# D1 Database (Dev)
+# D1 Database (Production)
 [[d1_databases]]
 binding = "DB"
-database_name = "ppi-db"
-database_id = "local-dev-database-id"
-preview_database_id = "local-dev-database-id"
+database_name = "ppi-db-prod"
+database_id = "f4f8e08d-1d77-4cd4-8021-225e88ae233c"
 
 # Variables (dev default)
 # ⚠️ JWT_SECRET dan JWT_REFRESH_SECRET di-set via Cloudflare Secrets, bukan di sini!

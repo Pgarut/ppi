@@ -156,11 +156,11 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
+          const Row(
             children: [
               Icon(Icons.qr_code, color: AppTheme.primary, size: 20),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: 8),
+              Text(
                 'Generate QR',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
               ),
@@ -203,11 +203,11 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
           const SizedBox(height: 12),
           // QR Token Info
           if (_qrInfo != null) ...[
-            Row(
+            const Row(
               children: [
                 Icon(Icons.info_outline, size: 16, color: AppTheme.grey500),
-                const SizedBox(width: 6),
-                const Text(
+                SizedBox(width: 6),
+                Text(
                   'QR Token (Statis):',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.grey600),
                 ),
@@ -269,7 +269,7 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.preview, color: AppTheme.primary, size: 20),
+              const Icon(Icons.preview, color: AppTheme.primary, size: 20),
               const SizedBox(width: 8),
               const Text(
                 'Preview QR Code',
@@ -340,7 +340,7 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.qr_code_2, size: 100, color: AppTheme.grey800),
+                    const Icon(Icons.qr_code_2, size: 100, color: AppTheme.grey800),
                     const SizedBox(height: 8),
                     Text(
                       token,

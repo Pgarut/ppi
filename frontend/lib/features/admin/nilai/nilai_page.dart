@@ -18,12 +18,45 @@ class _NilaiPageState extends State<NilaiPage> with SingleTickerProviderStateMix
   int _totalPages = 1;
   String _statusFilter = '';
   String _jenisFilter = '';
+  bool _nilaiPublished = false;
+  int? _semesterId;
+  bool _loadingPublikasi = false;
 
   @override
-  void initState() { super.initState(); _tabCtrl = TabController(length: 3, vsync: this); _load(); }
+  void initState() { super.initState(); _tabCtrl = TabController(length: 3, vsync: this); _load(); _loadPublikasi(); }
 
   @override
   void dispose() { _tabCtrl.dispose(); super.dispose(); }
+
+  Future<void> _loadPublikasi() async {
+    try {
+      final res = await AdminService.getPublikasiStatus();
+      if (mounted) {
+        setState(() {
+          _nilaiPublished = res['nilai_published'] == true;
+          _semesterId = res['semester_id'];
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _togglePublikasi() async {
+    if (_semesterId == null) return;
+    setState(() => _loadingPublikasi = true);
+    try {
+      await AdminService.togglePublikasiNilai(_semesterId!, !_nilaiPublished);
+      if (mounted) {
+        setState(() => _nilaiPublished = !_nilaiPublished);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_nilaiPublished ? 'Nilai dipublikasikan ke siswa' : 'Nilai disembunyikan dari siswa'),
+          backgroundColor: _nilaiPublished ? AppTheme.primary : AppTheme.orange,
+        ));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.error));
+    }
+    if (mounted) setState(() => _loadingPublikasi = false);
+  }
 
   String get _jenisValue {
     if (_jenisFilter.isEmpty) return '';
@@ -88,6 +121,31 @@ class _NilaiPageState extends State<NilaiPage> with SingleTickerProviderStateMix
     return Column(children: [
       DataCard(
         padding: const EdgeInsets.all(16),
+        header: Row(children: [
+          const Icon(Icons.visibility_outlined, size: 20, color: AppTheme.primary),
+          const SizedBox(width: 8),
+          const Expanded(child: Text('Publikasi Nilai ke Siswa', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+          if (_loadingPublikasi)
+            const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          else
+            Switch(
+              value: _nilaiPublished,
+              onChanged: (_) => _togglePublikasi(),
+              activeColor: AppTheme.primary,
+            ),
+        ]),
+        child: Row(children: [
+          Icon(_nilaiPublished ? Icons.check_circle : Icons.cancel,
+              size: 16, color: _nilaiPublished ? AppTheme.primary : AppTheme.orange),
+          const SizedBox(width: 8),
+          Text(
+            _nilaiPublished ? 'Nilai terlihat oleh siswa' : 'Nilai tidak terlihat oleh siswa',
+            style: TextStyle(fontSize: 12, color: _nilaiPublished ? AppTheme.primary : AppTheme.orange),
+          ),
+        ]),
+      ),
+      DataCard(
+        padding: const EdgeInsets.all(16),
         header: const Row(children: [
           Icon(Icons.filter_list, size: 20, color: AppTheme.primary),
           SizedBox(width: 8),
@@ -108,7 +166,7 @@ class _NilaiPageState extends State<NilaiPage> with SingleTickerProviderStateMix
               value: _jenisFilter.isEmpty ? null : _jenisFilter,
               isDense: true,
               decoration: inputDecoration('Jenis', Icons.category_outlined),
-              items: ['', 'harian', 'tugas', 'uts', 'uas', 'akhir'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
+              items: ['', 'harian', 'tugas', 'uts', 'uas', 'akhir', 'pts1', 'pas', 'pts2', 'pat'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
                   child: Text(s.isEmpty ? 'Semua' : s, style: const TextStyle(fontSize: 13)))).toList(),
               onChanged: (v) { _jenisFilter = v ?? ''; },
             )),
@@ -262,7 +320,7 @@ class _AnalisisNilaiTabState extends State<_AnalisisNilaiTab> {
               value: _jenis.isEmpty ? null : _jenis,
               isDense: true,
               decoration: inputDecoration('Jenis Nilai', Icons.category_outlined, optional: true),
-              items: ['', 'harian', 'tugas', 'uts', 'uas', 'akhir'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
+              items: ['', 'harian', 'tugas', 'uts', 'uas', 'akhir', 'pts1', 'pas', 'pts2', 'pat'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
                   child: Text(s.isEmpty ? 'Semua' : s, style: const TextStyle(fontSize: 13)))).toList(),
               onChanged: (v) => setState(() => _jenis = v ?? ''),
             )),

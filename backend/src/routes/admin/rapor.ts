@@ -161,5 +161,40 @@ export async function handleAdminRapor(request: Request, env: Env, user: UserPay
     return success({ items: rows.results, pagination: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) } });
   }
 
+  // GET /api/admin/rapor/status-publikasi - cek status publikasi nilai semester aktif
+  if (subPath === '/status-publikasi' && request.method === 'GET') {
+    const semester = await env.DB.prepare(
+      'SELECT id, nama, tahun_ajaran_id, nilai_published FROM semester WHERE is_aktif = 1 LIMIT 1'
+    ).first<{ id: number; nama: string; tahun_ajaran_id: number; nilai_published: number }>();
+
+    if (!semester) return badRequest('Tidak ada semester aktif');
+
+    return success({
+      semester_id: semester.id,
+      semester_nama: semester.nama,
+      nilai_published: semester.nilai_published === 1,
+    });
+  }
+
+  // PUT /api/admin/rapor/:semesterId/publikasi-nilai - toggle ON/OFF publikasi nilai
+  const publikasiMatch = subPath.match(/^\/(\d+)\/publikasi-nilai$/);
+  if (publikasiMatch && request.method === 'PUT') {
+    const semesterId = parseInt(publikasiMatch[1]);
+    const body = await request.json<{ nilai_published?: boolean }>();
+
+    const semester = await env.DB.prepare('SELECT id FROM semester WHERE id = ?').bind(semesterId).first();
+    if (!semester) return notFound('Semester');
+
+    const newValue = body.nilai_published === true ? 1 : 0;
+    await env.DB.prepare('UPDATE semester SET nilai_published = ? WHERE id = ?').bind(newValue, semesterId).run();
+
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'rapor', ?, ?)"
+    ).bind(user.sub, `Publikasi nilai semester ${semesterId}: ${newValue ? 'ON' : 'OFF'}`, ip).run();
+
+    return success({ semester_id: semesterId, nilai_published: newValue === 1 });
+  }
+
   return badRequest('Endpoint tidak dikenal');
 }

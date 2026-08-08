@@ -87,7 +87,7 @@ class _JadwalSantriPageState extends State<JadwalSantriPage> {
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
-                              child: Text('${j['hari']?[0] ?? ''}', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                              child: Text('${j['hari']?[0] ?? ''}', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
                             ),
                             title: Text(j['mapel_nama'] ?? '-', style: const TextStyle(fontWeight: FontWeight.w600)),
                             subtitle: Text('${j['guru_nama'] ?? '-'} • ${j['jam_mulai'] ?? ''} - ${j['jam_selesai'] ?? ''}'),
@@ -97,7 +97,7 @@ class _JadwalSantriPageState extends State<JadwalSantriPage> {
                                 color: AppTheme.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text('${j['hari'] ?? ''}', style: TextStyle(fontSize: 11, color: AppTheme.primary)),
+                              child: Text('${j['hari'] ?? ''}', style: const TextStyle(fontSize: 11, color: AppTheme.primary)),
                             ),
                           ),
                         );

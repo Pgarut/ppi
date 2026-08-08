@@ -14,6 +14,8 @@ class _NilaiSantriPageState extends State<NilaiSantriPage> {
   List<Map<String, dynamic>> _rekap = [];
   double _rataRata = 0;
   bool _loading = true;
+  bool _published = true;
+  String _message = '';
 
   @override
   void initState() {
@@ -27,6 +29,8 @@ class _NilaiSantriPageState extends State<NilaiSantriPage> {
       final result = await _service.getNilai();
       if (mounted) {
         setState(() {
+          _published = result['published'] != false;
+          _message = result['message'] as String? ?? '';
           _rekap = (result['rekap'] as List).cast<Map<String, dynamic>>();
           _rataRata = (result['rata_rata_keseluruhan'] ?? 0).toDouble();
           _loading = false;
@@ -53,6 +57,35 @@ class _NilaiSantriPageState extends State<NilaiSantriPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!_published) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                _message.isNotEmpty ? _message : 'Nilai belum dipublikasikan',
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Silakan hubungi admin atau wali kelas',
+                style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Column(
       children: [
         // Ringkasan
@@ -150,12 +183,13 @@ class _NilaiSantriPageState extends State<NilaiSantriPage> {
 
   Widget _buildNilaiItem(String label, dynamic value) {
     final v = (value ?? 0).toDouble();
-    return Expanded(
+    return SizedBox(
+      width: 70,
       child: Column(
         children: [
           Text(v.toStringAsFixed(0), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _getNilaiColor(v))),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey), textAlign: TextAlign.center),
         ],
       ),
     );

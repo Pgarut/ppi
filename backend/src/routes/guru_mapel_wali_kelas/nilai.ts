@@ -121,8 +121,8 @@ export async function handleNilaiGuru(request: Request, env: Env, user: UserPayl
     if (existing.diinput_oleh !== user.guru_id) return badRequest('Anda hanya bisa mengedit nilai sendiri');
 
     const body = await request.json() as Record<string, unknown>;
-    const setClauses: string[] = [];
-    const vals: unknown[] = [];
+    const setClauses: string[] = ['status_validasi = ?'];
+    const vals: unknown[] = ['draft'];
 
     for (const f of ['nilai', 'keterangan', 'jenis']) {
       if (body[f] !== undefined) { setClauses.push(`${f} = ?`); vals.push(body[f]); }
@@ -133,6 +133,22 @@ export async function handleNilaiGuru(request: Request, env: Env, user: UserPayl
     await env.DB.prepare(`UPDATE nilai SET ${setClauses.join(', ')} WHERE id = ?`).bind(...vals).run();
     await env.DB.prepare("INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'nilai', ?, ?)")
       .bind(user.sub, `Update nilai #${id}`, ip).run();
+    return success({ id });
+  }
+
+  // DELETE hapus nilai
+  if (subPath.startsWith('nilai/') && request.method === 'DELETE') {
+    const id = parseInt(subPath.split('/')[1]);
+    if (!id) return badRequest('ID diperlukan');
+    const existing = await env.DB.prepare('SELECT id, diinput_oleh, status_validasi FROM nilai WHERE id = ?').bind(id).first<{ id: number; diinput_oleh: number; status_validasi: string }>();
+    if (!existing) return notFound('Nilai');
+    if (existing.diinput_oleh !== user.guru_id) return badRequest('Anda hanya bisa menghapus nilai sendiri');
+    if (existing.status_validasi === 'tervalidasi') return badRequest('Tidak bisa menghapus nilai yang sudah tervalidasi');
+
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    await env.DB.prepare('DELETE FROM nilai WHERE id = ?').bind(id).run();
+    await env.DB.prepare("INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'delete', 'nilai', ?, ?)")
+      .bind(user.sub, `Hapus nilai #${id}`, ip).run();
     return success({ id });
   }
 
