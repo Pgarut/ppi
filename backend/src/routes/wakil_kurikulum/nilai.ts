@@ -28,6 +28,10 @@ export async function handleNilaiWK(request: Request, env: Env, user: UserPayloa
 
       if (!tahun_ajaran_id) return badRequest('tahun_ajaran_id wajib diisi');
 
+      // Validasi FK: tahun_ajaran harus ada
+      const taExists = await env.DB.prepare('SELECT id FROM tahun_ajaran WHERE id = ?').bind(tahun_ajaran_id).first();
+      if (!taExists) return badRequest('Tahun ajaran tidak ditemukan');
+
       const hp = Number(harian_persen ?? 20), tp = Number(tugas_persen ?? 20), up = Number(uts_persen ?? 30), uap = Number(uas_persen ?? 30);
       const total = hp + tp + up + uap;
       if (total != 100) return badRequest('Total persentase harus 100%');
@@ -135,7 +139,7 @@ export async function handleNilaiWK(request: Request, env: Env, user: UserPayloa
          COUNT(*) as total,
          COUNT(CASE WHEN n.status_validasi = 'draft' THEN 1 END) as draft,
          COUNT(CASE WHEN n.status_validasi = 'tervalidasi' THEN 1 END) as tervalidasi,
-         ROUND(AVG(CASE WHEN n.jenis = 'angka' THEN CAST(n.nilai AS REAL) END), 1) as rata_rata
+         ROUND(AVG(CAST(n.nilai AS REAL)), 1) as rata_rata
        FROM nilai n
        LEFT JOIN siswa s ON n.siswa_id = s.id
        LEFT JOIN mata_pelajaran mp ON n.mata_pelajaran_id = mp.id

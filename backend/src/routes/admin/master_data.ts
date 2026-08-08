@@ -86,6 +86,18 @@ export async function handleAdminMasterData(request: Request, env: Env, user: Us
     if (isCreate) {
       const body = await request.json() as Record<string, unknown>;
       const result = await create(env, cfg, body, user, ip);
+
+      // Enforce: hanya 1 tahun ajaran aktif
+      if (resource === 'tahun-ajaran' && body['is_aktif'] === 1) {
+        const newId = (await result.clone().json() as { data?: { id?: number } })?.data?.id;
+        if (newId) await env.DB.prepare('UPDATE tahun_ajaran SET is_aktif = 0 WHERE id != ?').bind(newId).run();
+      }
+      // Enforce: hanya 1 semester aktif
+      if (resource === 'semester' && body['is_aktif'] === 1) {
+        const newId = (await result.clone().json() as { data?: { id?: number } })?.data?.id;
+        if (newId) await env.DB.prepare('UPDATE semester SET is_aktif = 0 WHERE id != ?').bind(newId).run();
+      }
+
       if (resource === 'guru') {
         const resultBody = await result.clone().json() as { data?: { id?: number } };
         const guruId = resultBody?.data?.id;
@@ -141,7 +153,18 @@ export async function handleAdminMasterData(request: Request, env: Env, user: Us
     if (isUpdate) {
       const body = await request.json() as Record<string, unknown>;
       const id = parseInt(pathParts[3]);
+      if (isNaN(id)) return badRequest('ID tidak valid');
       const result = await update(env, cfg, id, body, user, ip);
+
+      // Enforce: hanya 1 tahun ajaran aktif
+      if (resource === 'tahun-ajaran' && body['is_aktif'] === 1) {
+        await env.DB.prepare('UPDATE tahun_ajaran SET is_aktif = 0 WHERE id != ?').bind(id).run();
+      }
+      // Enforce: hanya 1 semester aktif
+      if (resource === 'semester' && body['is_aktif'] === 1) {
+        await env.DB.prepare('UPDATE semester SET is_aktif = 0 WHERE id != ?').bind(id).run();
+      }
+
       if (resource === 'guru') {
         const username = body['username'] as string | undefined;
         const password = body['password'] as string | undefined;

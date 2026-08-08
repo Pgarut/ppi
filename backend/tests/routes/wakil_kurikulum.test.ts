@@ -165,6 +165,7 @@ describe('Wakil Kurikulum Routes', () => {
 
     it('should create bobot nilai with valid total 100%', async () => {
       const db = makeDb();
+      db.first.mockResolvedValue({ id: 1 }); // FK check
       const req = makePost('/api/wakil-kurikulum/bobot-nilai', { tahun_ajaran_id: 1, harian_persen: 20, tugas_persen: 20, uts_persen: 30, uas_persen: 30 });
       const res = await handleNilaiWK(req, db, wkUser, ['api', 'wakil-kurikulum', 'bobot-nilai'], makeUrl(''));
       expect(res.status).toBe(201);
@@ -224,6 +225,12 @@ describe('Wakil Kurikulum Routes', () => {
 
     it('should proses kenaikan kelas', async () => {
       const db = makeDb();
+      // 1. FK check tahun_ajaran → exists
+      // 2. existing process check → none
+      db.first
+        .mockResolvedValueOnce({ id: 1 })   // taExist FK check
+        .mockResolvedValueOnce(null)          // existingProcess check
+        .mockResolvedValueOnce({ tahun_ajaran_id: 1 }); // kelasTujuan
       const req = makePost('/api/wakil-kurikulum/kenaikan-kelas/proses', { siswa_id: 1, dari_kelas_id: 1, ke_kelas_id: 2, status: 'naik', tahun_ajaran_id: 1 });
       const res = await handleKenaikanKelas(req, db, wkUser, ['api', 'wakil-kurikulum', 'kenaikan-kelas', 'proses'], makeUrl(''));
       expect(res.status).toBe(201);

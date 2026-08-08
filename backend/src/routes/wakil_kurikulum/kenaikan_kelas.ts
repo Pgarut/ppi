@@ -27,13 +27,17 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
 
     if (!kelasId || !tahunAjaranId) return badRequest('kelas_id dan tahun_ajaran_id diperlukan');
 
+    const kelasIdNum = parseInt(kelasId);
+    const taIdNum = parseInt(tahunAjaranId);
+    if (isNaN(kelasIdNum) || isNaN(taIdNum)) return badRequest('kelas_id dan tahun_ajaran_id harus berupa angka');
+
     const rows = await env.DB.prepare(
       `SELECT s.id, s.nis, s.nama, s.kelas_id, k.nama as kelas_nama
        FROM siswa s
        LEFT JOIN kelas k ON s.kelas_id = k.id
        WHERE s.kelas_id = ? AND s.tahun_ajaran_id = ? AND s.status = 'aktif'
        ORDER BY s.nama`
-    ).bind(parseInt(kelasId), parseInt(tahunAjaranId)).all();
+    ).bind(kelasIdNum, taIdNum).all();
     return success(rows.results);
   }
 
@@ -44,6 +48,10 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
 
     if (!kelasId || !tahunAjaranId) return badRequest('kelas_id dan tahun_ajaran_id diperlukan');
 
+    const kelasIdNum2 = parseInt(kelasId);
+    const taIdNum2 = parseInt(tahunAjaranId);
+    if (isNaN(kelasIdNum2) || isNaN(taIdNum2)) return badRequest('kelas_id dan tahun_ajaran_id harus berupa angka');
+
     // Ambil data siswa aktif di kelas tersebut
     const siswaRows = await env.DB.prepare(
       `SELECT s.id, s.nis, s.nama, s.kelas_id, s.jenis_kelamin, k.nama as kelas_nama
@@ -51,7 +59,7 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
        LEFT JOIN kelas k ON s.kelas_id = k.id
        WHERE s.kelas_id = ? AND s.tahun_ajaran_id = ? AND s.status = 'aktif'
        ORDER BY s.nama`
-    ).bind(parseInt(kelasId), parseInt(tahunAjaranId)).all();
+    ).bind(kelasIdNum2, taIdNum2).all();
 
     const siswaList = siswaRows.results as Array<Record<string, unknown>>;
     const siswaIds = siswaList.map(s => s.id as number);
@@ -63,7 +71,7 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
     // Ambil pengaturan batas minimum
     const pengaturanRows = await env.DB.prepare(
       `SELECT * FROM pengaturan_kenaikan_kelas WHERE tahun_ajaran_id = ?`
-    ).bind(parseInt(tahunAjaranId)).all();
+    ).bind(taIdNum2).all();
     const pengaturan = pengaturanRows.results[0] || null;
 
     // Ambil data nilai akhir per siswa (dari nilai_rapor)
@@ -82,7 +90,7 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
            SELECT id FROM semester WHERE tahun_ajaran_id = ?
          )
        GROUP BY nr.siswa_id`
-    ).bind(...siswaIds, parseInt(tahunAjaranId)).all();
+    ).bind(...siswaIds, taIdNum2).all();
 
     const nilaiMap = new Map<number, Record<string, unknown>>();
     for (const row of nilaiRows.results) {
@@ -114,7 +122,7 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
        WHERE a.siswa_id IN (${placeholders})
          AND a.kelas_id = ?
        GROUP BY a.siswa_id`
-    ).bind(...siswaIds, parseInt(kelasId)).all();
+    ).bind(...siswaIds, kelasIdNum2).all();
 
     const absensiMap = new Map<number, Record<string, unknown>>();
     for (const row of absensiRows.results) {
@@ -154,6 +162,10 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
 
     if (!dariKelasId || !tahunAjaranId) return badRequest('dari_kelas_id dan tahun_ajaran_id diperlukan');
 
+    const dariKelasIdNum = parseInt(dariKelasId);
+    const taIdKelasTujuan = parseInt(tahunAjaranId);
+    if (isNaN(dariKelasIdNum) || isNaN(taIdKelasTujuan)) return badRequest('dari_kelas_id dan tahun_ajaran_id harus berupa angka');
+
     // Ambil info kelas asal
     const kelasAsal = await env.DB.prepare(
       `SELECT k.*, t.nama as tingkat_nama, t.jenjang, j.nama as jurusan_nama, j.kode as jurusan_kode
@@ -161,7 +173,7 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
        LEFT JOIN tingkat t ON k.tingkat_id = t.id
        LEFT JOIN jurusan j ON k.jurusan_id = j.id
        WHERE k.id = ?`
-    ).bind(parseInt(dariKelasId)).first() as Record<string, unknown> | null;
+    ).bind(dariKelasIdNum).first() as Record<string, unknown> | null;
 
     if (!kelasAsal) return notFound('Kelas asal tidak ditemukan');
 
@@ -180,7 +192,7 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
        (SELECT COUNT(*) FROM siswa s WHERE s.kelas_id = k.id AND s.status = 'aktif') as jumlah_siswa
        FROM kelas k
        WHERE k.tingkat_id = ? AND k.tahun_ajaran_id = ?`;
-    const params: unknown[] = [nextTingkat.id as number, parseInt(tahunAjaranId)];
+    const params: unknown[] = [nextTingkat.id as number, taIdKelasTujuan];
 
     if (kelasAsal.jurusan_id) {
       queryKelas += ' AND k.jurusan_id = ?';
@@ -211,6 +223,18 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
       return badRequest('Status harus naik, tidak_naik, atau lulus');
     }
 
+    // Validasi FK
+    const taExist = await env.DB.prepare('SELECT id FROM tahun_ajaran WHERE id = ?').bind(body.tahun_ajaran_id).first();
+    if (!taExist) return badRequest('Tahun ajaran tidak ditemukan');
+
+    // Validasi: cek apakah siswa sudah diproses di tahun ajaran yang sama
+    const existingProcess = await env.DB.prepare(
+      'SELECT id FROM kenaikan_kelas WHERE siswa_id = ? AND tahun_ajaran_id = ?'
+    ).bind(body.siswa_id, body.tahun_ajaran_id).first();
+    if (existingProcess) {
+      return badRequest('Siswa ini sudah diproses kenaikan kelas di tahun ajaran ini');
+    }
+
     const result = await env.DB.prepare(
       `INSERT INTO kenaikan_kelas (siswa_id, dari_kelas_id, ke_kelas_id, tahun_ajaran_id, status, no_surat_keputusan, tanggal_keputusan)
        VALUES (?, ?, ?, ?, ?, ?, date('now'))`
@@ -220,7 +244,10 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
     if (body.status === 'lulus') {
       await env.DB.prepare("UPDATE siswa SET status = 'lulus' WHERE id = ?").bind(body.siswa_id).run();
     } else if (body.status === 'naik' && body.ke_kelas_id) {
-      await env.DB.prepare("UPDATE siswa SET kelas_id = ? WHERE id = ?").bind(body.ke_kelas_id, body.siswa_id).run();
+      // Ambil tahun_ajaran_id dari kelas tujuan
+      const kelasTujuan = await env.DB.prepare("SELECT tahun_ajaran_id FROM kelas WHERE id = ?").bind(body.ke_kelas_id).first<{ tahun_ajaran_id: number }>();
+      const targetTaId = kelasTujuan?.tahun_ajaran_id || body.tahun_ajaran_id;
+      await env.DB.prepare("UPDATE siswa SET kelas_id = ?, tahun_ajaran_id = ? WHERE id = ?").bind(body.ke_kelas_id, targetTaId, body.siswa_id).run();
     }
 
     await env.DB.prepare(
@@ -243,8 +270,29 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
       return badRequest('dari_kelas_id dan tahun_ajaran_id wajib diisi');
     }
 
+    // Validasi FK
+    const taExistBatch = await env.DB.prepare('SELECT id FROM tahun_ajaran WHERE id = ?').bind(body.tahun_ajaran_id).first();
+    if (!taExistBatch) return badRequest('Tahun ajaran tidak ditemukan');
+
     if ((!body.siswa_naik || body.siswa_naik.length === 0) && (!body.siswa_tidak_naik || body.siswa_tidak_naik.length === 0)) {
       return badRequest('Tidak ada siswa yang diproses');
+    }
+
+    // Validasi: cek apakah siswa sudah diproses di tahun ajaran yang sama
+    const allSiswaIds = [
+      ...(body.siswa_naik?.map(s => s.siswa_id) || []),
+      ...(body.siswa_tidak_naik || []),
+    ];
+    if (allSiswaIds.length > 0) {
+      const placeholders = allSiswaIds.map(() => '?').join(',');
+      const existingProcess = await env.DB.prepare(
+        `SELECT siswa_id FROM kenaikan_kelas WHERE siswa_id IN (${placeholders}) AND tahun_ajaran_id = ?`
+      ).bind(...allSiswaIds, body.tahun_ajaran_id).all<{ siswa_id: number }>();
+
+      if (existingProcess.results.length > 0) {
+        const dupSiswaIds = existingProcess.results.map(r => r.siswa_id);
+        return badRequest(`Siswa dengan ID ${dupSiswaIds.join(', ')} sudah diproses kenaikan kelas di tahun ajaran ini`);
+      }
     }
 
     const results: Array<{ siswa_id: number; status: string; kelas_nama?: string }> = [];
@@ -257,13 +305,17 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
            VALUES (?, ?, ?, ?, 'naik', date('now'))`
         ).bind(s.siswa_id, body.dari_kelas_id, s.ke_kelas_id, body.tahun_ajaran_id).run();
 
-        // FIX: Update kelas_id siswa ke kelas tujuan
-        await env.DB.prepare("UPDATE siswa SET kelas_id = ? WHERE id = ?").bind(s.ke_kelas_id, s.siswa_id).run();
+        // Ambil tahun_ajaran_id dari kelas tujuan
+        const kelasTujuan = await env.DB.prepare("SELECT tahun_ajaran_id FROM kelas WHERE id = ?").bind(s.ke_kelas_id).first<{ tahun_ajaran_id: number }>();
+        const targetTaId = kelasTujuan?.tahun_ajaran_id || body.tahun_ajaran_id;
+
+        // Update kelas_id dan tahun_ajaran_id siswa ke kelas tujuan
+        await env.DB.prepare("UPDATE siswa SET kelas_id = ?, tahun_ajaran_id = ? WHERE id = ?").bind(s.ke_kelas_id, targetTaId, s.siswa_id).run();
 
         // Ambil nama kelas tujuan untuk response
-        const kelasTujuan = await env.DB.prepare("SELECT nama FROM kelas WHERE id = ?").bind(s.ke_kelas_id).first() as Record<string, unknown> | null;
+        const kelasNama = await env.DB.prepare("SELECT nama FROM kelas WHERE id = ?").bind(s.ke_kelas_id).first() as Record<string, unknown> | null;
 
-        results.push({ siswa_id: s.siswa_id, status: 'naik', kelas_nama: kelasTujuan?.nama as string });
+        results.push({ siswa_id: s.siswa_id, status: 'naik', kelas_nama: kelasNama?.nama as string });
       }
     }
 
@@ -326,10 +378,12 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
 
     if (request.method === 'GET') {
       if (!tahunAjaranId) return badRequest('tahun_ajaran_id diperlukan');
+      const taIdNum = parseInt(tahunAjaranId);
+      if (isNaN(taIdNum)) return badRequest('tahun_ajaran_id harus berupa angka');
 
       const row = await env.DB.prepare(
         `SELECT * FROM pengaturan_kenaikan_kelas WHERE tahun_ajaran_id = ?`
-      ).bind(parseInt(tahunAjaranId)).first();
+      ).bind(taIdNum).first();
 
       return success(row || { min_absensi_persen: 75, min_nilai_akhir: 60 });
     }
@@ -338,6 +392,10 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
       const body = await request.json() as { tahun_ajaran_id: number; min_absensi_persen?: number; min_nilai_akhir?: number };
 
       if (!body.tahun_ajaran_id) return badRequest('tahun_ajaran_id wajib diisi');
+
+      // Validasi FK
+      const taExistPengaturan = await env.DB.prepare('SELECT id FROM tahun_ajaran WHERE id = ?').bind(body.tahun_ajaran_id).first();
+      if (!taExistPengaturan) return badRequest('Tahun ajaran tidak ditemukan');
 
       const existing = await env.DB.prepare(
         'SELECT id FROM pengaturan_kenaikan_kelas WHERE tahun_ajaran_id = ?'
