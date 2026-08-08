@@ -141,7 +141,7 @@ describe('Kepala Sekolah View Routes', () => {
     db.first.mockResolvedValue({ total: 10 });
     db.all.mockResolvedValue({ results: [{ id: 1, siswa_nama: 'Siswa A' }] });
     const req = makeGet('/api/kepala-sekolah/absensi');
-    const res = await handleAbsensiKS(req, db, makeUrl(''));
+    const res = await handleAbsensiKS(req, db, makeUrl('/api/kepala-sekolah/absensi'));
     expect(res.status).toBe(200);
   });
 
