@@ -110,7 +110,7 @@ enum MasterDataType {
     templateFileName: 'template_siswa.xlsx',
     previewEndpoint: 'siswa',
     bulkEndpoint: '/admin/siswa/bulk',
-    bulkSaveFields: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'tahun_ajaran_id', 'status'],
+    bulkSaveFields: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'tahun_ajaran_id', 'status', 'nama_ayah', 'nama_ibu', 'pekerjaan_ayah', 'pekerjaan_ibu', 'whatsapp'],
     previewTitle: 'Preview Data Santri',
     previewWidth: 800,
     previewPrimaryLabel: _siswaPrimaryLabel,
