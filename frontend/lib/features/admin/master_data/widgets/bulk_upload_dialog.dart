@@ -183,10 +183,20 @@ class BulkUploadDialog extends StatelessWidget {
       if (updated > 0) parts.add('$updated diupdate');
       if (errors.isNotEmpty) parts.add('${errors.length} gagal');
 
+      final msg = StringBuffer('Berhasil: ${parts.join(', ')}');
+      if (errors.isNotEmpty) {
+        final firstErrors = errors.take(3).map((e) {
+          final row = (e as Map)['row'] ?? '?';
+          final err = (e as Map)['error'] ?? 'Unknown error';
+          return '  Row $row: $err';
+        }).join('\n');
+        msg.write('\n$firstErrors');
+        if (errors.length > 3) msg.write('\n  ...dan ${errors.length - 3} lainnya');
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-          parts.isEmpty ? 'Tidak ada data diproses' : 'Berhasil: ${parts.join(', ')}',
-        ),
+        content: Text(msg.toString()),
+        duration: const Duration(seconds: 5),
       ));
       config.onSaved();
     } catch (e) {

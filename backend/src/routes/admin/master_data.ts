@@ -104,6 +104,38 @@ export async function handleAdminMasterData(request: Request, env: Env, user: Us
           await upsertUserForSiswa(env, siswaId, username, password, user.sub, ip);
         }
       }
+      // Auto-copy kelas dari tahun ajaran aktif sebelumnya ke tahun baru
+      if (resource === 'tahun-ajaran') {
+        const resultBody = await result.clone().json() as { data?: { id?: number } };
+        const newTaId = resultBody?.data?.id;
+        if (newTaId) {
+          // Cari tahun ajaran aktif sebelumnya (bukan yang baru dibuat)
+          const prevTa = await env.DB.prepare(
+            'SELECT id, nama FROM tahun_ajaran WHERE id != ? ORDER BY id DESC LIMIT 1'
+          ).bind(newTaId).first<{ id: number; nama: string }>();
+
+          if (prevTa) {
+            // Copy semua kelas dari tahun lama ke tahun baru
+            const kelasRows = await env.DB.prepare(
+              'SELECT nama, tingkat_id, jurusan_id, wali_kelas_id, ruangan_id FROM kelas WHERE tahun_ajaran_id = ?'
+            ).bind(prevTa.id).all<{ nama: string; tingkat_id: number; jurusan_id: number; wali_kelas_id: number | null; ruangan_id: number | null }>();
+
+            let copied = 0;
+            for (const k of kelasRows.results) {
+              await env.DB.prepare(
+                'INSERT INTO kelas (nama, tingkat_id, jurusan_id, wali_kelas_id, ruangan_id, tahun_ajaran_id) VALUES (?, ?, ?, ?, ?, ?)'
+              ).bind(k.nama, k.tingkat_id, k.jurusan_id, k.wali_kelas_id || null, k.ruangan_id || null, newTaId).run();
+              copied++;
+            }
+
+            if (copied > 0) {
+              await env.DB.prepare(
+                "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'create', 'tahun_ajaran', ?, ?)"
+              ).bind(user.sub, `Tahun ajaran baru dibuat, ${copied} kelas dicopy dari tahun ${prevTa.nama}`, ip).run();
+            }
+          }
+        }
+      }
       return result;
     }
     if (isUpdate) {
@@ -266,26 +298,35 @@ export async function handleWaliKelasList(request: Request, env: Env, _user: Use
 export async function handleSiswaTemplate(env: Env): Promise<Response> {
   const wb = XLSX.utils.book_new();
 
+  // Ambil tahun ajaran aktif untuk default value
+  const taAktif = await env.DB.prepare('SELECT id, nama FROM tahun_ajaran WHERE is_aktif = 1 LIMIT 1').first<{ id: number; nama: string }>();
+  const taDefault = taAktif?.nama || '';
+
   const wsData = [
-    ['NIS', 'NISN', 'Nama Santri', 'Jenis Kelamin', 'Kelas', 'Status'],
-    ['', '', '', 'L/P', '', 'Aktif / Lulus / Keluar'],
+    ['NIS', 'NISN', 'Nama Santri', 'Jenis Kelamin', 'Kelas', 'Status', 'Tahun Ajaran'],
+    ['', '', '', 'L/P', '', 'Aktif / Lulus / Pindah / Keluar', taDefault],
   ];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 22 }];
+  ws['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 20 }];
   XLSX.utils.book_append_sheet(wb, ws, 'Data Santri');
 
   const kelas = await env.DB.prepare('SELECT nama FROM kelas ORDER BY nama').all<{ nama: string }>();
+  const taList = await env.DB.prepare('SELECT nama FROM tahun_ajaran ORDER BY nama DESC').all<{ nama: string }>();
   const refRows: (string | undefined)[][] = [
-    ['Jenis Kelamin', 'Status', ''],
+    ['Jenis Kelamin', 'Status', 'Tahun Ajaran'],
     ['L', 'Aktif', ''],
     ['P', 'Lulus', ''],
+    ['', 'Pindah', ''],
     ['', 'Keluar', ''],
     ['', '', ''],
     ['Daftar Kelas', '', ''],
   ];
   for (const k of kelas.results) refRows.push([k.nama, '', '']);
+  refRows.push(['', '', '']);
+  refRows.push(['Daftar Tahun Ajaran', '', '']);
+  for (const t of taList.results) refRows.push(['', '', t.nama]);
   const wsRef = XLSX.utils.aoa_to_sheet(refRows);
-  wsRef['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 10 }];
+  wsRef['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 22 }];
   XLSX.utils.book_append_sheet(wb, wsRef, 'Referensi');
 
   const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
@@ -318,12 +359,31 @@ export async function handleSiswaPreview(request: Request, env: Env): Promise<Re
   const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '' });
   if (rows.length === 0) return badRequest('Tidak ada data di sheet Data Santri');
 
+  // Load referensi dari database
   const kelasMap = new Map<string, number>();
   const kelasRows = await env.DB.prepare('SELECT id, nama FROM kelas').all<{ id: number; nama: string }>();
   for (const k of kelasRows.results) kelasMap.set(k.nama.toLowerCase().trim(), k.id);
 
+  const taMap = new Map<string, number>();
+  const taRows = await env.DB.prepare('SELECT id, nama FROM tahun_ajaran').all<{ id: number; nama: string }>();
+  for (const t of taRows.results) taMap.set(t.nama.toLowerCase().trim(), t.id);
+
+  // Tahun ajaran aktif sebagai default
+  const taAktif = await env.DB.prepare('SELECT id FROM tahun_ajaran WHERE is_aktif = 1 LIMIT 1').first<{ id: number }>();
+  const defaultTaId = taAktif?.id ?? null;
+
+  // Load existing NIS dan NISN dari database untuk cross-check
+  const existingNisSet = new Set<string>();
+  const existingNisRows = await env.DB.prepare('SELECT nis FROM siswa').all<{ nis: string }>();
+  for (const r of existingNisRows.results) existingNisSet.add((r.nis ?? '').toLowerCase().trim());
+
+  const existingNisnSet = new Set<string>();
+  const existingNisnRows = await env.DB.prepare('SELECT nisn FROM siswa WHERE nisn IS NOT NULL AND nisn != ""').all<{ nisn: string }>();
+  for (const r of existingNisnRows.results) existingNisnSet.add((r.nisn ?? '').toLowerCase().trim());
+
   const preview: Record<string, unknown>[] = [];
   const seenNis = new Set<string>();
+  const seenNisn = new Set<string>();
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -334,10 +394,21 @@ export async function handleSiswaPreview(request: Request, env: Env): Promise<Re
     const jk = (r['Jenis Kelamin'] ?? '').toString().trim().toUpperCase();
     const kelasNama = (r['Kelas'] ?? '').toString().trim();
     const status = (r['Status'] ?? '').toString().trim();
+    const taNama = (r['Tahun Ajaran'] ?? '').toString().trim();
 
     if (!nis) errors.push('NIS harus diisi');
     else if (seenNis.has(nis)) errors.push(`NIS "${nis}" duplikat dalam file`);
     else seenNis.add(nis);
+
+    // NISN duplikat check (dalam file dan di database)
+    if (nisn) {
+      if (seenNisn.has(nisn.toLowerCase())) errors.push(`NISN "${nisn}" duplikat dalam file`);
+      else seenNisn.add(nisn.toLowerCase());
+      if (existingNisnSet.has(nisn.toLowerCase())) errors.push(`NISN "${nisn}" sudah ada di database`);
+    }
+
+    // NIS sudah ada di database → akan di-update (upsert), bukan error
+    const isUpdate = nis ? existingNisSet.has(nis.toLowerCase()) : false;
 
     if (!nama) errors.push('Nama Santri harus diisi');
     if (jk !== 'L' && jk !== 'P') errors.push('Jenis Kelamin harus L atau P');
@@ -346,7 +417,21 @@ export async function handleSiswaPreview(request: Request, env: Env): Promise<Re
     if (kelasNama && kelasId == null) errors.push(`Kelas "${kelasNama}" tidak ditemukan`);
 
     if (!status) errors.push('Status harus diisi');
-    else if (!['aktif', 'lulus', 'keluar'].includes(status.toLowerCase())) errors.push('Status harus Aktif, Lulus, atau Keluar');
+    else if (!['aktif', 'lulus', 'pindah', 'keluar'].includes(status.toLowerCase())) errors.push('Status harus Aktif, Lulus, Pindah, atau Keluar');
+
+    // Tahun ajaran: gunakan dari file atau default ke tahun ajaran aktif
+    let taId = defaultTaId;
+    if (taNama) {
+      const found = taMap.get(taNama.toLowerCase());
+      if (found) {
+        taId = found;
+      } else {
+        errors.push(`Tahun Ajaran "${taNama}" tidak ditemukan`);
+      }
+    }
+    if (taId == null) {
+      errors.push('Tahun Ajaran aktif tidak tersedia. Isi kolom Tahun Ajaran atau set tahun ajaran aktif di menu Tahun Ajaran');
+    }
 
     preview.push({
       row: i + 2,
@@ -356,7 +441,9 @@ export async function handleSiswaPreview(request: Request, env: Env): Promise<Re
       jenis_kelamin: jk,
       kelas_nama: kelasNama,
       kelas_id: kelasId,
+      tahun_ajaran_id: taId,
       status: status.toLowerCase(),
+      is_update: isUpdate,
       errors,
       valid: errors.length === 0,
     });
@@ -372,25 +459,73 @@ export async function handleSiswaBulk(request: Request, env: Env, user: UserPayl
   if (!Array.isArray(body.data) || body.data.length === 0) return badRequest('Field data harus array dan tidak boleh kosong');
 
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  const cols = ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'status'];
+
+  // Tahun ajaran aktif sebagai default
+  const taAktif = await env.DB.prepare('SELECT id FROM tahun_ajaran WHERE is_aktif = 1 LIMIT 1').first<{ id: number }>();
+  const defaultTaId = taAktif?.id ?? null;
+
+  const cols = ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'tahun_ajaran_id', 'status'];
   const placeholders = cols.map(() => '?').join(', ');
-  const stmt = `INSERT INTO siswa (${cols.join(', ')}) VALUES (${placeholders})`;
+  const stmt = `INSERT INTO siswa (${cols.join(', ')}) VALUES (${placeholders})
+    ON CONFLICT(nis) DO UPDATE SET
+      nisn = excluded.nisn,
+      nama = excluded.nama,
+      jenis_kelamin = excluded.jenis_kelamin,
+      kelas_id = excluded.kelas_id,
+      tahun_ajaran_id = excluded.tahun_ajaran_id,
+      status = excluded.status`;
 
   let inserted = 0;
+  let updated = 0;
+  let usersCreated = 0;
   const errors: { row: number; nis: string; error: string }[] = [];
 
   for (let i = 0; i < body.data.length; i++) {
     const row = body.data[i];
     try {
-      await env.DB.prepare(stmt).bind(
-        row['nis'] ?? '',
-        row['nisn'] ?? '',
+      const nis = (row['nis'] ?? '').toString().trim();
+      if (!nis) {
+        errors.push({ row: i + 2, nis: '', error: 'NIS kosong' });
+        continue;
+      }
+
+      const nisn = (row['nisn'] ?? '').toString().trim();
+      const taId = row['tahun_ajaran_id'] || defaultTaId;
+      if (taId == null) {
+        errors.push({ row: i + 2, nis, error: 'Tahun Ajaran aktif tidak tersedia' });
+        continue;
+      }
+
+      // Cek apakah NIS sudah ada sebelum upsert
+      const existing = await env.DB.prepare('SELECT id FROM siswa WHERE nis = ?').bind(nis).first();
+
+      const result = await env.DB.prepare(stmt).bind(
+        nis,
+        nisn,
         row['nama'] ?? '',
         row['jenis_kelamin'] ?? '',
         row['kelas_id'] ?? null,
+        taId,
         row['status'] ?? ''
       ).run();
-      inserted++;
+
+      if (existing) {
+        updated++;
+      } else {
+        inserted++;
+        // Auto-create user account untuk siswa baru
+        const siswaId = result.meta?.last_row_id;
+        if (siswaId && nis) {
+          const username = nis;
+          const password = nis; // Default password = NIS
+          try {
+            await upsertUserForSiswa(env, siswaId as number, username, password, user.sub, ip);
+            usersCreated++;
+          } catch (userErr) {
+            // User creation gagal bukan fatal, siswa tetap terinsert
+          }
+        }
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Database error';
       errors.push({ row: i + 2, nis: (row['nis'] ?? '').toString(), error: msg });
@@ -399,9 +534,9 @@ export async function handleSiswaBulk(request: Request, env: Env, user: UserPayl
 
   await env.DB.prepare(
     "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'bulk_create', 'siswa', ?, ?)"
-  ).bind(user.sub, `Import ${inserted} siswa dari Excel${errors.length > 0 ? ` (${errors.length} gagal)` : ''}`, ip).run();
+  ).bind(user.sub, `Import ${inserted} siswa baru, ${updated} di-update, ${usersCreated} user dibuat dari Excel${errors.length > 0 ? ` (${errors.length} gagal)` : ''}`, ip).run();
 
-  return success({ inserted, errors });
+  return success({ inserted, updated, users_created: usersCreated, errors });
 }
 
 // ── Mata Pelajaran Bulk ──
@@ -449,9 +584,16 @@ export async function handleMapelPreview(request: Request, env: Env): Promise<Re
 
   const preview: Record<string, unknown>[] = [];
   const seenNama = new Set<string>();
+  const seenKode = new Set<string>();
+
+  // Load existing data dari database
   const existingMap = new Map<string, number>();
   const existingRows = await env.DB.prepare('SELECT id, nama FROM mata_pelajaran').all<{ id: number; nama: string }>();
   for (const r of existingRows.results) existingMap.set(r.nama.toLowerCase().trim(), r.id);
+
+  const existingKodeMap = new Map<string, number>();
+  const existingKodeRows = await env.DB.prepare('SELECT id, kode FROM mata_pelajaran WHERE kode IS NOT NULL AND kode != ""').all<{ id: number; kode: string }>();
+  for (const r of existingKodeRows.results) existingKodeMap.set(r.kode.toLowerCase().trim(), r.id);
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -463,12 +605,22 @@ export async function handleMapelPreview(request: Request, env: Env): Promise<Re
     else if (seenNama.has(nama.toLowerCase())) errors.push(`Nama "${nama}" duplikat dalam file`);
     else seenNama.add(nama.toLowerCase());
 
-    if (existingMap.has(nama.toLowerCase())) errors.push(`Nama "${nama}" sudah ada di database`);
+    if (kode && seenKode.has(kode.toLowerCase())) errors.push(`Kode "${kode}" duplikat dalam file`);
+    else if (kode) seenKode.add(kode.toLowerCase());
+
+    // Cek apakah akan update (upsert berdasarkan kode)
+    const isUpdate = kode ? existingKodeMap.has(kode.toLowerCase()) : existingMap.has(nama.toLowerCase());
+
+    // Nama sudah ada tanpa kode → error (tidak bisa upsert tanpa kode)
+    if (!kode && existingMap.has(nama.toLowerCase())) {
+      errors.push(`Nama "${nama}" sudah ada di database tanpa kode. Isi kode untuk update.`);
+    }
 
     preview.push({
       row: i + 2,
       nama,
       kode,
+      is_update: isUpdate,
       errors,
       valid: errors.length === 0,
     });
@@ -486,19 +638,33 @@ export async function handleMapelBulk(request: Request, env: Env, user: UserPayl
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   const cols = ['nama', 'kode'];
   const placeholders = cols.map(() => '?').join(', ');
-  const stmt = `INSERT INTO mata_pelajaran (${cols.join(', ')}) VALUES (${placeholders})`;
+  const stmt = `INSERT INTO mata_pelajaran (${cols.join(', ')}) VALUES (${placeholders})
+    ON CONFLICT(kode) DO UPDATE SET
+      nama = excluded.nama`;
 
   let inserted = 0;
+  let updated = 0;
   const errors: { row: number; nama: string; error: string }[] = [];
 
   for (let i = 0; i < body.data.length; i++) {
     const row = body.data[i];
     try {
+      // Cek apakah kode sudah ada sebelum upsert
+      const kode = (row['kode'] ?? '').toString().trim();
+      const existing = kode
+        ? await env.DB.prepare('SELECT id FROM mata_pelajaran WHERE kode = ?').bind(kode).first()
+        : await env.DB.prepare('SELECT id FROM mata_pelajaran WHERE nama = ?').bind(row['nama'] ?? '').first();
+
       await env.DB.prepare(stmt).bind(
         row['nama'] ?? '',
         row['kode'] ?? ''
       ).run();
-      inserted++;
+
+      if (existing) {
+        updated++;
+      } else {
+        inserted++;
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Database error';
       errors.push({ row: i + 2, nama: (row['nama'] ?? '').toString(), error: msg });
@@ -507,9 +673,9 @@ export async function handleMapelBulk(request: Request, env: Env, user: UserPayl
 
   await env.DB.prepare(
     "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'bulk_create', 'mata_pelajaran', ?, ?)"
-  ).bind(user.sub, `Import ${inserted} mata pelajaran dari Excel${errors.length > 0 ? ` (${errors.length} gagal)` : ''}`, ip).run();
+  ).bind(user.sub, `Import ${inserted} mata pelajaran baru, ${updated} di-update dari Excel${errors.length > 0 ? ` (${errors.length} gagal)` : ''}`, ip).run();
 
-  return success({ inserted, errors });
+  return success({ inserted, updated, errors });
 }
 
 // ── Guru Bulk ──
@@ -592,8 +758,10 @@ export async function handleGuruPreview(request: Request, env: Env): Promise<Res
 
     if (!nip) errors.push('NIP harus diisi');
     else if (seenNip.has(nip.toLowerCase())) errors.push(`NIP "${nip}" duplikat dalam file`);
-    else if (existingNipSet.has(nip.toLowerCase())) errors.push(`NIP "${nip}" sudah ada di database`);
     else seenNip.add(nip.toLowerCase());
+
+    // NIP sudah ada di database → akan di-update (upsert), bukan error
+    const isUpdate = nip ? existingNipSet.has(nip.toLowerCase()) : false;
 
     if (!nama) errors.push('Nama harus diisi');
     if (jk !== 'L' && jk !== 'P') errors.push('Jenis Kelamin harus L atau P');
@@ -601,7 +769,6 @@ export async function handleGuruPreview(request: Request, env: Env): Promise<Res
     if (status && !['aktif', 'tidak aktif'].includes(statusNormalized)) errors.push('Status Aktif harus "Aktif" atau "Tidak Aktif"');
     if (!username) errors.push('Username harus diisi');
     else if (seenUsername.has(username.toLowerCase())) errors.push(`Username "${username}" duplikat dalam file`);
-    else if (existingUsernameSet.has(username.toLowerCase())) errors.push(`Username "${username}" sudah ada di database`);
     else seenUsername.add(username.toLowerCase());
     if (!password) errors.push('Password harus diisi');
 
@@ -614,6 +781,7 @@ export async function handleGuruPreview(request: Request, env: Env): Promise<Res
       status_aktif: statusNormalized === 'aktif' ? 1 : 0,
       username,
       password,
+      is_update: isUpdate,
       errors,
       valid: errors.length === 0,
     });
@@ -631,14 +799,23 @@ export async function handleGuruBulk(request: Request, env: Env, user: UserPaylo
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   const cols = ['nip', 'nama', 'jenis_kelamin', 'jabatan', 'status_aktif'];
   const placeholders = cols.map(() => '?').join(', ');
-  const stmt = `INSERT INTO guru (${cols.join(', ')}) VALUES (${placeholders})`;
+  const stmt = `INSERT INTO guru (${cols.join(', ')}) VALUES (${placeholders})
+    ON CONFLICT(nip) DO UPDATE SET
+      nama = excluded.nama,
+      jenis_kelamin = excluded.jenis_kelamin,
+      jabatan = excluded.jabatan,
+      status_aktif = excluded.status_aktif`;
 
   let inserted = 0;
+  let updated = 0;
   const errors: { row: number; nip: string; error: string }[] = [];
 
   for (let i = 0; i < body.data.length; i++) {
     const row = body.data[i];
     try {
+      // Cek apakah NIP sudah ada sebelum upsert
+      const existing = await env.DB.prepare('SELECT id FROM guru WHERE nip = ?').bind(row['nip'] ?? '').first();
+
       const result = await env.DB.prepare(stmt).bind(
         row['nip'] ?? '',
         row['nama'] ?? '',
@@ -647,9 +824,15 @@ export async function handleGuruBulk(request: Request, env: Env, user: UserPaylo
         row['status_aktif'] ?? 1
       ).run();
 
-      if (result.meta?.last_row_id && row['username'] && row['password']) {
+      // Get guru_id untuk upsert user
+      let guruId = result.meta?.last_row_id as number;
+      if (!guruId && existing) {
+        guruId = (existing as { id: number }).id;
+      }
+
+      if (guruId && row['username'] && row['password']) {
         await upsertUserForGuru(
-          env, result.meta.last_row_id,
+          env, guruId,
           row['username'] as string,
           row['password'] as string,
           (row['jabatan'] as string) || '',
@@ -657,7 +840,11 @@ export async function handleGuruBulk(request: Request, env: Env, user: UserPaylo
         );
       }
 
-      inserted++;
+      if (existing) {
+        updated++;
+      } else {
+        inserted++;
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Database error';
       errors.push({ row: i + 2, nip: (row['nip'] ?? '').toString(), error: msg });
@@ -666,9 +853,9 @@ export async function handleGuruBulk(request: Request, env: Env, user: UserPaylo
 
   await env.DB.prepare(
     "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'bulk_create', 'guru', ?, ?)"
-  ).bind(user.sub, `Import ${inserted} guru dari Excel${errors.length > 0 ? ` (${errors.length} gagal)` : ''}`, ip).run();
+  ).bind(user.sub, `Import ${inserted} guru baru, ${updated} di-update dari Excel${errors.length > 0 ? ` (${errors.length} gagal)` : ''}`, ip).run();
 
-  return success({ inserted, errors });
+  return success({ inserted, updated, errors });
 }
 
 export async function handleGuruBKList(request: Request, env: Env, _user: UserPayload): Promise<Response> {
