@@ -563,6 +563,7 @@ export async function handleSiswaBulk(request: Request, env: Env, user: UserPayl
 
   // Proses insert/update dalam batch
   const BATCH_SIZE = 50;
+  const newSiswaIds: { siswaId: number; nis: string }[] = [];
   for (let b = 0; b < validRows.length; b += BATCH_SIZE) {
     const batch = validRows.slice(b, b + BATCH_SIZE);
     const statements: ReturnType<typeof env.DB.prepare>[] = [];
@@ -589,10 +590,7 @@ export async function handleSiswaBulk(request: Request, env: Env, user: UserPayl
           inserted++;
           const siswaId = result?.meta?.last_row_id;
           if (siswaId && nis) {
-            try {
-              await upsertUserForSiswa(env, siswaId as number, nis, nis, user.sub, ip);
-              usersCreated++;
-            } catch (_) {}
+            newSiswaIds.push({ siswaId: siswaId as number, nis });
           }
         }
       }
@@ -601,6 +599,46 @@ export async function handleSiswaBulk(request: Request, env: Env, user: UserPayl
       for (const { index, nis } of batch) {
         errors.push({ row: index + 2, nis, error: msg });
       }
+    }
+  }
+
+  // Batch user creation: check existing + insert/update in bulk
+  if (newSiswaIds.length > 0) {
+    // Batch check existing users
+    const siswaIds = newSiswaIds.map(s => s.siswaId);
+    const existingUserMap = new Map<number, number>(); // siswaId -> userId
+    const checkPlaceholders = siswaIds.map(() => '?').join(',');
+    const existingUsers = await env.DB.prepare(
+      `SELECT id, siswa_id FROM users WHERE siswa_id IN (${checkPlaceholders})`
+    ).bind(...siswaIds).all<{ id: number; siswa_id: number }>();
+    for (const u of existingUsers.results) existingUserMap.set(u.siswa_id, u.id);
+
+    // Hash password once (all siswa use NIS as default password)
+    const passwordHash = await bcrypt.hash('ppi123', 10);
+
+    // Batch create/update users
+    const userStatements: ReturnType<typeof env.DB.prepare>[] = [];
+    for (const { siswaId, nis } of newSiswaIds) {
+      if (existingUserMap.has(siswaId)) {
+        userStatements.push(
+          env.DB.prepare('UPDATE users SET username = ?, password_hash = ? WHERE siswa_id = ?')
+            .bind(nis, passwordHash, siswaId)
+        );
+      } else {
+        userStatements.push(
+          env.DB.prepare("INSERT INTO users (username, password_hash, role, siswa_id, is_active) VALUES (?, ?, 'siswa', ?, 1)")
+            .bind(nis, passwordHash, siswaId)
+        );
+      }
+    }
+
+    // Execute user batch in chunks of 50
+    for (let u = 0; u < userStatements.length; u += BATCH_SIZE) {
+      const chunk = userStatements.slice(u, u + BATCH_SIZE);
+      try {
+        await env.DB.batch(chunk);
+        usersCreated += chunk.length;
+      } catch (_) {}
     }
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -169,7 +170,8 @@ class BulkUploadDialog extends StatelessWidget {
         .toList();
 
     try {
-      final res = await ApiClient.post(config.bulkEndpoint, body: {'data': validRows});
+      final res = await ApiClient.post(config.bulkEndpoint, body: {'data': validRows})
+          .timeout(const Duration(seconds: 120));
       final result = res['data'] as Map<String, dynamic>;
       final inserted = result['inserted'] ?? 0;
       final updated = result['updated'] ?? 0;
@@ -199,6 +201,11 @@ class BulkUploadDialog extends StatelessWidget {
         duration: const Duration(seconds: 5),
       ));
       config.onSaved();
+    } on TimeoutException {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Timeout: Server memproses terlalu lama (>120 detik). Coba dengan jumlah baris lebih sedikit.')),
+      );
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
