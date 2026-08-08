@@ -110,7 +110,7 @@ enum MasterDataType {
     templateFileName: 'template_siswa.xlsx',
     previewEndpoint: 'siswa',
     bulkEndpoint: '/admin/siswa/bulk',
-    bulkSaveFields: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'status'],
+    bulkSaveFields: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'tahun_ajaran_id', 'status'],
     previewTitle: 'Preview Data Santri',
     previewWidth: 800,
     previewPrimaryLabel: _siswaPrimaryLabel,
@@ -164,11 +164,20 @@ enum MasterDataType {
   });
 }
 
-String _mapelPrimaryLabel(Map<String, dynamic> r) => 'Nama: ${r['nama']}  |  Kode: ${r['kode'] ?? '-'}';
-String _guruPrimaryLabel(Map<String, dynamic> r) => 'NIP: ${r['nip']}  |  ${r['nama']}';
+String _mapelPrimaryLabel(Map<String, dynamic> r) {
+  final updateTag = r['is_update'] == true ? ' [UPDATE]' : '';
+  return 'Nama: ${r['nama']}  |  Kode: ${r['kode'] ?? '-'}$updateTag';
+}
+String _guruPrimaryLabel(Map<String, dynamic> r) {
+  final updateTag = r['is_update'] == true ? ' [UPDATE]' : '';
+  return 'NIP: ${r['nip']}  |  ${r['nama']}$updateTag';
+}
 String _guruSecondaryLabel(Map<String, dynamic> r) => 'JK: ${r['jenis_kelamin']}  |  Jabatan: ${r['jabatan']}  |  Status: ${r['status_aktif'] == 1 ? 'Aktif' : 'Tidak Aktif'}';
 String _guruTertiaryLabel(Map<String, dynamic> r) => 'Username: ${r['username']}  |  Password: ${r['password'] ?? ''}';
-String _siswaPrimaryLabel(Map<String, dynamic> r) => 'NIS: ${r['nis']}  |  ${r['nama']}';
+String _siswaPrimaryLabel(Map<String, dynamic> r) {
+  final updateTag = r['is_update'] == true ? ' [UPDATE]' : '';
+  return 'NIS: ${r['nis']}  |  ${r['nama']}$updateTag';
+}
 String _siswaSecondaryLabel(Map<String, dynamic> r) => 'JK: ${r['jenis_kelamin']}  |  Kelas: ${r['kelas_nama']}  |  Status: ${r['status']}';
 
 class MasterDataPage extends StatefulWidget {
@@ -874,12 +883,24 @@ class _MasterDataPageState extends State<MasterDataPage> {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Baris 1: Judul + Tombol Tambah
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(type.label, style: Theme.of(context).textTheme.titleLarge),
             if (totalData > 0) Text('$totalData data', style: const TextStyle(fontSize: 12, color: AppTheme.grey500)),
           ]),
-          if (!type.isReadonly) Wrap(
+          if (!type.isReadonly)
+            FilledButton.icon(
+              onPressed: () => _showForm(type),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Tambah'),
+              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+            ),
+        ]),
+        // Baris 2: Filter, Search, Template, Upload
+        if (!type.isReadonly) ...[
+          const SizedBox(height: 12),
+          Wrap(
             spacing: 8,
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
@@ -910,15 +931,9 @@ class _MasterDataPageState extends State<MasterDataPage> {
                   onSubmitted: (_) => _load(type, refresh: true),
                 ),
               ),
-              FilledButton.icon(
-                onPressed: () => _showForm(type),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Tambah'),
-                style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
-              ),
             ],
           ),
-        ]),
+        ],
         const SizedBox(height: 16),
         Expanded(child: _buildTable(type)),
       ]),

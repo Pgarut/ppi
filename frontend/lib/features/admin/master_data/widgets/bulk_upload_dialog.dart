@@ -89,21 +89,30 @@ class BulkUploadDialog extends StatelessWidget {
 
   Widget _buildRow(Map<String, dynamic> r) {
     final isValid = r['valid'] == true;
+    final isUpdate = r['is_update'] == true;
     final errors = r['errors'] is List ? (r['errors'] as List) : [];
+
+    // Waya berbeda: biru untuk insert, oranye untuk update, merah untuk error
+    Color bgColor;
+    Color borderColor;
+    if (!isValid) {
+      bgColor = AppTheme.error.withValues(alpha: 0.05);
+      borderColor = AppTheme.error.withValues(alpha: 0.2);
+    } else if (isUpdate) {
+      bgColor = Colors.orange.withValues(alpha: 0.05);
+      borderColor = Colors.orange.withValues(alpha: 0.2);
+    } else {
+      bgColor = AppTheme.primary.withValues(alpha: 0.05);
+      borderColor = AppTheme.primary.withValues(alpha: 0.2);
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: isValid
-            ? AppTheme.primary.withValues(alpha: 0.05)
-            : AppTheme.error.withValues(alpha: 0.05),
+        color: bgColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isValid
-              ? AppTheme.primary.withValues(alpha: 0.2)
-              : AppTheme.error.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,8 +161,6 @@ class BulkUploadDialog extends StatelessWidget {
   }
 
   Future<void> _onSave(BuildContext context) async {
-    Navigator.pop(context);
-
     final validRows = rows
         .where((r) => r['valid'] == true)
         .map((r) => {
@@ -164,12 +171,21 @@ class BulkUploadDialog extends StatelessWidget {
     try {
       final res = await ApiClient.post(config.bulkEndpoint, body: {'data': validRows});
       final result = res['data'] as Map<String, dynamic>;
-      final inserted = result['inserted'];
+      final inserted = result['inserted'] ?? 0;
+      final updated = result['updated'] ?? 0;
       final errors = (result['errors'] as List?) ?? [];
       if (!context.mounted) return;
+
+      Navigator.pop(context);
+
+      final parts = <String>[];
+      if (inserted > 0) parts.add('$inserted ditambahkan');
+      if (updated > 0) parts.add('$updated diupdate');
+      if (errors.isNotEmpty) parts.add('${errors.length} gagal');
+
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
-          'Berhasil: $inserted ditambahkan${errors.isNotEmpty ? ', ${errors.length} gagal' : ''}',
+          parts.isEmpty ? 'Tidak ada data diproses' : 'Berhasil: ${parts.join(', ')}',
         ),
       ));
       config.onSaved();
