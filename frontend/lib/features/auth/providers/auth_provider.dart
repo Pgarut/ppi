@@ -1,9 +1,7 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/services/auth_service.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/logging/app_logger.dart';
 import '../../../config/routes.dart';
 
 enum AuthStatus { uninitialized, authenticated, unauthenticated, loading }
@@ -13,8 +11,6 @@ class AuthProvider extends ChangeNotifier {
   AuthStatus _status = AuthStatus.uninitialized;
   UserModel? _user;
   String? _error;
-  Timer? _inactivityTimer;
-  static const _inactivityTimeout = Duration(minutes: 30);
 
   AuthStatus get status => _status;
   UserModel? get user => _user;
@@ -24,24 +20,7 @@ class AuthProvider extends ChangeNotifier {
     ApiClient.onSessionExpired = _onSessionExpired;
   }
 
-  @override
-  void dispose() {
-    _inactivityTimer?.cancel();
-    super.dispose();
-  }
-
-  void _resetInactivityTimer() {
-    _inactivityTimer?.cancel();
-    if (_status == AuthStatus.authenticated) {
-      _inactivityTimer = Timer(_inactivityTimeout, () {
-        AppLogger.info('[Auth] Auto-logout karena 30 menit tidak ada aktivitas');
-        _onSessionExpired();
-      });
-    }
-  }
-
   void _onSessionExpired() {
-    _inactivityTimer?.cancel();
     _performLogout();
   }
 
@@ -52,11 +31,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Panggil method ini dari screen manapun saat user melakukan aktivitas (tap, scroll, dll)
-  void notifyActivity() {
-    _resetInactivityTimer();
-  }
-
   Future<void> tryAutoLogin() async {
     final loggedIn = await _authService.isLoggedIn();
     if (loggedIn) {
@@ -64,12 +38,10 @@ class AuthProvider extends ChangeNotifier {
       if (user != null) {
         _user = user;
         _status = AuthStatus.authenticated;
-        _resetInactivityTimer();
         await ApiClient.startRefreshTimer();
         notifyListeners();
         return;
       }
-      // Token expired dan refresh gagal -> clearTokens sudah dilakukan di ApiClient
     }
     _status = AuthStatus.unauthenticated;
     notifyListeners();
@@ -87,7 +59,6 @@ class AuthProvider extends ChangeNotifier {
       );
       _user = result.user;
       _status = AuthStatus.authenticated;
-      _resetInactivityTimer();
       notifyListeners();
     } on Exception catch (e) {
       _error = e.toString();
@@ -97,7 +68,6 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    _inactivityTimer?.cancel();
     try {
       await _authService.logout();
     } catch (_) {}
