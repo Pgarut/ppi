@@ -139,8 +139,10 @@ class ApiClient {
       if (refreshResponse.statusCode == 200) {
         final refreshBody = jsonDecode(refreshResponse.body) as Map<String, dynamic>;
         final data = refreshBody['data'] as Map<String, dynamic>;
-        await saveToken(data['token'] as String);
+        final newToken = data['token'] as String;
+        await saveToken(newToken);
         await saveRefreshToken(data['refresh_token'] as String);
+        await _saveTokenExpiry(newToken);
         _isRefreshing = false;
         AppLogger.info('[ApiClient] Proactive refresh berhasil');
         return true;
