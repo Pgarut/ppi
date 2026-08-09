@@ -14,16 +14,19 @@ class JadwalListPage extends StatefulWidget {
 
 class _JadwalListPageState extends State<JadwalListPage> {
   List<Map<String, dynamic>> _data = [];
+  List<Map<String, dynamic>> _programList = [];
   bool _loading = true;
   String? _error;
   int _page = 1;
   int _totalPages = 1;
   final _searchCtrl = TextEditingController();
   String? _filterHari;
+  String? _filterProgram;
 
   @override
   void initState() {
     super.initState();
+    _loadPrograms();
     _load();
   }
 
@@ -31,6 +34,17 @@ class _JadwalListPageState extends State<JadwalListPage> {
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadPrograms() async {
+    try {
+      final res = await DaurohService.listProgram(perPage: 100);
+      if (mounted) {
+        setState(() {
+          _programList = (res['items'] as List).cast<Map<String, dynamic>>();
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _load({bool refresh = false}) async {
@@ -44,6 +58,7 @@ class _JadwalListPageState extends State<JadwalListPage> {
         page: _page,
         search: _searchCtrl.text,
         hari: _filterHari,
+        programId: _filterProgram,
       );
       if (mounted) {
         setState(() {
@@ -117,7 +132,11 @@ class _JadwalListPageState extends State<JadwalListPage> {
               ),
               Row(
                 children: [
+                  _buildProgramFilter(),
+                  const SizedBox(width: 8),
                   _buildHariFilter(),
+                  const SizedBox(width: 8),
+                  _buildResetButton(),
                   const SizedBox(width: 8),
                   SizedBox(
                     width: 180,
@@ -194,6 +213,37 @@ class _JadwalListPageState extends State<JadwalListPage> {
     );
   }
 
+  Widget _buildProgramFilter() {
+    return SizedBox(
+      width: 160,
+      child: DropdownButtonHideUnderline(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppTheme.grey300),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: DropdownButton<String>(
+            value: _filterProgram,
+            hint: const Text('Semua Program', style: TextStyle(fontSize: 13)),
+            isExpanded: true,
+            items: [
+              const DropdownMenuItem(value: null, child: Text('Semua Program', style: TextStyle(fontSize: 13))),
+              ..._programList.map((p) => DropdownMenuItem(
+                value: '${p['id']}',
+                child: Text(p['nama_program']?.toString() ?? '', style: const TextStyle(fontSize: 13)),
+              )),
+            ],
+            onChanged: (v) {
+              setState(() => _filterProgram = v);
+              _load(refresh: true);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildHariFilter() {
     final hari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
     return SizedBox(
@@ -220,6 +270,24 @@ class _JadwalListPageState extends State<JadwalListPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildResetButton() {
+    final hasFilter = _filterProgram != null || _filterHari != null;
+    if (!hasFilter) return const SizedBox.shrink();
+    return ActionChip(
+      avatar: const Icon(Icons.close, size: 16, color: AppTheme.error),
+      label: const Text('Reset', style: TextStyle(fontSize: 12, color: AppTheme.error)),
+      onPressed: () {
+        setState(() {
+          _filterProgram = null;
+          _filterHari = null;
+        });
+        _load(refresh: true);
+      },
+      backgroundColor: AppTheme.redLight,
+      side: BorderSide(color: AppTheme.error.withValues(alpha: 0.3)),
     );
   }
 }

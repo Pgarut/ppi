@@ -129,7 +129,7 @@ async function listProgram(env: Env, url: URL) {
            (SELECT COUNT(*) FROM dauroh_jadwal j WHERE j.program_id = p.id) as jumlah_jadwal
     FROM dauroh_program p
     ${where}
-    ORDER BY p.id DESC
+    ORDER BY p.nama_program ASC
     LIMIT ? OFFSET ?
   `).bind(...bindings).all();
 
@@ -311,7 +311,7 @@ async function listMusyrifah(env: Env, url: URL) {
            (SELECT COUNT(*) FROM dauroh_jadwal j WHERE j.musyrifah_1_id = m.id OR j.musyrifah_2_id = m.id) as jumlah_jadwal
     FROM dauroh_musyrifah m
     ${where}
-    ORDER BY m.id DESC
+    ORDER BY m.nama ASC
     LIMIT ? OFFSET ?
   `).bind(...bindings).all();
 
@@ -651,13 +651,13 @@ async function deleteJadwal(env: Env, id: number, user: UserPayload, ip: string)
 // QR CODE
 // ============================================================
 
-const QR_TOKEN = 'PPI_DAUROH_QR_2026';
+const DEFAULT_QR_TOKEN = 'PPI_DAUROH_QR_2026';
 
 async function handleGetQR(env: Env) {
-  // Ambil info QR dari pengaturan atau gunakan token statis
+  const token = env.QR_DAUROH_TOKEN || DEFAULT_QR_TOKEN;
   return success({
-    token: QR_TOKEN,
-    message: 'QR Code Dauroh - Token statis untuk absensi musyrifah',
+    token,
+    message: 'QR Code Dauroh - Token untuk absensi musyrifah',
   });
 }
 
@@ -669,7 +669,6 @@ async function handleGenerateQR(request: Request, env: Env, user: UserPayload, i
     return badRequest('jadwal_id wajib diisi');
   }
 
-  // Validasi jadwal
   const jadwal = await env.DB.prepare(`
     SELECT j.*, p.nama_program, m1.nama as musyrifah_nama
     FROM dauroh_jadwal j
@@ -680,8 +679,10 @@ async function handleGenerateQR(request: Request, env: Env, user: UserPayload, i
 
   if (!jadwal) return notFound('Jadwal');
 
+  const token = env.QR_DAUROH_TOKEN || DEFAULT_QR_TOKEN;
+
   return success({
-    qr_data: QR_TOKEN,
+    qr_data: token,
     jadwal: {
       id: jadwal_id,
       program: jadwal.nama_program,

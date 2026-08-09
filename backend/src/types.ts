@@ -4,6 +4,7 @@ export interface Env {
   JWT_EXPIRES_IN?: string;
   JWT_REFRESH_SECRET?: string;
   CORS_ORIGIN?: string;
+  QR_DAUROH_TOKEN?: string;
 }
 
 export interface UserPayload {
