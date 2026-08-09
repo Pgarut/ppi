@@ -922,6 +922,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
               if (type.hasFilters) ...[
                 _buildFilterTingkat(),
                 _buildFilterKelas(),
+                _buildFilterReset(),
               ],
               SizedBox(
                 width: 220,
@@ -953,63 +954,69 @@ class _MasterDataPageState extends State<MasterDataPage> {
 
   Widget _buildFilterTingkat() {
     return SizedBox(
-      width: 140,
-      child: DropdownButtonHideUnderline(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppTheme.grey300),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: DropdownButton<String>(
-            value: _filterTingkat,
-            hint: const Text('Tingkat', style: TextStyle(fontSize: 13)),
-            isExpanded: true,
-            items: _tingkatList.map((t) => DropdownMenuItem(
-              value: '${t['id']}',
-              child: Text('${t['nama']}', style: const TextStyle(fontSize: 13)),
-            )).toList(),
-            onChanged: (v) {
-              setState(() {
-                _filterTingkat = v;
-                _filterKelas = null;
-              });
-              _load(MasterDataType.santri, refresh: true);
-            },
-          ),
-        ),
+      width: 160,
+      child: ModernDropdown<String>(
+        value: _filterTingkat,
+        label: 'Tingkat',
+        icon: Icons.stairs_outlined,
+        items: [
+          const DropdownMenuItem<String>(value: null, child: Text('Semua')),
+          ..._tingkatList.map((t) => DropdownMenuItem(
+            value: '${t['id']}',
+            child: Text('${t['nama']}', style: const TextStyle(fontSize: 13)),
+          )),
+        ],
+        onChanged: (v) {
+          setState(() {
+            _filterTingkat = v;
+            _filterKelas = null;
+          });
+          _load(MasterDataType.santri, refresh: true);
+        },
       ),
     );
   }
 
   Widget _buildFilterKelas() {
     return SizedBox(
-      width: 160,
-      child: DropdownButtonHideUnderline(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppTheme.grey300),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: DropdownButton<String>(
-            value: _filterKelas,
-            hint: const Text('Kelas', style: TextStyle(fontSize: 13)),
-            isExpanded: true,
-            items: _kelasList.where((k) {
-              if (_filterTingkat == null) return true;
-              return k['tingkat_id'].toString() == _filterTingkat;
-            }).map((k) => DropdownMenuItem(
-              value: '${k['id']}',
-              child: Text('${k['nama']}', style: const TextStyle(fontSize: 13)),
-            )).toList(),
-            onChanged: (v) {
-              setState(() => _filterKelas = v);
-              _load(MasterDataType.santri, refresh: true);
-            },
-          ),
-        ),
+      width: 180,
+      child: ModernDropdown<String>(
+        value: _filterKelas,
+        label: 'Kelas',
+        icon: Icons.meeting_room_outlined,
+        items: [
+          const DropdownMenuItem<String>(value: null, child: Text('Semua')),
+          ..._kelasList.where((k) {
+            if (_filterTingkat == null) return true;
+            return k['tingkat_id'].toString() == _filterTingkat;
+          }).map((k) => DropdownMenuItem(
+            value: '${k['id']}',
+            child: Text('${k['nama']}', style: const TextStyle(fontSize: 13)),
+          )),
+        ],
+        onChanged: (v) {
+          setState(() => _filterKelas = v);
+          _load(MasterDataType.santri, refresh: true);
+        },
       ),
+    );
+  }
+
+  Widget _buildFilterReset() {
+    final hasFilter = _filterTingkat != null || _filterKelas != null;
+    if (!hasFilter) return const SizedBox.shrink();
+    return ActionChip(
+      avatar: const Icon(Icons.close, size: 16, color: AppTheme.error),
+      label: const Text('Reset', style: TextStyle(fontSize: 12, color: AppTheme.error)),
+      onPressed: () {
+        setState(() {
+          _filterTingkat = null;
+          _filterKelas = null;
+        });
+        _load(MasterDataType.santri, refresh: true);
+      },
+      backgroundColor: AppTheme.redLight,
+      side: BorderSide(color: AppTheme.error.withValues(alpha: 0.3)),
     );
   }
 

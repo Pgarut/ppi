@@ -47,18 +47,23 @@ async function upsertUserForSiswa(env: Env, siswaId: number, username: string, p
 }
 
 const configs: Record<string, CrudConfig> = {
-  'tahun-ajaran': { table: 'tahun_ajaran', columns: ['nama', 'is_aktif'], label: 'Tahun Ajaran', searchFields: ['nama'] },
-  'semester': { table: 'semester', columns: ['tahun_ajaran_id', 'nama', 'is_aktif'], label: 'Semester', searchFields: ['nama'] },
-  'jurusan': { table: 'jurusan', columns: ['nama', 'kode'], label: 'Jurusan', searchFields: ['nama', 'kode'] },
-  'tingkat': { table: 'tingkat', columns: ['nama', 'jenjang'], label: 'Tingkat', searchFields: ['nama'] },
-  'kelas': { table: 'kelas', columns: ['nama', 'tingkat_id', 'jurusan_id', 'tahun_ajaran_id'], label: 'Kelas', searchFields: ['nama'] },
-  'mata-pelajaran': { table: 'mata_pelajaran', columns: ['nama', 'kode'], label: 'Mata Pelajaran', searchFields: ['nama', 'kode'] },
+  'tahun-ajaran': { table: 'tahun_ajaran', columns: ['nama', 'is_aktif'], label: 'Tahun Ajaran', searchFields: ['nama'], sortBy: 'id DESC' },
+  'semester': { table: 'semester', columns: ['tahun_ajaran_id', 'nama', 'is_aktif'], label: 'Semester', searchFields: ['nama'], sortBy: 'id DESC' },
+  'jurusan': { table: 'jurusan', columns: ['nama', 'kode'], label: 'Jurusan', searchFields: ['nama', 'kode'], sortBy: 'nama ASC' },
+  'tingkat': { table: 'tingkat', columns: ['nama', 'jenjang'], label: 'Tingkat', searchFields: ['nama'], sortBy: `CASE nama WHEN 'VII' THEN 7 WHEN 'VIII' THEN 8 WHEN 'IX' THEN 9 WHEN 'X' THEN 10 WHEN 'XI' THEN 11 WHEN 'XII' THEN 12 ELSE 99 END` },
+  'kelas': { table: 'kelas', columns: ['nama', 'tingkat_id', 'jurusan_id', 'tahun_ajaran_id'], label: 'Kelas', searchFields: ['nama'],
+    sortJoin: ' LEFT JOIN tingkat ON kelas.tingkat_id = tingkat.id',
+    sortBy: `CASE tingkat.nama WHEN 'VII' THEN 7 WHEN 'VIII' THEN 8 WHEN 'IX' THEN 9 WHEN 'X' THEN 10 WHEN 'XI' THEN 11 WHEN 'XII' THEN 12 ELSE 99 END, kelas.nama` },
+  'mata-pelajaran': { table: 'mata_pelajaran', columns: ['nama', 'kode'], label: 'Mata Pelajaran', searchFields: ['nama', 'kode'], sortBy: 'nama ASC' },
   'guru': {
     table: 'guru', columns: ['nip', 'nama', 'jenis_kelamin', 'jabatan', 'status_aktif'], label: 'Asatidz', searchFields: ['nama', 'nip'], filterFields: ['jabatan'],
+    sortBy: 'nip ASC',
     leftJoin: { table: 'users', on: 'users.guru_id = guru.id', select: ["users.username"] },
   },
   'siswa': {
     table: 'siswa', columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'tahun_ajaran_id', 'status', 'nama_ayah', 'nama_ibu', 'pekerjaan_ayah', 'pekerjaan_ibu', 'whatsapp'], label: 'Santri', searchFields: ['nama', 'nis', 'nisn'], filterFields: ['kelas_id'],
+    sortJoin: ' LEFT JOIN kelas ON siswa.kelas_id = kelas.id LEFT JOIN tingkat ON kelas.tingkat_id = tingkat.id',
+    sortBy: `CASE tingkat.nama WHEN 'VII' THEN 7 WHEN 'VIII' THEN 8 WHEN 'IX' THEN 9 WHEN 'X' THEN 10 WHEN 'XI' THEN 11 WHEN 'XII' THEN 12 ELSE 99 END, kelas.nama, siswa.nama`,
     leftJoin: { table: 'users', on: 'users.siswa_id = siswa.id', select: ["users.username"] },
   },
   'ruangan': { table: 'ruangan', columns: ['nama', 'kapasitas'], label: 'Ruangan', searchFields: ['nama'] },
@@ -340,6 +345,7 @@ export async function handleWaliKelasList(request: Request, env: Env, _user: Use
            (SELECT COUNT(*) FROM siswa WHERE kelas_id = k.id AND status = 'aktif') AS jumlah_siswa
     FROM guru g
     LEFT JOIN kelas k ON k.wali_kelas_id = g.id
+    LEFT JOIN tingkat t ON k.tingkat_id = t.id
     WHERE k.wali_kelas_id IS NOT NULL
        OR g.jabatan LIKE '%wali_kelas%'
   `;
@@ -350,7 +356,13 @@ export async function handleWaliKelasList(request: Request, env: Env, _user: Use
     bindings.push(`%${search}%`, `%${search}%`);
   }
 
-  query += ` ORDER BY g.nama`;
+  query += ` ORDER BY
+    CASE t.nama
+      WHEN 'VII' THEN 7 WHEN 'VIII' THEN 8 WHEN 'IX' THEN 9
+      WHEN 'X' THEN 10 WHEN 'XI' THEN 11 WHEN 'XII' THEN 12
+      ELSE 99
+    END,
+    k.nama`;
 
   const rows = await env.DB.prepare(query).bind(...bindings).all();
 

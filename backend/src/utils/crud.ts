@@ -11,6 +11,8 @@ export interface CrudConfig {
   searchFields?: string[];
   filterFields?: string[];
   timestamp?: boolean;
+  sortBy?: string;
+  sortJoin?: string;
   leftJoin?: { table: string; on: string; alias?: string; select?: string[] };
 }
 
@@ -68,9 +70,12 @@ export async function list(env: Env, cfg: CrudConfig, url: URL, user: UserPayloa
     if (j.select) selectCols += `, ${j.select.join(', ')}`;
   }
 
+  const orderBy = cfg.sortBy || `${cfg.table}.id DESC`;
+  const sortJoinClause = cfg.sortJoin || '';
+
   fullBindings.push(perPage, offset);
   const rows = await env.DB.prepare(
-    `SELECT ${selectCols} FROM ${cfg.table}${joinClause} ${fullWhere} ORDER BY ${cfg.table}.id DESC LIMIT ? OFFSET ?`
+    `SELECT ${selectCols} FROM ${cfg.table}${joinClause}${sortJoinClause} ${fullWhere} ORDER BY ${orderBy} LIMIT ? OFFSET ?`
   ).bind(...fullBindings).all();
 
   return success({

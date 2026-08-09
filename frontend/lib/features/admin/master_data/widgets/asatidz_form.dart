@@ -237,64 +237,58 @@ class _AsatidzFormState extends State<AsatidzForm> {
   }
 
   Widget _buildMapelCard() {
-    return DataCard(
-      header: Row(children: [
-        Icon(Icons.book_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
-        const SizedBox(width: 8),
-        const Text('Mata Pelajaran yang Diampu', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-      ]),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        if (_isLoadingData)
-          const Text('Memuat data mapel...', style: TextStyle(color: AppTheme.grey500))
-        else
-          ..._mapelList.map((m) => CheckboxListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            visualDensity: VisualDensity.compact,
-            title: Text(m['nama']?.toString() ?? '', style: const TextStyle(fontSize: 14)),
-            value: _selectedMapelIds.contains(m['id'] as int),
-            onChanged: (checked) {
-              setState(() {
-                if (checked == true) {
-                  _selectedMapelIds.add(m['id'] as int);
-                } else {
-                  _selectedMapelIds.remove(m['id'] as int);
-                }
-              });
-            },
-          )),
-      ]),
+    return SelectableChipGroup<int>(
+      title: 'Mata Pelajaran yang Diampu',
+      icon: Icons.book_outlined,
+      allItems: _mapelList.map((m) => m['id'] as int).toList(),
+      selectedIds: _selectedMapelIds,
+      labelFn: (id) {
+        final m = _mapelList.firstWhere((x) => x['id'] == id, orElse: () => {});
+        return m['nama']?.toString() ?? '';
+      },
+      chipColor: AppTheme.blue,
+      onTap: () async {
+        final result = await showMultiSelectDialog<int>(
+          context: context,
+          title: 'Pilih Mata Pelajaran',
+          icon: Icons.book_outlined,
+          items: _mapelList.map((m) => m['id'] as int).toList(),
+          selectedIds: _selectedMapelIds,
+          labelFn: (id) {
+            final m = _mapelList.firstWhere((x) => x['id'] == id, orElse: () => {});
+            return m['nama']?.toString() ?? '';
+          },
+        );
+        if (result != null) setState(() => _selectedMapelIds = result);
+      },
     );
   }
 
   Widget _buildKelasCard() {
-    return DataCard(
-      header: Row(children: [
-        Icon(Icons.meeting_room_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
-        const SizedBox(width: 8),
-        const Text('Kelas yang Diajar', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-      ]),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        if (_isLoadingData)
-          const Text('Memuat data kelas...', style: TextStyle(color: AppTheme.grey500))
-        else
-          ..._kelasList.map((k) => CheckboxListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            visualDensity: VisualDensity.compact,
-            title: Text(k['nama']?.toString() ?? '', style: const TextStyle(fontSize: 14)),
-            value: _selectedKelasIds.contains(k['id'] as int),
-            onChanged: (checked) {
-              setState(() {
-                if (checked == true) {
-                  _selectedKelasIds.add(k['id'] as int);
-                } else {
-                  _selectedKelasIds.remove(k['id'] as int);
-                }
-              });
-            },
-          )),
-      ]),
+    return SelectableChipGroup<int>(
+      title: 'Kelas yang Diajar',
+      icon: Icons.meeting_room_outlined,
+      allItems: _kelasList.map((k) => k['id'] as int).toList(),
+      selectedIds: _selectedKelasIds,
+      labelFn: (id) {
+        final k = _kelasList.firstWhere((x) => x['id'] == id, orElse: () => {});
+        return k['nama']?.toString() ?? '';
+      },
+      chipColor: AppTheme.orange,
+      onTap: () async {
+        final result = await showMultiSelectDialog<int>(
+          context: context,
+          title: 'Pilih Kelas',
+          icon: Icons.meeting_room_outlined,
+          items: _kelasList.map((k) => k['id'] as int).toList(),
+          selectedIds: _selectedKelasIds,
+          labelFn: (id) {
+            final k = _kelasList.firstWhere((x) => x['id'] == id, orElse: () => {});
+            return k['nama']?.toString() ?? '';
+          },
+        );
+        if (result != null) setState(() => _selectedKelasIds = result);
+      },
     );
   }
 
@@ -307,31 +301,25 @@ class _AsatidzFormState extends State<AsatidzForm> {
       ]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
         const Text('Pilih kelas yang menjadi wali kelas:', style: TextStyle(fontSize: 13, color: AppTheme.grey600)),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         if (_isLoadingData)
           const Text('Memuat data kelas...', style: TextStyle(color: AppTheme.grey500))
         else
-          Column(
-            children: [
-              RadioListTile<int>(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
-                title: const Text('Tidak ada wali kelas', style: TextStyle(fontSize: 14)),
-                value: 0,
-                groupValue: _waliKelasId ?? 0,
-                onChanged: (val) => setState(() => _waliKelasId = null),
+          ModernDropdown<int>(
+            value: _waliKelasId,
+            label: 'Wali Kelas',
+            icon: Icons.supervisor_account_outlined,
+            items: [
+              const DropdownMenuItem<int>(
+                value: null,
+                child: Text('— Tidak Ada —'),
               ),
-              ..._kelasList.map((k) => RadioListTile<int>(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
-                title: Text(k['nama']?.toString() ?? '', style: const TextStyle(fontSize: 14)),
+              ..._kelasList.map((k) => DropdownMenuItem<int>(
                 value: k['id'] as int,
-                groupValue: _waliKelasId ?? 0,
-                onChanged: (val) => setState(() => _waliKelasId = val),
+                child: Text(k['nama']?.toString() ?? ''),
               )),
             ],
+            onChanged: (val) => setState(() => _waliKelasId = val),
           ),
       ]),
     );
