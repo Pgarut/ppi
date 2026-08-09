@@ -49,19 +49,19 @@ async function handleMonitoringNilai(env: Env, url: URL): Promise<Response> {
   let whereClause = 'WHERE 1=1';
   const params: unknown[] = [];
 
-  if (jenjang && jenjang.isNotEmpty) {
+  if (jenjang) {
     whereClause += ' AND t.nama = ?';
     params.push(jenjang);
   }
-  if (kelasId && kelasId.isNotEmpty) {
+  if (kelasId) {
     whereClause += ' AND s.kelas_id = ?';
     params.push(parseInt(kelasId));
   }
-  if (programId && programId.isNotEmpty) {
+  if (programId) {
     whereClause += ' AND dn.program_id = ?';
     params.push(parseInt(programId));
   }
-  if (search != null && search.isNotEmpty) {
+  if (search) {
     whereClause += ' AND (s.nama LIKE ? OR s.nis LIKE ?)';
     params.push(`%${search}%`, `%${search}%`);
   }
