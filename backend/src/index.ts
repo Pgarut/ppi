@@ -4,7 +4,7 @@ import { generalRateLimit, bruteForceCheck, bruteForceRecordFailure, bruteForceR
 import { createSession, validateSession, revokeSession, hashToken } from './middleware/session';
 import { Env, Role, UserPayload } from './types';
 import { json, success, error, unauthorized, cors, setCorsOrigin, resolveCorsOrigin } from './utils/response';
-import { handleAdminMasterData, handleMapelKelas, handleGuruMapelAmpu, handleGuruKelasAmpu, handleWaliKelasList, handleGuruBKList, handleSiswaTemplate, handleSiswaPreview, handleSiswaBulk, handleMapelTemplate, handleMapelPreview, handleMapelBulk, handleGuruTemplate, handleGuruPreview, handleGuruBulk } from './routes/admin/master_data';
+import { handleAdminMasterData, handleMapelKelas, handleGuruMapelAmpu, handleGuruKelasAmpu, handleWaliKelasList, handleGuruBKList, handleSiswaTemplate, handleSiswaPreview, handleSiswaBulk, handleMapelTemplate, handleMapelPreview, handleMapelBulk, handleGuruTemplate, handleGuruPreview, handleGuruBulk, handleWaliKelasAssign } from './routes/admin/master_data';
 import { handleAdminUsers, handleHakAkses } from './routes/admin/users';
 import { handleBackup, handleRestore, handleLogAktivitas } from './routes/admin/system';
 import { handlePengaturanTampilan, handleProfilSekolah } from './routes/admin/pengaturan_tampilan';
@@ -154,6 +154,9 @@ export default {
         }
         if (subPath.startsWith('guru-kelas/')) {
           return handleGuruKelasAmpu(request, env, user, pathParts);
+        }
+        if (subPath.startsWith('guru-wali-kelas/')) {
+          return handleWaliKelasAssign(request, env, user, pathParts);
         }
 
         // Wali Kelas & Guru BK list (read-only)

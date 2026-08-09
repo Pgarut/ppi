@@ -27,6 +27,7 @@ class _AsatidzFormState extends State<AsatidzForm> {
   Set<String> _selectedJabatan = {};
   Set<int> _selectedMapelIds = {};
   Set<int> _selectedKelasIds = {};
+  int? _waliKelasId;
 
   List<Map<String, dynamic>> _kelasList = [];
   List<Map<String, dynamic>> _mapelList = [];
@@ -103,6 +104,10 @@ class _AsatidzFormState extends State<AsatidzForm> {
       final r = await ApiClient.get('/admin/guru-kelas/$gid/kelas');
       _selectedKelasIds = (r['data'] as List).cast<int>().toSet();
     } catch (_) {}
+    try {
+      final r = await ApiClient.get('/admin/guru-wali-kelas/$gid');
+      _waliKelasId = r['data']?['kelas_id'] as int?;
+    } catch (_) {}
   }
 
   @override
@@ -122,6 +127,10 @@ class _AsatidzFormState extends State<AsatidzForm> {
               _buildMapelCard(),
               const SizedBox(height: 16),
               _buildKelasCard(),
+              if (_selectedJabatan.contains('wali_kelas')) ...[
+                const SizedBox(height: 16),
+                _buildWaliKelasCard(),
+              ],
             ],
           ),
         ),
@@ -289,6 +298,45 @@ class _AsatidzFormState extends State<AsatidzForm> {
     );
   }
 
+  Widget _buildWaliKelasCard() {
+    return DataCard(
+      header: Row(children: [
+        Icon(Icons.supervisor_account_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: 8),
+        const Text('Wali Kelas', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+      ]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        const Text('Pilih kelas yang menjadi wali kelas:', style: TextStyle(fontSize: 13, color: AppTheme.grey600)),
+        const SizedBox(height: 8),
+        if (_isLoadingData)
+          const Text('Memuat data kelas...', style: TextStyle(color: AppTheme.grey500))
+        else
+          Column(
+            children: [
+              RadioListTile<int>(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+                title: const Text('Tidak ada wali kelas', style: TextStyle(fontSize: 14)),
+                value: 0,
+                groupValue: _waliKelasId ?? 0,
+                onChanged: (val) => setState(() => _waliKelasId = null),
+              ),
+              ..._kelasList.map((k) => RadioListTile<int>(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+                title: Text(k['nama']?.toString() ?? '', style: const TextStyle(fontSize: 14)),
+                value: k['id'] as int,
+                groupValue: _waliKelasId ?? 0,
+                onChanged: (val) => setState(() => _waliKelasId = val),
+              )),
+            ],
+          ),
+      ]),
+    );
+  }
+
   Future<void> _onSave() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -324,6 +372,11 @@ class _AsatidzFormState extends State<AsatidzForm> {
         await ApiClient.put('/admin/guru-kelas/$savedId/kelas', body: {
           'kelas_ids': _selectedKelasIds.toList(),
         });
+        if (_selectedJabatan.contains('wali_kelas')) {
+          await ApiClient.put('/admin/guru-wali-kelas/$savedId', body: {
+            'kelas_id': _waliKelasId,
+          });
+        }
       }
 
       if (!mounted) return;

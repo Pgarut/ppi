@@ -992,3 +992,40 @@ export async function handleGuruBKList(request: Request, env: Env, _user: UserPa
 
   return success(rows.results);
 }
+
+// ── Wali Kelas Assignment ──
+
+export async function handleWaliKelasAssign(request: Request, env: Env, user: UserPayload, pathParts: string[]): Promise<Response> {
+  const guruId = parseInt(pathParts[3]);
+  if (!guruId) return badRequest('guru_id diperlukan');
+
+  if (request.method === 'GET') {
+    const kelas = await env.DB.prepare('SELECT id, nama FROM kelas WHERE wali_kelas_id = ?').bind(guruId).first<{ id: number; nama: string }>();
+    return success({ kelas_id: kelas?.id ?? null, kelas_nama: kelas?.nama ?? null });
+  }
+
+  if (request.method === 'PUT') {
+    const body = await request.json() as { kelas_id: number | null };
+    const newKelasId = body.kelas_id;
+
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+
+    // Clear previous wali_kelas assignment for this guru
+    await env.DB.prepare('UPDATE kelas SET wali_kelas_id = NULL WHERE wali_kelas_id = ?').bind(guruId).run();
+
+    // Assign new class if provided
+    if (newKelasId) {
+      // Also clear any existing wali_kelas for that class
+      await env.DB.prepare('UPDATE kelas SET wali_kelas_id = NULL WHERE wali_kelas_id IS NOT NULL AND id = ?').bind(newKelasId).run();
+      await env.DB.prepare('UPDATE kelas SET wali_kelas_id = ? WHERE id = ?').bind(guruId, newKelasId).run();
+    }
+
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'wali_kelas', ?, ?)"
+    ).bind(user.sub, `Update wali kelas guru id=${guruId} → kelas id=${newKelasId ?? 'null'}`, ip).run();
+
+    return success({ message: 'Wali kelas berhasil diupdate' });
+  }
+
+  return badRequest('Method tidak didukung');
+}
