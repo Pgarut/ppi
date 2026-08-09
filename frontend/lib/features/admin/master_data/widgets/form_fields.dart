@@ -455,7 +455,7 @@ class SelectableChipGroup<T> extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.add_circle_outline, size: 32, color: AppTheme.grey400),
+                    const Icon(Icons.add_circle_outline, size: 32, color: AppTheme.grey400),
                     const SizedBox(height: 8),
                     Text('Tap untuk memilih $title', style: const TextStyle(fontSize: 13, color: AppTheme.grey500)),
                   ],
@@ -498,11 +498,11 @@ class SelectableChipGroup<T> extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: AppTheme.grey300),
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.edit, size: 16, color: AppTheme.grey600),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text('Ubah', style: TextStyle(fontSize: 12, color: AppTheme.grey600)),
                       ],
                     ),
