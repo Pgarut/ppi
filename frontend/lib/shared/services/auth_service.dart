@@ -19,6 +19,7 @@ class AuthService {
 
     await ApiClient.saveToken(token);
     await ApiClient.saveRefreshToken(refreshToken);
+    await ApiClient.startRefreshTimer();
     return (token: token, refreshToken: refreshToken, user: user);
   }
 

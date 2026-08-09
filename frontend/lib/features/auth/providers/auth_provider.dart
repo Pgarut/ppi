@@ -65,6 +65,7 @@ class AuthProvider extends ChangeNotifier {
         _user = user;
         _status = AuthStatus.authenticated;
         _resetInactivityTimer();
+        await ApiClient.startRefreshTimer();
         notifyListeners();
         return;
       }

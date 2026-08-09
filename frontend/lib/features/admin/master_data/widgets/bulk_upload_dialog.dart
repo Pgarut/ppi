@@ -161,7 +161,20 @@ class BulkUploadDialog extends StatelessWidget {
     );
   }
 
+  static const int _chunkSize = 50;
+
   Future<void> _onSave(BuildContext context) async {
+    final hasValid = await ApiClient.hasValidSession();
+    if (!hasValid) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sesi telah berakhir. Silakan login kembali.')),
+      );
+      Navigator.pop(context);
+      ApiClient.onSessionExpired?.call();
+      return;
+    }
+
     final validRows = rows
         .where((r) => r['valid'] == true)
         .map((r) => {
@@ -169,31 +182,52 @@ class BulkUploadDialog extends StatelessWidget {
             })
         .toList();
 
+    if (validRows.isEmpty) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak ada data valid untuk disimpan.')),
+      );
+      return;
+    }
+
+    int totalInserted = 0;
+    int totalUpdated = 0;
+    final allErrors = <dynamic>[];
+    bool hasAuthError = false;
+
     try {
-      final res = await ApiClient.post(config.bulkEndpoint, body: {'data': validRows})
-          .timeout(const Duration(seconds: 120));
-      final result = res['data'] as Map<String, dynamic>;
-      final inserted = result['inserted'] ?? 0;
-      final updated = result['updated'] ?? 0;
-      final errors = (result['errors'] as List?) ?? [];
+      for (var i = 0; i < validRows.length; i += _chunkSize) {
+        final chunk = validRows.sublist(
+          i,
+          i + _chunkSize > validRows.length ? validRows.length : i + _chunkSize,
+        );
+
+        final res = await ApiClient.post(config.bulkEndpoint, body: {'data': chunk})
+            .timeout(const Duration(seconds: 120));
+        final result = res['data'] as Map<String, dynamic>;
+        totalInserted += (result['inserted'] as int?) ?? 0;
+        totalUpdated += (result['updated'] as int?) ?? 0;
+        allErrors.addAll((result['errors'] as List?) ?? []);
+      }
+
       if (!context.mounted) return;
 
       Navigator.pop(context);
 
       final parts = <String>[];
-      if (inserted > 0) parts.add('$inserted ditambahkan');
-      if (updated > 0) parts.add('$updated diupdate');
-      if (errors.isNotEmpty) parts.add('${errors.length} gagal');
+      if (totalInserted > 0) parts.add('$totalInserted ditambahkan');
+      if (totalUpdated > 0) parts.add('$totalUpdated diupdate');
+      if (allErrors.isNotEmpty) parts.add('${allErrors.length} gagal');
 
       final msg = StringBuffer('Berhasil: ${parts.join(', ')}');
-      if (errors.isNotEmpty) {
-        final firstErrors = errors.take(3).map((e) {
+      if (allErrors.isNotEmpty) {
+        final firstErrors = allErrors.take(3).map((e) {
           final row = e['row'] ?? '?';
           final err = e['error'] ?? 'Unknown error';
           return '  Row $row: $err';
         }).join('\n');
         msg.write('\n$firstErrors');
-        if (errors.length > 3) msg.write('\n  ...dan ${errors.length - 3} lainnya');
+        if (allErrors.length > 3) msg.write('\n  ...dan ${allErrors.length - 3} lainnya');
       }
 
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -206,6 +240,20 @@ class BulkUploadDialog extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Timeout: Server memproses terlalu lama (>120 detik). Coba dengan jumlah baris lebih sedikit.')),
       );
+    } on ApiException catch (e) {
+      if (e.statusCode == 401) hasAuthError = true;
+      if (!context.mounted) return;
+      if (hasAuthError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sesi telah berakhir. Silakan login kembali.')),
+        );
+        Navigator.pop(context);
+        ApiClient.onSessionExpired?.call();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal simpan: $e')),
+        );
+      }
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
