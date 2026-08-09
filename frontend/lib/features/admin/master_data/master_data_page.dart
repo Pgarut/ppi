@@ -281,7 +281,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
       final res = await AdminService.list(
         type.resource,
         page: _page[type]!,
-        perPage: 20,
+        perPage: 50,
         search: _searchCtrl[type]!.text,
         filters: filters,
       );
@@ -932,6 +932,17 @@ class _MasterDataPageState extends State<MasterDataPage> {
                 ),
               ),
             ],
+          ),
+        ],
+        if (type.isReadonly) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: 280,
+            child: TextField(
+              controller: _searchCtrl[type],
+              decoration: _searchDeco().copyWith(hintText: 'Cari nama atau NIP...'),
+              onSubmitted: (_) => _load(type, refresh: true),
+            ),
           ),
         ],
         const SizedBox(height: 16),

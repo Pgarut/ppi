@@ -39,16 +39,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     try {
       final res = await ApiClient.get('/pengaturan-tampilan');
       final data = res['data'] as List<dynamic>? ?? [];
-      for (final item in data) {
-        final m = item as Map<String, dynamic>;
-        if (mounted) {
-          setState(() {
+      if (mounted) {
+        setState(() {
+          for (final item in data) {
+            final m = item as Map<String, dynamic>;
             if (m['key'] == 'hero_title') _heroTitle = m['value'] as String? ?? _heroTitle;
             if (m['key'] == 'hero_subtitle') _heroSubtitle = m['value'] as String? ?? _heroSubtitle;
             if (m['key'] == 'logo_url') _logoUrl = m['value'] as String? ?? '';
             if (m['key'] == 'background_url') _backgroundUrl = m['value'] as String? ?? '';
-          });
-        }
+          }
+        });
       }
     } catch (_) {}
   }
@@ -61,38 +61,31 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     super.dispose();
   }
 
-  void _handleLogin() {
-    if (_formKey.currentState!.validate()) {
-      context.read<AuthProvider>().login(
-        _usernameController.text.trim(),
-        _passwordController.text,
-      );
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final auth = context.read<AuthProvider>();
+    await auth.login(
+      _usernameController.text.trim(),
+      _passwordController.text,
+    );
+
+    if (mounted && auth.status == AuthStatus.authenticated && auth.dashboardRoute != null) {
+      Navigator.of(context).pushReplacementNamed(auth.dashboardRoute!);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
     return Scaffold(
-      body: Consumer<AuthProvider>(
-        builder: (context, auth, _) {
-          if (auth.status == AuthStatus.authenticated) {
-            final route = auth.dashboardRoute;
-            if (route != null) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                Navigator.of(context).pushReplacementNamed(route);
-              });
-            }
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 900;
+          if (isWide) {
+            return _buildSplitScreen(context, auth);
           }
-
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 900;
-              if (isWide) {
-                return _buildSplitScreen(context, auth);
-              }
-              return _buildMobileLayout(context, auth);
-            },
-          );
+          return _buildMobileLayout(context, auth);
         },
       ),
     );

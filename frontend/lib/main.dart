@@ -6,13 +6,11 @@ import 'config/routes.dart';
 import 'core/theme/app_theme.dart';
 import 'core/logging/app_logger.dart';
 import 'features/auth/providers/auth_provider.dart';
-import 'features/auth/screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id', null);
 
-  // Global error handler
   FlutterError.onError = (FlutterErrorDetails details) {
     AppLogger.error('[FlutterError] ${details.exceptionAsString()}');
     debugPrint('[FlutterError] ${details.exceptionAsString()}');
@@ -21,14 +19,17 @@ void main() async {
   final authProvider = AuthProvider();
   await authProvider.tryAutoLogin();
 
-  // Unhandled errors
+  final initialRoute = authProvider.status == AuthStatus.authenticated
+      ? authProvider.dashboardRoute
+      : AppRoutes.login;
+
   runZonedGuarded(() {
     runApp(
       MultiProvider(
         providers: [
           ChangeNotifierProvider.value(value: authProvider),
         ],
-        child: const PpiApp(),
+        child: PpiApp(initialRoute: initialRoute ?? AppRoutes.login),
       ),
     );
   }, (error, stack) {
@@ -38,7 +39,8 @@ void main() async {
 }
 
 class PpiApp extends StatelessWidget {
-  const PpiApp({super.key});
+  final String initialRoute;
+  const PpiApp({super.key, required this.initialRoute});
 
   @override
   Widget build(BuildContext context) {
@@ -46,22 +48,7 @@ class PpiApp extends StatelessWidget {
       title: 'MA PERSIS GARUT',
       theme: AppTheme.light,
       debugShowCheckedModeBanner: false,
-      home: Consumer<AuthProvider>(
-        builder: (_, auth, __) {
-          if (auth.status == AuthStatus.uninitialized ||
-              auth.status == AuthStatus.loading) {
-            return const Scaffold(
-                body: Center(child: CircularProgressIndicator()));
-          }
-          if (auth.status == AuthStatus.authenticated &&
-              auth.dashboardRoute != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.of(context).pushReplacementNamed(auth.dashboardRoute!);
-            });
-          }
-          return const LoginScreen();
-        },
-      ),
+      initialRoute: initialRoute,
       onGenerateRoute: AppRoutes.generateRoute,
     );
   }

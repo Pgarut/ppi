@@ -331,15 +331,28 @@ export async function handleMapelKelas(request: Request, env: Env, user: UserPay
 export async function handleWaliKelasList(request: Request, env: Env, _user: UserPayload): Promise<Response> {
   if (request.method !== 'GET') return badRequest('Method tidak didukung');
 
-  const rows = await env.DB.prepare(`
+  const url = new URL(request.url);
+  const search = url.searchParams.get('search')?.trim() || '';
+
+  let query = `
     SELECT g.id, g.nip, g.nama, g.jabatan,
            k.id AS kelas_id, k.nama AS kelas_nama,
            (SELECT COUNT(*) FROM siswa WHERE kelas_id = k.id AND status = 'aktif') AS jumlah_siswa
     FROM guru g
     LEFT JOIN kelas k ON k.wali_kelas_id = g.id
-    WHERE g.jabatan LIKE '%wali_kelas%'
-    ORDER BY g.nama
-  `).all();
+    WHERE k.wali_kelas_id IS NOT NULL
+       OR g.jabatan LIKE '%wali_kelas%'
+  `;
+  const bindings: unknown[] = [];
+
+  if (search) {
+    query += ` AND (g.nama LIKE ? OR g.nip LIKE ?)`;
+    bindings.push(`%${search}%`, `%${search}%`);
+  }
+
+  query += ` ORDER BY g.nama`;
+
+  const rows = await env.DB.prepare(query).bind(...bindings).all();
 
   return success(rows.results);
 }

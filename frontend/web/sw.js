@@ -19,7 +19,6 @@ self.addEventListener('install', (event) => {
         return cache.addAll(urlsToCache);
       })
   );
-  self.skipWaiting();
 });
 
 // Activate event
@@ -36,7 +35,6 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  self.clients.claim();
 });
 
 // Fetch event - Network first, fallback to cache
