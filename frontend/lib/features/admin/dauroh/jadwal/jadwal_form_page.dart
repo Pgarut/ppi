@@ -143,28 +143,20 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: DaurohDropdown<String>(
-                        value: _jamMulai,
+                      child: _TimePickerField(
                         label: 'Jam Mulai',
                         icon: Icons.access_time,
-                        items: List.generate(24, (i) => DropdownMenuItem(
-                          value: '${i.toString().padLeft(2, '0')}:00',
-                          child: Text('${i.toString().padLeft(2, '0')}:00'),
-                        )),
-                        onChanged: (v) => setState(() => _jamMulai = v ?? '08:00'),
+                        value: _jamMulai,
+                        onChanged: (v) => setState(() => _jamMulai = v),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: DaurohDropdown<String>(
-                        value: _jamSelesai,
+                      child: _TimePickerField(
                         label: 'Jam Selesai',
                         icon: Icons.access_time_filled,
-                        items: List.generate(24, (i) => DropdownMenuItem(
-                          value: '${i.toString().padLeft(2, '0')}:00',
-                          child: Text('${i.toString().padLeft(2, '0')}:00'),
-                        )),
-                        onChanged: (v) => setState(() => _jamSelesai = v ?? '10:00'),
+                        value: _jamSelesai,
+                        onChanged: (v) => setState(() => _jamSelesai = v),
                       ),
                     ),
                   ],
@@ -258,5 +250,70 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+}
+
+class _TimePickerField extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  const _TimePickerField({
+    required this.label,
+    required this.icon,
+    required this.value,
+    required this.onChanged,
+  });
+
+  TimeOfDay _parseTime() {
+    final parts = value.split(':');
+    return TimeOfDay(
+      hour: int.tryParse(parts[0]) ?? 8,
+      minute: int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () async {
+        final picked = await showTimePicker(
+          context: context,
+          initialTime: _parseTime(),
+          builder: (context, child) {
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+              child: child!,
+            );
+          },
+        );
+        if (picked != null) {
+          onChanged('${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}');
+        }
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
+          filled: true,
+          fillColor: Colors.white,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(fontSize: 14),
+            ),
+            const Icon(Icons.access_time, size: 18, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
   }
 }
