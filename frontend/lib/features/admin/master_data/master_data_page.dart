@@ -281,7 +281,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
       final res = await AdminService.list(
         type.resource,
         page: _page[type]!,
-        perPage: 50,
+        perPage: 100,
         search: _searchCtrl[type]!.text,
         filters: filters,
       );

@@ -54,7 +54,7 @@ const configs: Record<string, CrudConfig> = {
   'kelas': { table: 'kelas', columns: ['nama', 'tingkat_id', 'jurusan_id', 'tahun_ajaran_id'], label: 'Kelas', searchFields: ['nama'],
     sortJoin: ' LEFT JOIN tingkat ON kelas.tingkat_id = tingkat.id',
     sortBy: `CASE tingkat.nama WHEN 'VII' THEN 7 WHEN 'VIII' THEN 8 WHEN 'IX' THEN 9 WHEN 'X' THEN 10 WHEN 'XI' THEN 11 WHEN 'XII' THEN 12 ELSE 99 END, kelas.nama` },
-  'mata-pelajaran': { table: 'mata_pelajaran', columns: ['nama', 'kode'], label: 'Mata Pelajaran', searchFields: ['nama', 'kode'], sortBy: 'nama ASC' },
+  'mata-pelajaran': { table: 'mata_pelajaran', columns: ['nama', 'kode'], label: 'Mata Pelajaran', searchFields: ['nama', 'kode'], sortBy: 'kode ASC' },
   'guru': {
     table: 'guru', columns: ['nip', 'nama', 'jenis_kelamin', 'jabatan', 'status_aktif'], label: 'Asatidz', searchFields: ['nama', 'nip'], filterFields: ['jabatan'],
     sortBy: 'nip ASC',
