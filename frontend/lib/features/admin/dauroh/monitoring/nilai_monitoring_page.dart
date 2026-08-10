@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/dauroh_pdf_export.dart';
 import '../../../../shared/widgets/common_widgets.dart';
 import '../services/dauroh_service.dart';
 
@@ -17,6 +18,7 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
   String? _jenjang;
   String? _kelasId;
   String? _programId;
+  String? _status;
 
   List<Map<String, dynamic>> _kelasList = [];
   List<Map<String, dynamic>> _programList = [];
@@ -53,6 +55,7 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
         jenjang: _jenjang,
         kelasId: _kelasId,
         programId: _programId,
+        status: _status,
       );
       if (mounted) {
         setState(() {
@@ -77,9 +80,24 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Monitoring Nilai Dauroh',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Monitoring Nilai Dauroh',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ),
+              if (_data.isNotEmpty)
+                FilledButton.icon(
+                  onPressed: () => DaurohPdfExport.exportBatch(
+                    _data,
+                    title: 'Monitoring Nilai Dauroh',
+                  ),
+                  icon: const Icon(Icons.picture_as_pdf, size: 18),
+                  label: const Text('Export PDF'),
+                ),
+            ],
           ),
           const SizedBox(height: 16),
           _buildFilters(),
@@ -175,6 +193,33 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
             ),
           ),
         ),
+        SizedBox(
+          width: 160,
+          child: DropdownButtonHideUnderline(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppTheme.grey300),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: DropdownButton<String>(
+                value: _status,
+                hint: const Text('Status', style: TextStyle(fontSize: 13)),
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(value: null, child: Text('Semua Status')),
+                  DropdownMenuItem(value: 'mengulang', child: Text('Mengulang')),
+                  DropdownMenuItem(value: 'melanjutkan', child: Text('Melanjutkan')),
+                  DropdownMenuItem(value: 'selesai', child: Text('Selesai')),
+                ],
+                onChanged: (v) {
+                  setState(() => _status = v);
+                  _load();
+                },
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -220,42 +265,64 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
           columns: const [
             DataColumn(label: Text('NIS')),
             DataColumn(label: Text('Nama')),
-            DataColumn(label: Text('JK')),
             DataColumn(label: Text('Kelas')),
             DataColumn(label: Text('Program')),
-            DataColumn(label: Text('Jenis')),
-            DataColumn(label: Text('Hafalan')),
-            DataColumn(label: Text('Bacaan')),
-            DataColumn(label: Text('Catatan')),
+            DataColumn(label: Text('Surat')),
+            DataColumn(label: Text('Status')),
+            DataColumn(label: Text('Bidang 1')),
+            DataColumn(label: Text('Bidang 2')),
+            DataColumn(label: Text('Bidang 3')),
+            DataColumn(label: Text('Total')),
+            DataColumn(label: Text('Musyrifah')),
           ],
           rows: _data.map((row) {
+            final status = row['status_hafalan']?.toString() ?? '-';
+            Color statusColor;
+            switch (status) {
+              case 'mengulang':
+                statusColor = AppTheme.orange;
+                break;
+              case 'melanjutkan':
+                statusColor = AppTheme.primary;
+                break;
+              case 'selesai':
+                statusColor = Colors.green;
+                break;
+              default:
+                statusColor = AppTheme.grey500;
+            }
+
             return DataRow(cells: [
               DataCell(Text(row['nis']?.toString() ?? '-')),
               DataCell(Text(row['nama']?.toString() ?? '-')),
-              DataCell(Text(row['jenis_kelamin']?.toString() == 'L' ? 'L' : 'P')),
               DataCell(Text(row['kelas_nama']?.toString() ?? '-')),
               DataCell(Text(row['nama_program']?.toString() ?? '-')),
-              DataCell(Text(row['jenis_dauroh']?.toString() == 'hafalan' ? 'Hafalan' : 'Bacaan')),
-              DataCell(_buildNilaiValue(row['nilai_hafalan'])),
-              DataCell(_buildNilaiValue(row['nilai_bacaan'])),
+              DataCell(Text(row['surat_nama']?.toString() ?? '-')),
               DataCell(
-                SizedBox(
-                  width: 150,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: statusColor.withAlpha(25),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                   child: Text(
-                    row['catatan']?.toString() ?? '-',
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
-                    style: const TextStyle(fontSize: 12),
+                    status.toUpperCase(),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor),
                   ),
                 ),
               ),
+              DataCell(_buildNilaiValue(row['nilai_bidang1'])),
+              DataCell(_buildNilaiValue(row['nilai_bidang2'])),
+              DataCell(_buildNilaiValue(row['nilai_bidang3'])),
+              DataCell(_buildTotalValue(row['total_nilai'])),
+              DataCell(Text(row['musyrifah_nama']?.toString() ?? '-')),
             ]);
           }).toList(),
           headingRowColor: WidgetStateProperty.all(AppTheme.grey50),
           headingTextStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppTheme.grey700),
           dataTextStyle: const TextStyle(fontSize: 13, color: AppTheme.grey700),
-          columnSpacing: 20,
-          horizontalMargin: 20,
+          columnSpacing: 16,
+          horizontalMargin: 16,
         ),
       ),
     );
@@ -276,6 +343,31 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
     return Text(
       num.toStringAsFixed(0),
       style: TextStyle(fontWeight: FontWeight.w600, color: color),
+    );
+  }
+
+  Widget _buildTotalValue(dynamic value) {
+    if (value == null) return const Text('-', style: TextStyle(color: AppTheme.grey400));
+    final num = double.tryParse(value.toString());
+    if (num == null) return Text(value.toString());
+    Color bgColor;
+    if (num >= 80) {
+      bgColor = AppTheme.primary;
+    } else if (num >= 60) {
+      bgColor = AppTheme.orange;
+    } else {
+      bgColor = AppTheme.error;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        num.toStringAsFixed(0),
+        style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 12),
+      ),
     );
   }
 }

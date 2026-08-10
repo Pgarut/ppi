@@ -17,7 +17,7 @@ export async function handleSiswaDauroh(
   }
 
   if (sub === 'nilai' && request.method === 'GET') {
-    return handleDaurohNilai(env, user);
+    return handleDaurohNilai(env, user, url);
   }
 
   if (sub === 'absensi' && request.method === 'GET') {
@@ -56,24 +56,50 @@ async function handleDaurohProgram(env: Env, user: UserPayload): Promise<Respons
 }
 
 // ─── NILAI DAUROH SISWA ─────────────────────────────────────
-async function handleDaurohNilai(env: Env, user: UserPayload): Promise<Response> {
+async function handleDaurohNilai(env: Env, user: UserPayload, url: URL): Promise<Response> {
   const siswaId = user.siswa_id;
   if (!siswaId) return success([]);
+
+  const programId = url.searchParams.get('program_id');
+  const limit = Math.min(100, parseInt(url.searchParams.get('limit') || '50'));
+
+  let where = 'WHERE dn.santri_id = ?';
+  const bindings: unknown[] = [siswaId];
+
+  if (programId) {
+    where += ' AND dn.program_id = ?';
+    bindings.push(programId);
+  }
 
   const rows = await env.DB.prepare(`
     SELECT
       dn.id,
+      dn.program_id,
       dp.nama_program,
-      dp.jenis_dauroh,
-      dn.nilai_hafalan,
-      dn.nilai_bacaan,
-      dn.catatan,
+      dp.jenis_program,
+      dn.surat_nomor,
+      ds.nama as surat_nama,
+      ds.jumlah_ayat,
+      dn.dari_ayat,
+      dn.sampai_ayat,
+      dn.status_hafalan,
+      dn.nilai_bidang1,
+      dn.nilai_bidang2,
+      dn.nilai_bidang3,
+      dn.total_nilai,
+      dn.catatan_umum,
+      dn.rencana_tindak_lanjut,
+      dm.nama as musyrifah_nama,
+      dn.created_at,
       dn.updated_at
     FROM dauroh_nilai dn
     JOIN dauroh_program dp ON dn.program_id = dp.id
-    WHERE dn.santri_id = ?
-    ORDER BY dp.nama_program
-  `).bind(siswaId).all();
+    LEFT JOIN dauroh_surat ds ON dn.surat_nomor = ds.nomor
+    LEFT JOIN dauroh_musyrifah dm ON dn.diinput_oleh = dm.id
+    ${where}
+    ORDER BY dn.created_at DESC
+    LIMIT ?
+  `).bind(...bindings, limit).all();
 
   return success(rows.results);
 }

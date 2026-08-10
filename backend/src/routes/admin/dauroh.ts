@@ -168,16 +168,28 @@ async function getProgram(env: Env, id: number) {
 
 async function createProgram(request: Request, env: Env, user: UserPayload, ip: string) {
   const body = await request.json() as Record<string, unknown>;
-  const { nama_program, jenis_program, jenis_dauroh, keterangan, tahun_ajaran_id } = body;
+  const { 
+    nama_program, jenis_program, jenis_dauroh, keterangan, tahun_ajaran_id,
+    skema_penilaian, max_bidang1, max_bidang2, max_bidang3,
+    label_bidang1, label_bidang2, label_bidang3, konfigurasi_nilai
+  } = body;
 
   if (!nama_program || !jenis_program || !jenis_dauroh) {
     return badRequest('nama_program, jenis_program, jenis_dauroh wajib diisi');
   }
 
   const result = await env.DB.prepare(`
-    INSERT INTO dauroh_program (nama_program, jenis_program, jenis_dauroh, keterangan, tahun_ajaran_id)
-    VALUES (?, ?, ?, ?, ?)
-  `).bind(nama_program, jenis_program, jenis_dauroh, keterangan || null, tahun_ajaran_id || null).run();
+    INSERT INTO dauroh_program (
+      nama_program, jenis_program, jenis_dauroh, keterangan, tahun_ajaran_id,
+      skema_penilaian, max_bidang1, max_bidang2, max_bidang3,
+      label_bidang1, label_bidang2, label_bidang3, konfigurasi_nilai
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    nama_program, jenis_program, jenis_dauroh, keterangan || null, tahun_ajaran_id || null,
+    skema_penilaian || 'murojaah_tahfidz', max_bidang1 ?? 40, max_bidang2 ?? 30, max_bidang3 ?? 30,
+    label_bidang1 || 'Kelancaran Hafalan', label_bidang2 || 'Tajwid', label_bidang3 || 'Fashohah dan Adab',
+    konfigurasi_nilai || null
+  ).run();
 
   const newId = result.meta.last_row_id;
 
@@ -206,7 +218,11 @@ async function createProgram(request: Request, env: Env, user: UserPayload, ip: 
 
 async function updateProgram(request: Request, env: Env, id: number, user: UserPayload, ip: string) {
   const body = await request.json() as Record<string, unknown>;
-  const { nama_program, jenis_program, jenis_dauroh, keterangan, tahun_ajaran_id, is_aktif } = body;
+  const { 
+    nama_program, jenis_program, jenis_dauroh, keterangan, tahun_ajaran_id, is_aktif,
+    skema_penilaian, max_bidang1, max_bidang2, max_bidang3,
+    label_bidang1, label_bidang2, label_bidang3, konfigurasi_nilai
+  } = body;
 
   const existing = await env.DB.prepare('SELECT id FROM dauroh_program WHERE id = ?').bind(id).first();
   if (!existing) return notFound('Program');
@@ -219,9 +235,21 @@ async function updateProgram(request: Request, env: Env, id: number, user: UserP
       keterangan = COALESCE(?, keterangan),
       tahun_ajaran_id = COALESCE(?, tahun_ajaran_id),
       is_aktif = COALESCE(?, is_aktif),
+      skema_penilaian = COALESCE(?, skema_penilaian),
+      max_bidang1 = COALESCE(?, max_bidang1),
+      max_bidang2 = COALESCE(?, max_bidang2),
+      max_bidang3 = COALESCE(?, max_bidang3),
+      label_bidang1 = COALESCE(?, label_bidang1),
+      label_bidang2 = COALESCE(?, label_bidang2),
+      label_bidang3 = COALESCE(?, label_bidang3),
+      konfigurasi_nilai = COALESCE(?, konfigurasi_nilai),
       updated_at = datetime('now')
     WHERE id = ?
-  `).bind(nama_program, jenis_program, jenis_dauroh, keterangan, tahun_ajaran_id, is_aktif, id).run();
+  `).bind(
+    nama_program, jenis_program, jenis_dauroh, keterangan, tahun_ajaran_id, is_aktif,
+    skema_penilaian, max_bidang1, max_bidang2, max_bidang3,
+    label_bidang1, label_bidang2, label_bidang3, konfigurasi_nilai, id
+  ).run();
 
   await logAction(env, user.sub, 'update', 'dauroh_program', `Update program id=${id}`, ip);
 
@@ -746,6 +774,7 @@ async function handleMonitoringNilai(request: Request, env: Env, url: URL) {
   const jenjang = url.searchParams.get('jenjang');
   const kelasId = url.searchParams.get('kelas_id');
   const programId = url.searchParams.get('program_id');
+  const status = url.searchParams.get('status');
 
   let where = 'WHERE 1=1';
   const bindings: unknown[] = [];
@@ -762,18 +791,36 @@ async function handleMonitoringNilai(request: Request, env: Env, url: URL) {
     where += ' AND n.program_id = ?';
     bindings.push(programId);
   }
+  if (status) {
+    where += ' AND n.status = ?';
+    bindings.push(status);
+  }
 
   const rows = await env.DB.prepare(`
     SELECT 
       s.nis, s.nama, s.jenis_kelamin,
       k.nama as kelas_nama,
-      p.nama_program, p.jenis_dauroh,
-      n.nilai_hafalan, n.nilai_bacaan, n.catatan
+      p.nama_program, p.jenis_program, p.jenis_dauroh,
+      n.surat_nomor,
+      ds.nama as surat_nama,
+      n.dari_ayat,
+      n.sampai_ayat,
+      n.status_hafalan,
+      n.nilai_bidang1,
+      n.nilai_bidang2,
+      n.nilai_bidang3,
+      n.total_nilai,
+      n.catatan_umum,
+      n.rencana_tindak_lanjut,
+      dm.nama as musyrifah_nama,
+      n.created_at
     FROM dauroh_nilai n
     JOIN siswa s ON n.santri_id = s.id
     JOIN kelas k ON s.kelas_id = k.id
     JOIN tingkat t ON k.tingkat_id = t.id
     JOIN dauroh_program p ON n.program_id = p.id
+    LEFT JOIN dauroh_surat ds ON n.surat_nomor = ds.nomor
+    LEFT JOIN dauroh_musyrifah dm ON n.diinput_oleh = dm.id
     ${where}
     ORDER BY k.nama, s.nama
   `).bind(...bindings).all();

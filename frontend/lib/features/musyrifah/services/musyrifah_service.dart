@@ -62,47 +62,167 @@ class MusyrifahService {
     await ApiClient.post('/musyrifah/absensi/santri', body: body);
   }
 
+  // ─── SURAT ──────────────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> listSurat({
+    int? juz,
+    String? type,
+    String? search,
+  }) async {
+    final params = <String, String>{};
+    if (juz != null) params['juz'] = '$juz';
+    if (type != null && type.isNotEmpty) params['type'] = type;
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    final res = await ApiClient.get('/musyrifah/surat', queryParams: params);
+    return (res['data'] as List).cast<Map<String, dynamic>>();
+  }
+
+  static Future<Map<String, dynamic>> getSurat(int nomor) async {
+    final res = await ApiClient.get('/musyrifah/surat/$nomor');
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  // ─── RIWAYAT ────────────────────────────────────────────────
+  static Future<Map<String, dynamic>> getRiwayat(int santriId, {String? programId}) async {
+    final params = <String, String>{};
+    if (programId != null && programId.isNotEmpty) params['program_id'] = programId;
+    final res = await ApiClient.get('/musyrifah/riwayat/$santriId', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
+  }
+
   // ─── NILAI ──────────────────────────────────────────────────
   static Future<List<Map<String, dynamic>>> listNilai({
     String? programId,
     String? kelasId,
     String? search,
+    String? status,
   }) async {
     final params = <String, String>{};
     if (programId != null && programId.isNotEmpty) params['program_id'] = programId;
     if (kelasId != null && kelasId.isNotEmpty) params['kelas_id'] = kelasId;
     if (search != null && search.isNotEmpty) params['search'] = search;
+    if (status != null && status.isNotEmpty) params['status'] = status;
     final res = await ApiClient.get('/musyrifah/nilai', queryParams: params);
     return (res['data'] as List).cast<Map<String, dynamic>>();
   }
 
-  static Future<void> inputNilai({
+  static Future<Map<String, dynamic>> getNilaiDetail(int id) async {
+    final res = await ApiClient.get('/musyrifah/nilai/$id');
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> inputNilai({
     required int programId,
     required int santriId,
-    double? nilaiHafalan,
-    double? nilaiBacaan,
-    String? catatan,
+    required int suratNomor,
+    required String statusHafalan,
+    int? jadwalId,
+    int? dariAyat,
+    int? sampaiAyat,
+    // Bidang 1: Kelancaran Hafalan
+    int? kelancaran,
+    int? ketepatanAyat,
+    int? murojaahSambung,
+    int? konsistensiHafalan,
+    String? catatanBidang1,
+    // Bidang 2: Tajwid
+    int? makhorijulHuruf,
+    int? sifatulHuruf,
+    int? ahkamulHuruf,
+    int? ahkamulMadd,
+    String? catatanBidang2,
+    // Bidang 3: Fashohah dan Adab
+    int? ahkamulWaqfi,
+    int? adabutTilawah,
+    int? kerapihanBacaan,
+    int? ketepatanTempo,
+    String? catatanBidang3,
+    // Catatan
+    String? catatanUmum,
+    String? rencanaTindakLanjut,
   }) async {
     final body = <String, dynamic>{
       'program_id': programId,
       'santri_id': santriId,
+      'surat_nomor': suratNomor,
+      'status_hafalan': statusHafalan,
     };
-    if (nilaiHafalan != null) body['nilai_hafalan'] = nilaiHafalan;
-    if (nilaiBacaan != null) body['nilai_bacaan'] = nilaiBacaan;
-    if (catatan != null) body['catatan'] = catatan;
-    await ApiClient.post('/musyrifah/nilai', body: body);
+    if (jadwalId != null) body['jadwal_id'] = jadwalId;
+    if (dariAyat != null) body['dari_ayat'] = dariAyat;
+    if (sampaiAyat != null) body['sampai_ayat'] = sampaiAyat;
+    // Bidang 1
+    if (kelancaran != null) body['kelancaran'] = kelancaran;
+    if (ketepatanAyat != null) body['ketepatan_ayat'] = ketepatanAyat;
+    if (murojaahSambung != null) body['murojaah_sambung'] = murojaahSambung;
+    if (konsistensiHafalan != null) body['konsistensi_hafalan'] = konsistensiHafalan;
+    if (catatanBidang1 != null) body['catatan_bidang1'] = catatanBidang1;
+    // Bidang 2
+    if (makhorijulHuruf != null) body['makhorijul_huruf'] = makhorijulHuruf;
+    if (sifatulHuruf != null) body['sifatul_huruf'] = sifatulHuruf;
+    if (ahkamulHuruf != null) body['ahkamul_huruf'] = ahkamulHuruf;
+    if (ahkamulMadd != null) body['ahkamul_madd'] = ahkamulMadd;
+    if (catatanBidang2 != null) body['catatan_bidang2'] = catatanBidang2;
+    // Bidang 3
+    if (ahkamulWaqfi != null) body['ahkamul_waqfi'] = ahkamulWaqfi;
+    if (adabutTilawah != null) body['adabut_tilawah'] = adabutTilawah;
+    if (kerapihanBacaan != null) body['kerapihan_bacaan'] = kerapihanBacaan;
+    if (ketepatanTempo != null) body['ketepatan_tempo'] = ketepatanTempo;
+    if (catatanBidang3 != null) body['catatan_bidang3'] = catatanBidang3;
+    // Catatan
+    if (catatanUmum != null) body['catatan_umum'] = catatanUmum;
+    if (rencanaTindakLanjut != null) body['rencana_tindak_lanjut'] = rencanaTindakLanjut;
+    final res = await ApiClient.post('/musyrifah/nilai', body: body);
+    return res['data'] as Map<String, dynamic>;
   }
 
-  static Future<void> updateNilai({
+  static Future<Map<String, dynamic>> updateNilai({
     required int id,
-    double? nilaiHafalan,
-    double? nilaiBacaan,
-    String? catatan,
+    int? suratNomor,
+    String? statusHafalan,
+    int? jadwalId,
+    int? dariAyat,
+    int? sampaiAyat,
+    int? kelancaran,
+    int? ketepatanAyat,
+    int? murojaahSambung,
+    int? konsistensiHafalan,
+    String? catatanBidang1,
+    int? makhorijulHuruf,
+    int? sifatulHuruf,
+    int? ahkamulHuruf,
+    int? ahkamulMadd,
+    String? catatanBidang2,
+    int? ahkamulWaqfi,
+    int? adabutTilawah,
+    int? kerapihanBacaan,
+    int? ketepatanTempo,
+    String? catatanBidang3,
+    String? catatanUmum,
+    String? rencanaTindakLanjut,
   }) async {
     final body = <String, dynamic>{};
-    if (nilaiHafalan != null) body['nilai_hafalan'] = nilaiHafalan;
-    if (nilaiBacaan != null) body['nilai_bacaan'] = nilaiBacaan;
-    if (catatan != null) body['catatan'] = catatan;
-    await ApiClient.put('/musyrifah/nilai/$id', body: body);
+    if (jadwalId != null) body['jadwal_id'] = jadwalId;
+    if (suratNomor != null) body['surat_nomor'] = suratNomor;
+    if (dariAyat != null) body['dari_ayat'] = dariAyat;
+    if (sampaiAyat != null) body['sampai_ayat'] = sampaiAyat;
+    if (statusHafalan != null) body['status_hafalan'] = statusHafalan;
+    if (kelancaran != null) body['kelancaran'] = kelancaran;
+    if (ketepatanAyat != null) body['ketepatan_ayat'] = ketepatanAyat;
+    if (murojaahSambung != null) body['murojaah_sambung'] = murojaahSambung;
+    if (konsistensiHafalan != null) body['konsistensi_hafalan'] = konsistensiHafalan;
+    if (catatanBidang1 != null) body['catatan_bidang1'] = catatanBidang1;
+    if (makhorijulHuruf != null) body['makhorijul_huruf'] = makhorijulHuruf;
+    if (sifatulHuruf != null) body['sifatul_huruf'] = sifatulHuruf;
+    if (ahkamulHuruf != null) body['ahkamul_huruf'] = ahkamulHuruf;
+    if (ahkamulMadd != null) body['ahkamul_madd'] = ahkamulMadd;
+    if (catatanBidang2 != null) body['catatan_bidang2'] = catatanBidang2;
+    if (ahkamulWaqfi != null) body['ahkamul_waqfi'] = ahkamulWaqfi;
+    if (adabutTilawah != null) body['adabut_tilawah'] = adabutTilawah;
+    if (kerapihanBacaan != null) body['kerapihan_bacaan'] = kerapihanBacaan;
+    if (ketepatanTempo != null) body['ketepatan_tempo'] = ketepatanTempo;
+    if (catatanBidang3 != null) body['catatan_bidang3'] = catatanBidang3;
+    if (catatanUmum != null) body['catatan_umum'] = catatanUmum;
+    if (rencanaTindakLanjut != null) body['rencana_tindak_lanjut'] = rencanaTindakLanjut;
+    final res = await ApiClient.put('/musyrifah/nilai/$id', body: body);
+    return res['data'] as Map<String, dynamic>;
   }
 }

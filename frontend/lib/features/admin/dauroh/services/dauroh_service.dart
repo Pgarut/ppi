@@ -150,11 +150,13 @@ class DaurohService {
     String? jenjang,
     String? kelasId,
     String? programId,
+    String? status,
   }) async {
     final params = <String, String>{};
     if (jenjang != null && jenjang.isNotEmpty) params['jenjang'] = jenjang;
     if (kelasId != null && kelasId.isNotEmpty) params['kelas_id'] = kelasId;
     if (programId != null && programId.isNotEmpty) params['program_id'] = programId;
+    if (status != null && status.isNotEmpty) params['status'] = status;
     final res = await ApiClient.get('/admin/dauroh/monitoring/nilai', queryParams: params);
     return (res['data'] as List).cast<Map<String, dynamic>>();
   }

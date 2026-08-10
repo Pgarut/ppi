@@ -1,5 +1,7 @@
 import { Env, UserPayload } from '../../types';
-import { success, error, unauthorized } from '../../utils/response';
+import { success, error, badRequest, notFound } from '../../utils/response';
+
+type Row = Record<string, unknown>;
 
 // ============================================================
 // HANDLER: Musyrifah Routes
@@ -27,6 +29,16 @@ export async function handleMusyrifahRoutes(
   // ─── NILAI ──────────────────────────────────────────────────
   if (subPath === 'nilai' || subPath.startsWith('nilai/')) {
     return handleNilaiMusyrifah(request, env, user, pathParts, url);
+  }
+
+  // ─── SURAT ─────────────────────────────────────────────────
+  if (subPath === 'surat' || subPath.startsWith('surat/')) {
+    return handleSuratMusyrifah(request, env, user, pathParts, url);
+  }
+
+  // ─── RIWAYAT ───────────────────────────────────────────────
+  if (subPath.startsWith('riwayat/')) {
+    return handleRiwayatSantri(request, env, user, pathParts, url);
   }
 
   // ─── PROFIL ─────────────────────────────────────────────────
@@ -392,6 +404,156 @@ async function inputAbsensiSantri(request: Request, env: Env, user: UserPayload)
 }
 
 // ============================================================
+// SURAT MUSYRIFAH
+// ============================================================
+
+async function handleSuratMusyrifah(
+  request: Request,
+  env: Env,
+  user: UserPayload,
+  pathParts: string[],
+  url: URL
+): Promise<Response> {
+  const method = request.method;
+
+  // GET /api/musyrifah/surat - List semua surat
+  if (method === 'GET' && pathParts.length === 3) {
+    return listSurat(env, url);
+  }
+
+  // GET /api/musyrifah/surat/:nomor - Detail surat
+  if (method === 'GET' && pathParts.length === 4) {
+    const nomor = parseInt(pathParts[3]);
+    return getSurat(env, nomor);
+  }
+
+  return error('Method tidak didukung', 405);
+}
+
+async function listSurat(env: Env, url: URL) {
+  const juz = url.searchParams.get('juz');
+  const type = url.searchParams.get('type');
+  const search = url.searchParams.get('search') || '';
+
+  let where = 'WHERE 1=1';
+  const bindings: unknown[] = [];
+
+  if (juz) {
+    where += ' AND juz = ?';
+    bindings.push(parseInt(juz));
+  }
+  if (type) {
+    where += ' AND type = ?';
+    bindings.push(type);
+  }
+  if (search) {
+    where += ' AND (nama LIKE ? OR nama_arab LIKE ?)';
+    bindings.push(`%${search}%`, `%${search}%`);
+  }
+
+  const rows = await env.DB.prepare(`
+    SELECT nomor, nama, nama_arab, jumlah_ayat, juz, type
+    FROM dauroh_surat
+    ${where}
+    ORDER BY nomor ASC
+  `).bind(...bindings).all();
+
+  return success(rows.results);
+}
+
+async function getSurat(env: Env, nomor: number) {
+  const surat = await env.DB.prepare(`
+    SELECT nomor, nama, nama_arab, jumlah_ayat, juz, type
+    FROM dauroh_surat
+    WHERE nomor = ?
+  `).bind(nomor).first<Row>();
+
+  if (!surat) return notFound('Surat');
+
+  return success(surat);
+}
+
+// ============================================================
+// RIWAYAT SANTRI
+// ============================================================
+
+async function handleRiwayatSantri(
+  request: Request,
+  env: Env,
+  user: UserPayload,
+  pathParts: string[],
+  url: URL
+): Promise<Response> {
+  const method = request.method;
+
+  // GET /api/musyrifah/riwayat/:santri_id - Riwayat nilai santri
+  if (method === 'GET' && pathParts.length === 4) {
+    const santriId = parseInt(pathParts[3]);
+    return getRiwayatSantri(env, user, santriId, url);
+  }
+
+  return error('Method tidak didukung', 405);
+}
+
+async function getRiwayatSantri(env: Env, user: UserPayload, santriId: number, url: URL) {
+  const musyrifah = await env.DB.prepare(
+    'SELECT id FROM dauroh_musyrifah WHERE username = ?'
+  ).bind(user.username).first<{ id: number }>();
+
+  if (!musyrifah) return error('Data musyrifah tidak ditemukan', 404);
+
+  const programId = url.searchParams.get('program_id');
+  const limit = Math.min(100, parseInt(url.searchParams.get('limit') || '50'));
+
+  let where = `WHERE dn.santri_id = ? 
+    AND dn.program_id IN (SELECT program_id FROM dauroh_jadwal WHERE musyrifah_1_id = ? OR musyrifah_2_id = ?)`;
+  const bindings: unknown[] = [santriId, musyrifah.id, musyrifah.id];
+
+  if (programId) {
+    where += ' AND dn.program_id = ?';
+    bindings.push(programId);
+  }
+
+  const rows = await env.DB.prepare(`
+    SELECT 
+      dn.id,
+      dn.program_id,
+      dp.nama_program,
+      dp.jenis_program,
+      dn.santri_id,
+      s.nama as santri_nama,
+      dn.surat_nomor,
+      ds.nama as surat_nama,
+      ds.jumlah_ayat,
+      dn.dari_ayat,
+      dn.sampai_ayat,
+      dn.status_hafalan,
+      dn.nilai_bidang1,
+      dn.nilai_bidang2,
+      dn.nilai_bidang3,
+      dn.total_nilai,
+      dn.catatan_umum,
+      dn.rencana_tindak_lanjut,
+      dm.nama as musyrifah_nama,
+      dn.created_at,
+      dn.updated_at
+    FROM dauroh_nilai dn
+    JOIN siswa s ON dn.santri_id = s.id
+    JOIN dauroh_program dp ON dn.program_id = dp.id
+    LEFT JOIN dauroh_surat ds ON dn.surat_nomor = ds.nomor
+    LEFT JOIN dauroh_musyrifah dm ON dn.diinput_oleh = dm.id
+    ${where}
+    ORDER BY dn.created_at DESC
+    LIMIT ?
+  `).bind(...bindings, limit).all();
+
+  return success({
+    santri_id: santriId,
+    riwayat: rows.results,
+  });
+}
+
+// ============================================================
 // NILAI MUSYRIFAH
 // ============================================================
 
@@ -409,15 +571,21 @@ async function handleNilaiMusyrifah(
     return listNilaiMusyrifah(env, user, url);
   }
 
-  // POST /api/musyrifah/nilai - Input/update nilai
+  // GET /api/musyrifah/nilai/:id - Detail nilai
+  if (method === 'GET' && pathParts.length === 4) {
+    const id = parseInt(pathParts[3]);
+    return getNilaiDetail(env, user, id);
+  }
+
+  // POST /api/musyrifah/nilai - Input nilai baru
   if (method === 'POST' && pathParts.length === 3) {
-    return inputNilai(request, env, user);
+    return inputNilaiBaru(request, env, user);
   }
 
   // PUT /api/musyrifah/nilai/:id - Update nilai
   if (method === 'PUT' && pathParts.length === 4) {
     const id = parseInt(pathParts[3]);
-    return updateNilai(request, env, id, user);
+    return updateNilaiEnhanched(request, env, id, user);
   }
 
   return error('Method tidak didukung', 405);
@@ -433,12 +601,13 @@ async function listNilaiMusyrifah(env: Env, user: UserPayload, url: URL) {
   const programId = url.searchParams.get('program_id');
   const kelasId = url.searchParams.get('kelas_id');
   const search = url.searchParams.get('search') || '';
+  const status = url.searchParams.get('status');
 
-  let where = 'WHERE n.program_id IN (SELECT program_id FROM dauroh_jadwal WHERE musyrifah_1_id = ? OR musyrifah_2_id = ?)';
+  let where = `WHERE dn.program_id IN (SELECT program_id FROM dauroh_jadwal WHERE musyrifah_1_id = ? OR musyrifah_2_id = ?)`;
   const bindings: unknown[] = [musyrifah.id, musyrifah.id];
 
   if (programId) {
-    where += ' AND n.program_id = ?';
+    where += ' AND dn.program_id = ?';
     bindings.push(programId);
   }
   if (kelasId) {
@@ -449,28 +618,142 @@ async function listNilaiMusyrifah(env: Env, user: UserPayload, url: URL) {
     where += ' AND (s.nama LIKE ? OR s.nis LIKE ?)';
     bindings.push(`%${search}%`, `%${search}%`);
   }
+  if (status) {
+    where += ' AND dn.status = ?';
+    bindings.push(status);
+  }
 
   const rows = await env.DB.prepare(`
-    SELECT n.*, s.nis, s.nama as santri_nama, 
-           k.nama as kelas_nama, p.nama_program
-    FROM dauroh_nilai n
-    JOIN siswa s ON n.santri_id = s.id
+    SELECT 
+      dn.id,
+      dn.program_id,
+      dp.nama_program,
+      dp.jenis_program,
+      dn.santri_id,
+      s.nis,
+      s.nama as santri_nama,
+      k.nama as kelas_nama,
+      dn.surat_nomor,
+      ds.nama as surat_nama,
+      ds.jumlah_ayat,
+      dn.dari_ayat,
+      dn.sampai_ayat,
+      dn.status_hafalan,
+      dn.nilai_bidang1,
+      dn.nilai_bidang2,
+      dn.nilai_bidang3,
+      dn.total_nilai,
+      dn.catatan_umum,
+      dn.rencana_tindak_lanjut,
+      dm.nama as musyrifah_nama,
+      dn.created_at,
+      dn.updated_at
+    FROM dauroh_nilai dn
+    JOIN siswa s ON dn.santri_id = s.id
     JOIN kelas k ON s.kelas_id = k.id
-    JOIN dauroh_program p ON n.program_id = p.id
+    JOIN dauroh_program dp ON dn.program_id = dp.id
+    LEFT JOIN dauroh_surat ds ON dn.surat_nomor = ds.nomor
+    LEFT JOIN dauroh_musyrifah dm ON dn.diinput_oleh = dm.id
     ${where}
-    ORDER BY p.nama_program, k.nama, s.nama
+    ORDER BY dp.nama_program, k.nama, s.nama
   `).bind(...bindings).all();
 
   return success(rows.results);
 }
 
-async function inputNilai(request: Request, env: Env, user: UserPayload) {
-  const body = await request.json() as { program_id: number; santri_id: number; nilai_hafalan?: number; nilai_bacaan?: number; catatan?: string };
-  const { program_id, santri_id, nilai_hafalan, nilai_bacaan, catatan } = body;
+async function getNilaiDetail(env: Env, user: UserPayload, id: number) {
+  const musyrifah = await env.DB.prepare(
+    'SELECT id FROM dauroh_musyrifah WHERE username = ?'
+  ).bind(user.username).first<{ id: number }>();
 
-  if (!program_id || !santri_id) {
-    return error('program_id, santri_id wajib diisi', 400);
+  if (!musyrifah) return error('Data musyrifah tidak ditemukan', 404);
+
+  const nilai = await env.DB.prepare(`
+    SELECT 
+      dn.*,
+      dp.nama_program,
+      dp.jenis_program,
+      s.nis,
+      s.nama as santri_nama,
+      k.nama as kelas_nama,
+      ds.nama as surat_nama,
+      ds.jumlah_ayat,
+      dm.nama as musyrifah_nama
+    FROM dauroh_nilai dn
+    JOIN siswa s ON dn.santri_id = s.id
+    JOIN kelas k ON s.kelas_id = k.id
+    JOIN dauroh_program dp ON dn.program_id = dp.id
+    LEFT JOIN dauroh_surat ds ON dn.surat_nomor = ds.nomor
+    LEFT JOIN dauroh_musyrifah dm ON dn.diinput_oleh = dm.id
+    WHERE dn.id = ?
+  `).bind(id).first<Row>();
+
+  if (!nilai) return notFound('Data nilai');
+
+  // Validasi akses musyrifah
+  const akses = await env.DB.prepare(`
+    SELECT 1 FROM dauroh_jadwal j
+    WHERE j.program_id = ? AND (j.musyrifah_1_id = ? OR j.musyrifah_2_id = ?)
+  `).bind(nilai.program_id, musyrifah.id, musyrifah.id).first();
+
+  if (!akses) return error('Tidak memiliki akses ke data ini', 403);
+
+  return success(nilai);
+}
+
+async function inputNilaiBaru(request: Request, env: Env, user: UserPayload) {
+  const body = await request.json() as {
+    program_id: number;
+    santri_id: number;
+    jadwal_id?: number;
+    surat_nomor: number;
+    dari_ayat?: number;
+    sampai_ayat?: number;
+    status_hafalan: string;
+    // Bidang 1: Kelancaran Hafalan
+    kelancaran?: number;
+    ketepatan_ayat?: number;
+    murojaah_sambung?: number;
+    konsistensi_hafalan?: number;
+    catatan_bidang1?: string;
+    // Bidang 2: Tajwid
+    makhorijul_huruf?: number;
+    sifatul_huruf?: number;
+    ahkamul_huruf?: number;
+    ahkamul_madd?: number;
+    catatan_bidang2?: string;
+    // Bidang 3: Fashohah dan Adab
+    ahkamul_waqfi?: number;
+    adabut_tilawah?: number;
+    kerapihan_bacaan?: number;
+    ketepatan_tempo?: number;
+    catatan_bidang3?: string;
+    // Catatan
+    catatan_umum?: string;
+    rencana_tindak_lanjut?: string;
+  };
+
+  const {
+    program_id, santri_id, jadwal_id, surat_nomor, dari_ayat, sampai_ayat,
+    status_hafalan, kelancaran, ketepatan_ayat, murojaah_sambung, konsistensi_hafalan,
+    catatan_bidang1, makhorijul_huruf, sifatul_huruf, ahkamul_huruf, ahkamul_madd,
+    catatan_bidang2, ahkamul_waqfi, adabut_tilawah, kerapihan_bacaan, ketepatan_tempo,
+    catatan_bidang3, catatan_umum, rencana_tindak_lanjut
+  } = body;
+
+  // Validasi wajib
+  if (!program_id || !santri_id || !surat_nomor || !status_hafalan) {
+    return badRequest('program_id, santri_id, surat_nomor, status_hafalan wajib diisi');
   }
+
+  // Validasi status_hafalan
+  if (!['mengulang', 'melanjutkan', 'selesai'].includes(status_hafalan)) {
+    return badRequest('status_hafalan harus mengulang, melanjutkan, atau selesai');
+  }
+
+  // Validasi surat
+  const surat = await env.DB.prepare('SELECT nomor FROM dauroh_surat WHERE nomor = ?').bind(surat_nomor).first();
+  if (!surat) return notFound('Surat');
 
   // Validasi musyrifah
   const musyrifah = await env.DB.prepare(
@@ -479,31 +762,78 @@ async function inputNilai(request: Request, env: Env, user: UserPayload) {
 
   if (!musyrifah) return error('Data musyrifah tidak ditemukan', 404);
 
-  // Validasi program
+  // Validasi akses program
   const program = await env.DB.prepare(`
-    SELECT id FROM dauroh_jadwal 
+    SELECT 1 FROM dauroh_jadwal 
     WHERE program_id = ? AND (musyrifah_1_id = ? OR musyrifah_2_id = ?)
   `).bind(program_id, musyrifah.id, musyrifah.id).first();
 
   if (!program) return error('Program tidak ditemukan atau bukan program Anda', 404);
 
-  // Upsert nilai
-  const result = await env.DB.prepare(`
-    INSERT INTO dauroh_nilai (program_id, santri_id, nilai_hafalan, nilai_bacaan, catatan)
-    VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(program_id, santri_id)
-    DO UPDATE SET 
-      nilai_hafalan = COALESCE(excluded.nilai_hafalan, dauroh_nilai.nilai_hafalan),
-      nilai_bacaan = COALESCE(excluded.nilai_bacaan, dauroh_nilai.nilai_bacaan),
-      catatan = COALESCE(excluded.catatan, dauroh_nilai.catatan),
-      updated_at = datetime('now')
-  `).bind(program_id, santri_id, nilai_hafalan || null, nilai_bacaan || null, catatan || null).run();
+  // Validasi jadwal jika disediakan
+  if (jadwal_id) {
+    const jadwal = await env.DB.prepare(`
+      SELECT 1 FROM dauroh_jadwal WHERE id = ? AND program_id = ?
+    `).bind(jadwal_id, program_id).first();
+    if (!jadwal) return error('Jadwal tidak valid', 400);
+  }
 
-  return success({ message: 'Nilai berhasil disimpan' });
+  // Insert nilai baru
+  const result = await env.DB.prepare(`
+    INSERT INTO dauroh_nilai (
+      program_id, santri_id, jadwal_id, surat_nomor, dari_ayat, sampai_ayat,
+      status_hafalan, kelancaran, ketepatan_ayat, murojaah_sambung, konsistensi_hafalan,
+      catatan_bidang1, makhorijul_huruf, sifatul_huruf, ahkamul_huruf, ahkamul_madd,
+      catatan_bidang2, ahkamul_waqfi, adabut_tilawah, kerapihan_bacaan, ketepatan_tempo,
+      catatan_bidang3, catatan_umum, rencana_tindak_lanjut, diinput_oleh
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    program_id, santri_id, jadwal_id || null, surat_nomor, dari_ayat || null, sampai_ayat || null,
+    status_hafalan, kelancaran || null, ketepatan_ayat || null, murojaah_sambung || null, konsistensi_hafalan || null,
+    catatan_bidang1 || null, makhorijul_huruf || null, sifatul_huruf || null, ahkamul_huruf || null, ahkamul_madd || null,
+    catatan_bidang2 || null, ahkamul_waqfi || null, adabut_tilawah || null, kerapihan_bacaan || null, ketepatan_tempo || null,
+    catatan_bidang3 || null, catatan_umum || null, rencana_tindak_lanjut || null, musyrifah.id
+  ).run();
+
+  const newId = result.meta.last_row_id;
+
+  // Hitung total_nilai
+  const totalNilai = (40 - (kelancaran || 0) - (ketepatan_ayat || 0) - (murojaah_sambung || 0) - (konsistensi_hafalan || 0)) +
+    (30 - (makhorijul_huruf || 0) - (sifatul_huruf || 0) - (ahkamul_huruf || 0) - (ahkamul_madd || 0)) +
+    (30 - (ahkamul_waqfi || 0) - (adabut_tilawah || 0) - (kerapihan_bacaan || 0) - (ketepatan_tempo || 0));
+
+  return success({ 
+    id: newId,
+    message: 'Nilai berhasil disimpan',
+    total_nilai: totalNilai
+  });
 }
 
-async function updateNilai(request: Request, env: Env, id: number, user: UserPayload) {
-  const body = await request.json() as { nilai_hafalan?: number; nilai_bacaan?: number; catatan?: string };
+async function updateNilaiEnhanched(request: Request, env: Env, id: number, user: UserPayload) {
+  const body = await request.json() as {
+    jadwal_id?: number;
+    surat_nomor?: number;
+    dari_ayat?: number;
+    sampai_ayat?: number;
+    status_hafalan?: string;
+    kelancaran?: number;
+    ketepatan_ayat?: number;
+    murojaah_sambung?: number;
+    konsistensi_hafalan?: number;
+    catatan_bidang1?: string;
+    makhorijul_huruf?: number;
+    sifatul_huruf?: number;
+    ahkamul_huruf?: number;
+    ahkamul_madd?: number;
+    catatan_bidang2?: string;
+    ahkamul_waqfi?: number;
+    adabut_tilawah?: number;
+    kerapihan_bacaan?: number;
+    ketepatan_tempo?: number;
+    catatan_bidang3?: string;
+    catatan_umum?: string;
+    rencana_tindak_lanjut?: string;
+  };
 
   // Validasi musyrifah
   const musyrifah = await env.DB.prepare(
@@ -514,21 +844,65 @@ async function updateNilai(request: Request, env: Env, id: number, user: UserPay
 
   // Validasi nilai
   const existing = await env.DB.prepare(`
-    SELECT n.id FROM dauroh_nilai n
-    JOIN dauroh_jadwal j ON n.program_id = j.program_id
-    WHERE n.id = ? AND (j.musyrifah_1_id = ? OR j.musyrifah_2_id = ?)
-  `).bind(id, musyrifah.id, musyrifah.id).first();
+    SELECT n.id, n.program_id FROM dauroh_nilai n
+    WHERE n.id = ?
+  `).bind(id).first<{ id: number; program_id: number }>();
 
-  if (!existing) return error('Data nilai tidak ditemukan atau bukan program Anda', 404);
+  if (!existing) return notFound('Data nilai');
+
+  // Validasi akses
+  const akses = await env.DB.prepare(`
+    SELECT 1 FROM dauroh_jadwal j
+    WHERE j.program_id = ? AND (j.musyrifah_1_id = ? OR j.musyrifah_2_id = ?)
+  `).bind(existing.program_id, musyrifah.id, musyrifah.id).first();
+
+  if (!akses) return error('Tidak memiliki akses ke data ini', 403);
 
   await env.DB.prepare(`
     UPDATE dauroh_nilai SET
-      nilai_hafalan = COALESCE(?, nilai_hafalan),
-      nilai_bacaan = COALESCE(?, nilai_bacaan),
-      catatan = COALESCE(?, catatan),
+      jadwal_id = COALESCE(?, jadwal_id),
+      surat_nomor = COALESCE(?, surat_nomor),
+      dari_ayat = COALESCE(?, dari_ayat),
+      sampai_ayat = COALESCE(?, sampai_ayat),
+      status_hafalan = COALESCE(?, status_hafalan),
+      kelancaran = COALESCE(?, kelancaran),
+      ketepatan_ayat = COALESCE(?, ketepatan_ayat),
+      murojaah_sambung = COALESCE(?, murojaah_sambung),
+      konsistensi_hafalan = COALESCE(?, konsistensi_hafalan),
+      catatan_bidang1 = COALESCE(?, catatan_bidang1),
+      makhorijul_huruf = COALESCE(?, makhorijul_huruf),
+      sifatul_huruf = COALESCE(?, sifatul_huruf),
+      ahkamul_huruf = COALESCE(?, ahkamul_huruf),
+      ahkamul_madd = COALESCE(?, ahkamul_madd),
+      catatan_bidang2 = COALESCE(?, catatan_bidang2),
+      ahkamul_waqfi = COALESCE(?, ahkamul_waqfi),
+      adabut_tilawah = COALESCE(?, adabut_tilawah),
+      kerapihan_bacaan = COALESCE(?, kerapihan_bacaan),
+      ketepatan_tempo = COALESCE(?, ketepatan_tempo),
+      catatan_bidang3 = COALESCE(?, catatan_bidang3),
+      catatan_umum = COALESCE(?, catatan_umum),
+      rencana_tindak_lanjut = COALESCE(?, rencana_tindak_lanjut),
       updated_at = datetime('now')
     WHERE id = ?
-  `).bind(body.nilai_hafalan, body.nilai_bacaan, body.catatan, id).run();
+  `).bind(
+    body.jadwal_id, body.surat_nomor, body.dari_ayat, body.sampai_ayat,
+    body.status_hafalan, body.kelancaran, body.ketepatan_ayat, body.murojaah_sambung, body.konsistensi_hafalan,
+    body.catatan_bidang1, body.makhorijul_huruf, body.sifatul_huruf, body.ahkamul_huruf, body.ahkamul_madd,
+    body.catatan_bidang2, body.ahkamul_waqfi, body.adabut_tilawah, body.kerapihan_bacaan, body.ketepatan_tempo,
+    body.catatan_bidang3, body.catatan_umum, body.rencana_tindak_lanjut, id
+  ).run();
 
-  return success({ message: 'Nilai berhasil diupdate' });
+  // Hitung total_nilai
+  const updated = await env.DB.prepare('SELECT * FROM dauroh_nilai WHERE id = ?').bind(id).first<Row>();
+  const totalNilai = updated ? 
+    (40 - ((updated.kelancaran as number) || 0) - ((updated.ketepatan_ayat as number) || 0) - ((updated.murojaah_sambung as number) || 0) - ((updated.konsistensi_hafalan as number) || 0)) +
+    (30 - ((updated.makhorijul_huruf as number) || 0) - ((updated.sifatul_huruf as number) || 0) - ((updated.ahkamul_huruf as number) || 0) - ((updated.ahkamul_madd as number) || 0)) +
+    (30 - ((updated.ahkamul_waqfi as number) || 0) - ((updated.adabut_tilawah as number) || 0) - ((updated.kerapihan_bacaan as number) || 0) - ((updated.ketepatan_tempo as number) || 0))
+    : null;
+
+  return success({ 
+    id, 
+    message: 'Nilai berhasil diupdate',
+    total_nilai: totalNilai
+  });
 }

@@ -63,12 +63,12 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
                   else
                     ..._program.map((p) => _buildProgramCard(p)),
                   const SizedBox(height: 24),
-                  _buildSectionTitle('Nilai Dauroh'),
+                  _buildSectionTitle('Riwayat Penilaian'),
                   const SizedBox(height: 12),
                   if (_nilai.isEmpty)
-                    _buildEmptyCard('Belum ada nilai')
+                    _buildEmptyCard('Belum ada penilaian')
                   else
-                    _buildNilaiTable(),
+                    ..._nilai.map((n) => _buildNilaiCard(n)),
                 ],
               ),
             ),
@@ -94,7 +94,7 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
         child: Center(
           child: Text(
             message,
-            style: const TextStyle(        color: AppTheme.grey500, fontSize: 14),
+            style: const TextStyle(color: AppTheme.grey500, fontSize: 14),
           ),
         ),
       ),
@@ -187,51 +187,205 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
     );
   }
 
-  Widget _buildNilaiTable() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columnSpacing: 16,
-          headingRowColor: WidgetStateProperty.all(AppTheme.primary.withAlpha(25)),
-          columns: const [
-            DataColumn(label: Text('Program', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('Jenis', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('Hafalan', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('Bacaan', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('Catatan', style: TextStyle(fontWeight: FontWeight.bold))),
-          ],
-          rows: _nilai.map((n) {
-            final nama = n['nama_program']?.toString() ?? '-';
-            final jenis = n['jenis_dauroh']?.toString() ?? '-';
-            final hafalan = n['nilai_hafalan'];
-            final bacaan = n['nilai_bacaan'];
-            final catatan = n['catatan']?.toString() ?? '-';
+  Widget _buildNilaiCard(Map<String, dynamic> nilai) {
+    final program = nilai['nama_program']?.toString() ?? '-';
+    final surat = nilai['surat_nama']?.toString() ?? '-';
+    final dariAyat = nilai['dari_ayat']?.toString() ?? '-';
+    final sampaiAyat = nilai['sampai_ayat']?.toString() ?? '-';
+    final status = nilai['status_hafalan']?.toString() ?? '-';
+    final totalNilai = nilai['total_nilai'];
+    final bidang1 = nilai['nilai_bidang1'];
+    final bidang2 = nilai['nilai_bidang2'];
+    final bidang3 = nilai['nilai_bidang3'];
+    final catatan = nilai['catatan_umum']?.toString();
+    final musyrifah = nilai['musyrifah_nama']?.toString() ?? '-';
+    final tanggal = nilai['created_at']?.toString() ?? '-';
 
-            return DataRow(cells: [
-              DataCell(Text(nama, style: const TextStyle(fontSize: 13))),
-              DataCell(Text(jenis, style: const TextStyle(fontSize: 13))),
-              DataCell(Text(
-                hafalan != null ? hafalan.toString() : '-',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: hafalan != null ? FontWeight.bold : FontWeight.normal,
-                  color: hafalan != null ? AppTheme.primary : AppTheme.grey500,
+    // Status color
+    Color statusColor;
+    switch (status) {
+      case 'mengulang':
+        statusColor = AppTheme.orange;
+        break;
+      case 'melanjutkan':
+        statusColor = AppTheme.primary;
+        break;
+      case 'selesai':
+        statusColor = Colors.green;
+        break;
+      default:
+        statusColor = AppTheme.grey500;
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Program: $program',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Surat: $surat (Ayat $dariAyat-$sampaiAyat)',
+                        style: const TextStyle(fontSize: 13, color: AppTheme.grey600),
+                      ),
+                    ],
+                  ),
                 ),
-              )),
-              DataCell(Text(
-                bacaan != null ? bacaan.toString() : '-',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: bacaan != null ? FontWeight.bold : FontWeight.normal,
-                  color: bacaan != null ? AppTheme.primary : AppTheme.grey500,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: statusColor.withAlpha(25),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    status.toUpperCase(),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor),
+                  ),
                 ),
-              )),
-              DataCell(Text(catatan, style: const TextStyle(fontSize: 13))),
-            ]);
-          }).toList(),
+              ],
+            ),
+            const Divider(height: 20),
+            Row(
+              children: [
+                _buildNilaiChip('Bidang 1', bidang1, 40),
+                const SizedBox(width: 8),
+                _buildNilaiChip('Bidang 2', bidang2, 30),
+                const SizedBox(width: 8),
+                _buildNilaiChip('Bidang 3', bidang3, 30),
+                const Spacer(),
+                _buildTotalNilai(totalNilai),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.person_outline, size: 14, color: AppTheme.grey500),
+                const SizedBox(width: 4),
+                Text(
+                  'Dinilai oleh: $musyrifah',
+                  style: const TextStyle(fontSize: 12, color: AppTheme.grey500),
+                ),
+                const Spacer(),
+                Icon(Icons.calendar_today_outlined, size: 14, color: AppTheme.grey500),
+                const SizedBox(width: 4),
+                Text(
+                  tanggal.length > 10 ? tanggal.substring(0, 10) : tanggal,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.grey500),
+                ),
+              ],
+            ),
+            if (catatan != null && catatan.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.grey50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Catatan:',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.grey600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      catatan,
+                      style: const TextStyle(fontSize: 12, color: AppTheme.grey700),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildNilaiChip(String label, dynamic nilai, int max) {
+    final nilaiNum = nilai != null ? (nilai as num).toDouble() : null;
+    Color color = AppTheme.grey600;
+    if (nilaiNum != null) {
+      final percentage = (nilaiNum / max) * 100;
+      if (percentage >= 80) {
+        color = AppTheme.primary;
+      } else if (percentage >= 60) {
+        color = AppTheme.orange;
+      } else {
+        color = AppTheme.error;
+      }
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withAlpha(25),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontSize: 10, color: color),
+          ),
+          Text(
+            nilaiNum?.toStringAsFixed(0) ?? '-',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color),
+          ),
+          Text(
+            '/ $max',
+            style: TextStyle(fontSize: 10, color: color.withAlpha(150)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTotalNilai(dynamic nilai) {
+    final nilaiNum = nilai != null ? (nilai as num).toDouble() : null;
+    Color color = AppTheme.grey600;
+    if (nilaiNum != null) {
+      if (nilaiNum >= 80) {
+        color = AppTheme.primary;
+      } else if (nilaiNum >= 60) {
+        color = AppTheme.orange;
+      } else {
+        color = AppTheme.error;
+      }
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'TOTAL',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white),
+          ),
+          Text(
+            nilaiNum?.toStringAsFixed(0) ?? '-',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+          ),
+        ],
       ),
     );
   }

@@ -6,8 +6,10 @@ class DaurohSantriService {
     return (response['data'] as List).cast<Map<String, dynamic>>();
   }
 
-  Future<List<Map<String, dynamic>>> getNilai() async {
-    final response = await ApiClient.get('/siswa/dauroh/nilai');
+  Future<List<Map<String, dynamic>>> getNilai({String? programId}) async {
+    final queryParams = <String, String>{};
+    if (programId != null) queryParams['program_id'] = programId;
+    final response = await ApiClient.get('/siswa/dauroh/nilai', queryParams: queryParams);
     return (response['data'] as List).cast<Map<String, dynamic>>();
   }
 
