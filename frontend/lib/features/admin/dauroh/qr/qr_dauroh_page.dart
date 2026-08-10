@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -93,14 +94,14 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
       version: QrVersions.auto,
       eyeStyle: const QrEyeStyle(
         eyeShape: QrEyeShape.square,
-        color: PdfColors.black,
+        color: Colors.black,
       ),
       dataModuleStyle: const QrDataModuleStyle(
         dataModuleShape: QrDataModuleShape.square,
-        color: PdfColors.black,
+        color: Colors.black,
       ),
     ).toImage(300);
-    final byteData = await qrImage.toByteData(format: ImageByteFormat.png);
+    final byteData = await qrImage.toByteData(format: ui.ImageByteFormat.png);
     final qrBytes = byteData!.buffer.asUint8List();
 
     pdf.addPage(
@@ -119,7 +120,7 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
           pw.Center(
             child: pw.Text(
               'MA Persis Garut',
-              style: pw.TextStyle(fontSize: 14, color: PdfColors.grey600),
+              style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey600),
             ),
           ),
           pw.SizedBox(height: 30),
@@ -186,7 +187,7 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
       children: [
         pw.SizedBox(
           width: 100,
-          child: pw.Text(label, style: pw.TextStyle(fontSize: 11, color: PdfColors.grey600)),
+          child: pw.Text(label, style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600)),
         ),
         pw.Expanded(
           child: pw.Text(value, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
