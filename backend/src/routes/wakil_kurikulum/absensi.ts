@@ -25,7 +25,7 @@ export async function handleAbsensiWK(request: Request, env: Env, url: URL): Pro
     const rows = await env.DB.prepare(
       `SELECT a.*, g.nama as guru_nama, g.nip as guru_nip
        FROM absensi_guru a LEFT JOIN guru g ON a.guru_id = g.id
-       ${where} ORDER BY a.tanggal DESC, g.nama LIMIT ? OFFSET ?`
+       ${where} ORDER BY g.nip ASC, a.tanggal DESC LIMIT ? OFFSET ?`
     ).bind(...bindings).all();
 
     return success({ items: rows.results, pagination: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) } });
@@ -57,7 +57,7 @@ export async function handleAbsensiWK(request: Request, env: Env, url: URL): Pro
        LEFT JOIN siswa s ON a.siswa_id = s.id
        LEFT JOIN kelas k ON a.kelas_id = k.id
        LEFT JOIN mata_pelajaran mp ON a.mata_pelajaran_id = mp.id
-       ${where} ORDER BY a.tanggal DESC, k.nama, s.nama LIMIT ? OFFSET ?`
+       ${where} ORDER BY s.nis ASC, a.tanggal DESC LIMIT ? OFFSET ?`
     ).bind(...bindings).all();
 
     return success({ items: rows.results, pagination: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) } });

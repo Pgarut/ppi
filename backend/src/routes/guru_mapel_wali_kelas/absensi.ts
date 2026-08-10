@@ -111,7 +111,7 @@ export async function handleAbsensiGuru(request: Request, env: Env, user: UserPa
       FROM absensi_siswa a
       JOIN siswa s ON a.siswa_id = s.id
       WHERE a.tanggal = ? AND a.kelas_id = ? AND a.mata_pelajaran_id IS ? AND a.jam IS ? AND a.diinput_oleh = ?
-      ORDER BY s.nama
+             ORDER BY s.nis ASC
     `).bind(tanggal, parseInt(kelasId), mapelId ? parseInt(mapelId) : null, jam || null, user.guru_id).all();
 
     return success({ items: rows.results });
@@ -190,7 +190,7 @@ export async function handleAbsensiGuru(request: Request, env: Env, user: UserPa
     if (!kelasId) return badRequest('kelas_id diperlukan');
 
     const siswa = await env.DB.prepare(
-      "SELECT id, nis, nama FROM siswa WHERE kelas_id = ? AND status = 'aktif' ORDER BY nama"
+      "SELECT id, nis, nama FROM siswa WHERE kelas_id = ? AND status = 'aktif' ORDER BY nis ASC"
     ).bind(parseInt(kelasId)).all();
 
     let existingAbsensi: Record<number, { status: string; keterangan?: string }> = {};

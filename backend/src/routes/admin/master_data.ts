@@ -1012,7 +1012,7 @@ export async function handleGuruBKList(request: Request, env: Env, _user: UserPa
     SELECT g.id, g.nip, g.nama, g.jabatan
     FROM guru g
     WHERE g.jabatan LIKE '%guru_bk%'
-    ORDER BY g.nama
+    ORDER BY g.nip ASC
   `).all();
 
   return success(rows.results);

@@ -91,7 +91,7 @@ async function handleMonitoringNilai(env: Env, url: URL): Promise<Response> {
      LEFT JOIN tingkat t ON k.tingkat_id = t.id
      JOIN dauroh_program dp ON dn.program_id = dp.id
      ${whereClause}
-     ORDER BY k.nama, s.nama
+     ORDER BY s.nis ASC
      LIMIT ? OFFSET ?`
   ).bind(...params, perPage, offset).all();
 

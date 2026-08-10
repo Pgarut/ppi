@@ -73,7 +73,7 @@ class DaurohPdfExport {
                 ),
                 pw.SizedBox(height: 4),
                 pw.Text(
-                  'PPI - Pondok Pesantren Islam',
+                  'MA Persis Garut',
                   style: const pw.TextStyle(fontSize: 12, color: PdfColors.white),
                 ),
               ],

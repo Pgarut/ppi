@@ -120,7 +120,7 @@ class QrAbsensiPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Madrasah PPI',
+            'MA Persis Garut',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,

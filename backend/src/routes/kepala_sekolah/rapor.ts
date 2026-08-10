@@ -18,7 +18,7 @@ export async function handleRaporKS(request: Request, env: Env, url: URL): Promi
   if (kelasId) { conditions.push('nr.kelas_id = ?'); bindings.push(parseInt(kelasId)); }
   if (semesterId) { conditions.push('nr.semester_id = ?'); bindings.push(parseInt(semesterId)); }
   if (conditions.length > 0) query += ' WHERE ' + conditions.join(' AND ');
-  query += ' ORDER BY s.nama';
+  query += ' ORDER BY s.nis ASC';
 
   const rows = await (bindings.length > 0
     ? env.DB.prepare(query).bind(...bindings).all()

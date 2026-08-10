@@ -64,7 +64,7 @@ export async function handleWaliKelas(request: Request, env: Env, user: UserPayl
         GROUP BY siswa_id
       ) p ON p.siswa_id = s.id
       WHERE s.kelas_id = ? AND s.status = 'aktif'
-      ORDER BY s.nama
+      ORDER BY s.nis ASC
     `).bind(...absensiBindings, waliKelas.id, waliKelas.id).all<{
       id: number; nis: string; nisn: string | null; nama: string;
       jenis_kelamin: string; kelas_id: number; kelas_nama: string;

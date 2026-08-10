@@ -64,7 +64,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
        INNER JOIN guru_kelas gk ON g.id = gk.guru_id AND gk.kelas_id = ?
        INNER JOIN guru_mapel gm ON g.id = gm.guru_id AND gm.mata_pelajaran_id = ?
        WHERE g.status_aktif = 1
-       ORDER BY g.nama`
+       ORDER BY g.nip ASC`
     ).bind(parseInt(kelasId), parseInt(mapelId)).all();
 
     return success(rows.results);
@@ -95,7 +95,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
        LEFT JOIN guru_mata_pelajaran gmp ON g.id = gmp.guru_id AND gmp.semester_id = ?
        WHERE g.status_aktif = 1
        GROUP BY g.id
-       ORDER BY g.nama`
+       ORDER BY g.nip ASC`
     ).bind(parseInt(semesterId)).all();
 
     return success(guruList.results);
@@ -426,7 +426,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
        FROM guru g
        LEFT JOIN guru_mata_pelajaran gmp ON g.id = gmp.guru_id AND gmp.semester_id = ?
        WHERE g.status_aktif = 1
-       ORDER BY g.nama`
+       ORDER BY g.nip ASC`
     ).bind(parseInt(semesterId), parseInt(semesterId)).all();
     return success(rows.results);
   }
@@ -440,7 +440,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       FROM guru g
       LEFT JOIN kelas k ON k.wali_kelas_id = g.id
       WHERE g.jabatan LIKE '%wali_kelas%'
-      ORDER BY g.nama
+      ORDER BY g.nip ASC
     `).all();
     return success(rows.results);
   }

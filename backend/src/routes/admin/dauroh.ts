@@ -339,7 +339,7 @@ async function listMusyrifah(env: Env, url: URL) {
            (SELECT COUNT(*) FROM dauroh_jadwal j WHERE j.musyrifah_1_id = m.id OR j.musyrifah_2_id = m.id) as jumlah_jadwal
     FROM dauroh_musyrifah m
     ${where}
-    ORDER BY m.nama ASC
+    ORDER BY m.nipmus ASC
     LIMIT ? OFFSET ?
   `).bind(...bindings).all();
 
@@ -748,7 +748,7 @@ async function handleMonitoringAbsensi(request: Request, env: Env, url: URL) {
     JOIN dauroh_jadwal j ON am.jadwal_id = j.id
     JOIN dauroh_program p ON j.program_id = p.id
     ${where}
-    ORDER BY am.waktu_scan ASC
+    ORDER BY m.nipmus ASC
   `).bind(...bindings).all();
 
   // Rekap
@@ -822,7 +822,7 @@ async function handleMonitoringNilai(request: Request, env: Env, url: URL) {
     LEFT JOIN dauroh_surat ds ON n.surat_nomor = ds.nomor
     LEFT JOIN dauroh_musyrifah dm ON n.diinput_oleh = dm.id
     ${where}
-    ORDER BY k.nama, s.nama
+    ORDER BY s.nis ASC
   `).bind(...bindings).all();
 
   return success(rows.results);

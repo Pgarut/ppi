@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../services/dauroh_service.dart';
 import '../widgets/dauroh_form_widgets.dart';
@@ -74,29 +78,120 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
     }
   }
 
-  void _printQR() {
+  Future<void> _printQR() async {
     final token = _qrInfo?['token'] ?? 'PPI_DAUROH_QR_2026';
     final jadwal = _generatedQR?['jadwal'];
 
-    final sb = StringBuffer();
-    sb.writeln('╔══════════════════════════════╗');
-    sb.writeln('║    ABSSENSI DAUROH - PPI     ║');
-    sb.writeln('╠══════════════════════════════╣');
-    sb.writeln('║                              ║');
-    sb.writeln('║  Token QR:                   ║');
-    sb.writeln('║  $token  ║');
-    sb.writeln('║                              ║');
-    if (jadwal != null) {
-      sb.writeln('║  Program: ${jadwal['program'] ?? '-'}');
-      sb.writeln('║  Musyrifah: ${jadwal['musyrifah'] ?? '-'}');
-      sb.writeln('║  ${jadwal['hari'] ?? '-'}, ${jadwal['jam_mulai'] ?? ''} - ${jadwal['jam_selesai'] ?? ''}');
-    }
-    sb.writeln('║                              ║');
-    sb.writeln('╚══════════════════════════════╝');
+    final pdf = pw.Document();
+    final theme = pw.ThemeData.withFont(
+      base: await PdfGoogleFonts.nunitoRegular(),
+      bold: await PdfGoogleFonts.nunitoBold(),
+    );
 
-    Clipboard.setData(ClipboardData(text: sb.toString()));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Info QR disalin ke clipboard. Paste di aplikasi cetak.')),
+    final qrImage = await QrPainter(
+      data: token,
+      version: QrVersions.auto,
+      eyeStyle: const QrEyeStyle(
+        eyeShape: QrEyeShape.square,
+        color: PdfColors.black,
+      ),
+      dataModuleStyle: const QrDataModuleStyle(
+        dataModuleShape: QrDataModuleShape.square,
+        color: PdfColors.black,
+      ),
+    ).toImage(300);
+    final byteData = await qrImage.toByteData(format: ImageByteFormat.png);
+    final qrBytes = byteData!.buffer.asUint8List();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        theme: theme,
+        margin: const pw.EdgeInsets.all(40),
+        build: (context) => [
+          pw.Center(
+            child: pw.Text(
+              'ABSENSI DAUROH',
+              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Center(
+            child: pw.Text(
+              'MA Persis Garut',
+              style: pw.TextStyle(fontSize: 14, color: PdfColors.grey600),
+            ),
+          ),
+          pw.SizedBox(height: 30),
+          pw.Center(
+            child: pw.Container(
+              width: 200,
+              height: 200,
+              child: pw.Image(pw.MemoryImage(qrBytes)),
+            ),
+          ),
+          pw.SizedBox(height: 20),
+          pw.Center(
+            child: pw.Text(
+              'Token: $token',
+              style: pw.TextStyle(
+                fontSize: 14,
+                fontWeight: pw.FontWeight.bold,
+                letterSpacing: 2,
+              ),
+            ),
+          ),
+          if (jadwal != null) ...[
+            pw.SizedBox(height: 24),
+            pw.Container(
+              width: double.infinity,
+              padding: const pw.EdgeInsets.all(16),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey300),
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Informasi Jadwal',
+                    style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+                  ),
+                  pw.SizedBox(height: 8),
+                  _pdfInfoRow('Program', '${jadwal['program'] ?? '-'}'),
+                  pw.SizedBox(height: 4),
+                  _pdfInfoRow('Musyrifah', '${jadwal['musyrifah'] ?? '-'}'),
+                  pw.SizedBox(height: 4),
+                  _pdfInfoRow('Jadwal', '${jadwal['hari'] ?? '-'}, ${jadwal['jam_mulai'] ?? ''} - ${jadwal['jam_selesai'] ?? ''}'),
+                ],
+              ),
+            ),
+          ],
+          pw.SizedBox(height: 40),
+          pw.Center(
+            child: pw.Text(
+              'Pindai QR Code ini untuk melakukan absensi',
+              style: pw.TextStyle(fontSize: 11, color: PdfColors.grey500, fontStyle: pw.FontStyle.italic),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (format) => pdf.save());
+  }
+
+  pw.Widget _pdfInfoRow(String label, String value) {
+    return pw.Row(
+      children: [
+        pw.SizedBox(
+          width: 100,
+          child: pw.Text(label, style: pw.TextStyle(fontSize: 11, color: PdfColors.grey600)),
+        ),
+        pw.Expanded(
+          child: pw.Text(value, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+        ),
+      ],
     );
   }
 
@@ -322,37 +417,41 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'ABSSENSI DAUROH',
+              'ABSENSI DAUROH',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text('PPI Madrasah', style: TextStyle(fontSize: 14, color: AppTheme.grey600)),
+            const Text('MA Persis Garut', style: TextStyle(fontSize: 14, color: AppTheme.grey600)),
             const SizedBox(height: 24),
-            // Simulated QR code (token text as placeholder)
-            Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                border: Border.all(color: AppTheme.grey800, width: 2),
-                borderRadius: BorderRadius.circular(8),
+            QrImageView(
+              data: token,
+              version: QrVersions.auto,
+              size: 200,
+              backgroundColor: Colors.white,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: AppTheme.grey800,
               ),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.qr_code_2, size: 100, color: AppTheme.grey800),
-                    const SizedBox(height: 8),
-                    Text(
-                      token,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontFamily: 'monospace',
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: AppTheme.grey800,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.grey50,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppTheme.grey200),
+              ),
+              child: Text(
+                token,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
                 ),
               ),
             ),

@@ -168,7 +168,7 @@ export async function handleNilaiWK(request: Request, env: Env, user: UserPayloa
        FROM guru g
        LEFT JOIN nilai n ON g.id = n.diinput_oleh
        WHERE g.status_aktif = 1
-       GROUP BY g.id ORDER BY g.nama`
+       GROUP BY g.id ORDER BY g.nip ASC`
     ).all();
     return success(rows.results);
   }

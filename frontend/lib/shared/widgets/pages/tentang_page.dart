@@ -22,13 +22,13 @@ class TentangPage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               const Text(
-                'Sistem Informasi Madrasah PPI',
+                'Sistem Informasi MA Persis Garut',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                'Yayasan Pendidikan Pondok Pesantren Islam',
+                'Yayasan Pendidikan MA Persis Garut',
                 style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 textAlign: TextAlign.center,
               ),
@@ -46,7 +46,7 @@ class TentangPage extends StatelessWidget {
         const SizedBox(height: 32),
         Center(
           child: Text(
-            '© 2024 - 2026 Yayasan PPI. All rights reserved.',
+            '© 2024 - 2026 MA Persis Garut. All rights reserved.',
             style: TextStyle(color: Colors.grey[400], fontSize: 12),
           ),
         ),

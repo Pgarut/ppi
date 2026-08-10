@@ -387,7 +387,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildFooter() {
     return const Center(
       child: Text(
-        'Sistem Informasi Madrasah PPI',
+        'Sistem Informasi MA Persis Garut',
         style: TextStyle(color: AppTheme.grey400, fontSize: 12),
       ),
     );

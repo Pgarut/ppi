@@ -36,7 +36,7 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
        FROM siswa s
        LEFT JOIN kelas k ON s.kelas_id = k.id
        WHERE s.kelas_id = ? AND s.tahun_ajaran_id = ? AND s.status = 'aktif'
-       ORDER BY s.nama`
+       ORDER BY s.nis ASC`
     ).bind(kelasIdNum, taIdNum).all();
     return success(rows.results);
   }
@@ -58,7 +58,7 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
        FROM siswa s
        LEFT JOIN kelas k ON s.kelas_id = k.id
        WHERE s.kelas_id = ? AND s.tahun_ajaran_id = ? AND s.status = 'aktif'
-       ORDER BY s.nama`
+       ORDER BY s.nis ASC`
     ).bind(kelasIdNum2, taIdNum2).all();
 
     const siswaList = siswaRows.results as Array<Record<string, unknown>>;

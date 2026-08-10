@@ -24,7 +24,7 @@ export async function handleMonitoringBK(request: Request, env: Env, url: URL): 
        LEFT JOIN absensi_siswa a ON a.siswa_id = s.id
        ${where}
        GROUP BY s.id, s.nis, s.nisn, s.nama, s.kelas_id, k.nama
-       ORDER BY s.nama`
+       ORDER BY s.nis ASC`
     ).bind(...bindings).all();
 
     return success(rows.results);

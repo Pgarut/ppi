@@ -32,7 +32,7 @@ export async function handleRaporGuru(request: Request, env: Env, user: UserPayl
     if (!wali) return success({ wali_kelas: null, siswa: [], mapel: [] });
 
     const siswa = await env.DB.prepare(
-      "SELECT id, nis, nisn, nama FROM siswa WHERE kelas_id = ? AND status = 'aktif' ORDER BY nama"
+      "SELECT id, nis, nisn, nama FROM siswa WHERE kelas_id = ? AND status = 'aktif' ORDER BY nis ASC"
     ).bind(wali.id).all();
 
     const mapel = await env.DB.prepare(`

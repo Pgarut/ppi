@@ -21,7 +21,7 @@ export async function handleKonselingBK(request: Request, env: Env, user: UserPa
          JOIN kelas k ON s.kelas_id = k.id
          LEFT JOIN jadwal_konseling jk ON jk.siswa_id = s.id AND jk.guru_bk_id = ?
          WHERE s.kelas_id = ? AND s.status = 'aktif'
-         ORDER BY s.nama`
+         ORDER BY s.nis ASC`
       ).bind(user.guru_id, parseInt(kelasId)).all();
 
       return success(rows.results);
@@ -250,7 +250,7 @@ export async function handleKonselingBK(request: Request, env: Env, user: UserPa
          JOIN kelas k ON s.kelas_id = k.id
          LEFT JOIN bakat_minat bm ON bm.siswa_id = s.id AND bm.guru_bk_id = ?
          WHERE s.kelas_id = ? AND s.status = 'aktif'
-         ORDER BY s.nama`
+         ORDER BY s.nis ASC`
       ).bind(user.guru_id, parseInt(kelasId)).all();
 
       return success(rows.results);
