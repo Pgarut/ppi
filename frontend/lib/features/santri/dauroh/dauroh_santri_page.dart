@@ -271,14 +271,14 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Icon(Icons.person_outline, size: 14, color: AppTheme.grey500),
+                const Icon(Icons.person_outline, size: 14, color: AppTheme.grey500),
                 const SizedBox(width: 4),
                 Text(
                   'Dinilai oleh: $musyrifah',
                   style: const TextStyle(fontSize: 12, color: AppTheme.grey500),
                 ),
                 const Spacer(),
-                Icon(Icons.calendar_today_outlined, size: 14, color: AppTheme.grey500),
+                const Icon(Icons.calendar_today_outlined, size: 14, color: AppTheme.grey500),
                 const SizedBox(width: 4),
                 Text(
                   tanggal.length > 10 ? tanggal.substring(0, 10) : tanggal,

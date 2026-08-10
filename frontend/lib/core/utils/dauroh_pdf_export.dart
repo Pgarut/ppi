@@ -37,14 +37,14 @@ class DaurohPdfExport {
       bold: await PdfGoogleFonts.nunitoBold(),
     );
 
-    final bidang1Max = 40;
-    final bidang2Max = 30;
-    final bidang3Max = 30;
+    const bidang1Max = 40;
+    const bidang2Max = 30;
+    const bidang3Max = 30;
     final b1 = _n(n['nilai_bidang1']);
     final b2 = _n(n['nilai_bidang2']);
     final b3 = _n(n['nilai_bidang3']);
     final total = _n(n['total_nilai']);
-    final totalMax = bidang1Max + bidang2Max + bidang3Max;
+    const totalMax = bidang1Max + bidang2Max + bidang3Max;
     final percent = totalMax > 0 ? (total / totalMax) * 100 : 0.0;
 
     pdf.addPage(
@@ -74,7 +74,7 @@ class DaurohPdfExport {
                 pw.SizedBox(height: 4),
                 pw.Text(
                   'PPI - Pondok Pesantren Islam',
-                  style: pw.TextStyle(fontSize: 12, color: PdfColors.white),
+                  style: const pw.TextStyle(fontSize: 12, color: PdfColors.white),
                 ),
               ],
             ),
@@ -299,10 +299,10 @@ class DaurohPdfExport {
                 '${n['kelas_nama'] ?? '-'}',
                 '${n['surat_nama'] ?? '-'}',
                 '${n['status_hafalan'] ?? '-'}',
-                '${_n(n['nilai_bidang1']).toStringAsFixed(0)}',
-                '${_n(n['nilai_bidang2']).toStringAsFixed(0)}',
-                '${_n(n['nilai_bidang3']).toStringAsFixed(0)}',
-                '${total.toStringAsFixed(0)}',
+                _n(n['nilai_bidang1']).toStringAsFixed(0),
+                _n(n['nilai_bidang2']).toStringAsFixed(0),
+                _n(n['nilai_bidang3']).toStringAsFixed(0),
+                total.toStringAsFixed(0),
               ];
             }).toList(),
           ),
@@ -403,8 +403,8 @@ class DaurohPdfExport {
               ['Kriteria', 'Poin (1-5)', 'Deduction'],
               ...criteria.map((c) => [
                 '${c[0]}',
-                '${(c[1] as double).toStringAsFixed(0)}',
-                '${(c[1] as double).toStringAsFixed(0)}',
+                (c[1] as double).toStringAsFixed(0),
+                (c[1] as double).toStringAsFixed(0),
               ]),
             ],
           ),

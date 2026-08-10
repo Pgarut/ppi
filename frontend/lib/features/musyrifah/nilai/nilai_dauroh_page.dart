@@ -137,7 +137,7 @@ class _NilaiDaurohPageState extends State<NilaiDaurohPage> {
             decoration: BoxDecoration(
               color: theme.cardColor,
               border: Border(
-                bottom: BorderSide(color: theme.dividerColor.withOpacity(0.3)),
+                bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
               ),
             ),
             child: Column(
@@ -323,7 +323,7 @@ class _NilaiDaurohPageState extends State<NilaiDaurohPage> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _statusColor(status).withOpacity(0.12),
+                      color: _statusColor(status).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -338,7 +338,7 @@ class _NilaiDaurohPageState extends State<NilaiDaurohPage> {
                 ],
               ),
               const SizedBox(height: 10),
-              Divider(height: 1, color: theme.dividerColor.withOpacity(0.3)),
+              Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.3)),
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -420,9 +420,9 @@ class _NilaiDaurohPageState extends State<NilaiDaurohPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -432,7 +432,7 @@ class _NilaiDaurohPageState extends State<NilaiDaurohPage> {
                 fontSize: 10, color: color, fontWeight: FontWeight.w600),
           ),
           Text(
-            '${value.toStringAsFixed(1)}',
+            value.toStringAsFixed(1),
             style: TextStyle(
                 fontSize: 14, fontWeight: FontWeight.bold, color: color),
           ),
@@ -460,7 +460,7 @@ class _NilaiDaurohPageState extends State<NilaiDaurohPage> {
             'TOTAL',
             style: TextStyle(
                 fontSize: 9,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 fontWeight: FontWeight.w600),
           ),
           Text(
@@ -504,8 +504,6 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
   List<Map<String, dynamic>> _programList = [];
   String? _selectedProgramId;
 
-  // Jadwal list
-  List<Map<String, dynamic>> _jadwalList = [];
   String? _selectedJadwalId;
 
   // Form fields
@@ -652,20 +650,8 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
 
         _selectedJadwalId = detail['jadwal_id']?.toString();
       });
-
-      // Load jadwal for the program
-      if (widget.existing!['program_id'] != null) {
-        _loadJadwal(widget.existing!['program_id'].toString());
-      }
     } catch (_) {}
     setState(() => _loadingDetail = false);
-  }
-
-  Future<void> _loadJadwal(String programId) async {
-    try {
-      final jadwal = await MusyrifahService.getJadwal(programId: programId);
-      setState(() => _jadwalList = jadwal);
-    } catch (_) {}
   }
 
   void _filterSurat(String query) {
@@ -874,12 +860,12 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
                 ],
               ),
             ),
-            Divider(height: 1, color: theme.dividerColor.withOpacity(0.3)),
+            Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.3)),
 
             // Live total banner
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              color: theme.primaryColor.withOpacity(0.06),
+              color: theme.primaryColor.withValues(alpha: 0.06),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1150,7 +1136,7 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.dividerColor.withOpacity(0.3)),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1184,7 +1170,7 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '$_selectedSuratNama (${_jumlahAyat} ayat)',
+                    '$_selectedSuratNama ($_jumlahAyat ayat)',
                     style: TextStyle(
                         fontWeight: FontWeight.w600, color: Colors.blue[800]),
                   ),
@@ -1210,7 +1196,7 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
           Container(
             constraints: const BoxConstraints(maxHeight: 200),
             decoration: BoxDecoration(
-              border: Border.all(color: theme.dividerColor.withOpacity(0.4)),
+              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
               borderRadius: BorderRadius.circular(8),
             ),
             child: _filteredSurat.isEmpty
@@ -1233,7 +1219,7 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
                         dense: true,
                         leading: CircleAvatar(
                           radius: 16,
-                          backgroundColor: theme.primaryColor.withOpacity(0.1),
+                          backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
                           child: Text('$nomor',
                               style: TextStyle(
                                   fontSize: 12, color: theme.primaryColor)),
@@ -1269,7 +1255,7 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
         borderRadius: BorderRadius.circular(10),
       ),
       child: ExpansionTile(
@@ -1348,7 +1334,7 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 6),
               decoration: BoxDecoration(
-                color: _deductionColor(value).withOpacity(0.1),
+                color: _deductionColor(value).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
