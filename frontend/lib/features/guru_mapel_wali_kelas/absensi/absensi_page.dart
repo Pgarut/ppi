@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../services/guru_service.dart';
 
 class AbsensiPageGuru extends StatelessWidget {
@@ -11,13 +12,9 @@ class AbsensiPageGuru extends StatelessWidget {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF2E7D32), Color(0xFF4CAF50), Color(0xFF66BB6A)],
-            ),
-            borderRadius: BorderRadius.only(
+          decoration: BoxDecoration(
+            gradient: AppTheme.headerGradient,
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(32),
               bottomRight: Radius.circular(32),
             ),
@@ -55,8 +52,8 @@ class AbsensiPageGuru extends StatelessWidget {
                   icon: Icons.edit_note_rounded,
                   title: 'Input Absen',
                   subtitle: 'Isi kehadiran santri per sesi',
-                  color: const Color(0xFF2E7D32),
-                  lightColor: const Color(0xFFE8F5E9),
+                  color: AppTheme.primary,
+                  lightColor: AppTheme.primaryLight,
                   onTap: () => Navigator.of(context).push(_bounceRoute(const _InputAbsensiPage())),
                 ),
                 const SizedBox(height: 20),
@@ -310,7 +307,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: const Text('Absensi berhasil disimpan'),
-          backgroundColor: const Color(0xFF2E7D32),
+          backgroundColor: AppTheme.primary,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: const EdgeInsets.all(16),
@@ -342,7 +339,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Input Absen'),
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -398,7 +395,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
                                 icon: const Icon(Icons.people),
                                 label: const Text('Muat Santri', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF2E7D32),
+                                  backgroundColor: AppTheme.primary,
                                   foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -454,8 +451,8 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
                                 return SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
                                   child: DataTable(
-                                    headingRowColor: WidgetStatePropertyAll(const Color(0xFF2E7D32).withValues(alpha: 0.06)),
-                                    headingTextStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF2E7D32)),
+                                    headingRowColor: WidgetStatePropertyAll(AppTheme.primary.withValues(alpha: 0.06)),
+                                    headingTextStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primary),
                                     columnSpacing: 10, horizontalMargin: 12, dataRowMinHeight: 48, dataRowMaxHeight: 56,
                                     columns: const [
                                       DataColumn(label: Text('No')),
@@ -513,8 +510,8 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
                                               Container(
                                                 width: 26, height: 26,
                                                 alignment: Alignment.center,
-                                                decoration: BoxDecoration(color: const Color(0xFF2E7D32).withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
-                                                child: Text('${i + 1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
+                                                decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
+                                                child: Text('${i + 1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primary)),
                                               ),
                                               const SizedBox(width: 10),
                                               Expanded(
@@ -571,7 +568,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
                             : const Icon(Icons.save_rounded),
                         label: Text(_saving ? 'Menyimpan...' : 'Simpan Absensi', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2E7D32), foregroundColor: Colors.white,
+                          backgroundColor: AppTheme.primary, foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0,
                         ),
                       ),
@@ -880,7 +877,7 @@ class _SectionTitle extends StatelessWidget {
         children: [
           Container(width: 4, height: 20, decoration: BoxDecoration(color: const Color(0xFFF9A825), borderRadius: BorderRadius.circular(2))),
           const SizedBox(width: 10),
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primary)),
         ],
       ),
     );
@@ -897,8 +894,8 @@ class _FormCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
-        border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.08)),
+        boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.08)),
       ),
       padding: const EdgeInsets.all(20),
       child: child,

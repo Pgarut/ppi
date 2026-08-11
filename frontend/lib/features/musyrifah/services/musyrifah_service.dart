@@ -62,6 +62,12 @@ class MusyrifahService {
     await ApiClient.post('/musyrifah/absensi/santri', body: body);
   }
 
+  // ─── SANTRI ────────────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> listSantriByJadwal(int jadwalId) async {
+    final res = await ApiClient.get('/musyrifah/santri', queryParams: {'jadwal_id': '$jadwalId'});
+    return (res['data'] as List).cast<Map<String, dynamic>>();
+  }
+
   // ─── SURAT ──────────────────────────────────────────────────
   static Future<List<Map<String, dynamic>>> listSurat({
     int? juz,

@@ -60,9 +60,14 @@ export async function handleAbsensi(
 
   const { results: stats } = await env.DB.prepare(statsQuery).bind(...statsParams).all();
 
+  const statistik: Record<string, number> = {};
+  for (const row of stats) {
+    statistik[row.status as string] = row.jumlah as number;
+  }
+
   return success({
     data: results,
     pagination: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) },
-    statistik: stats,
+    statistik,
   });
 }

@@ -60,7 +60,14 @@ class _ProfilSantriPageState extends State<ProfilSantriPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(_profil!['nama'] ?? '-', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.person, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Text(_profil!['nama'] ?? '-', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  ],
+                ),
                 const SizedBox(height: 4),
                 Text('NIS: ${_profil!['nis'] ?? '-'}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
                 const SizedBox(height: 4),
@@ -71,7 +78,13 @@ class _ProfilSantriPageState extends State<ProfilSantriPage> {
           const SizedBox(height: 16),
           // Data Pribadi
           _buildSection('Data Pribadi', [
+            _buildRowWithIcon('Nama Santri', _profil!['nama'] ?? '-', Icons.person),
+            _buildRow('NIS', _profil!['nis'] ?? '-'),
             _buildRow('NISN', _profil!['nisn'] ?? '-'),
+            _buildRow('Kelas', _profil!['kelas']?['nama'] ?? '-'),
+            _buildRow('Tingkat', _profil!['kelas']?['tingkat'] ?? '-'),
+            _buildRow('Wali Kelas', _profil!['wali_kelas'] ?? '-'),
+            _buildRow('Tahun Ajaran', _profil!['tahun_ajaran'] ?? '-'),
             _buildRow('Jenis Kelamin', _profil!['jenis_kelamin'] == 'L' ? 'Laki-laki' : 'Perempuan'),
             _buildRow('Tempat Lahir', _profil!['tempat_lahir'] ?? '-'),
             _buildRow('Tanggal Lahir', _profil!['tanggal_lahir'] ?? '-'),
@@ -142,6 +155,30 @@ class _ProfilSantriPageState extends State<ProfilSantriPage> {
           SizedBox(
             width: 140,
             child: Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRowWithIcon(String label, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Row(
+              children: [
+                Icon(icon, size: 16, color: AppTheme.primary),
+                const SizedBox(width: 6),
+                Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+              ],
+            ),
           ),
           Expanded(
             child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),

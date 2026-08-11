@@ -86,10 +86,20 @@ class _AbsensiSantriPageState extends State<AbsensiSantriPage> {
                     child: DropdownButton<String>(
                       value: _bulan,
                       isExpanded: true,
-                      items: List.generate(12, (i) => DropdownMenuItem(
-                        value: '${i + 1}',
-                        child: Text('${i + 1}', style: const TextStyle(fontSize: 13)),
-                      )).toList(),
+                      items: const [
+                        DropdownMenuItem(value: '1', child: Text('Januari', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: '2', child: Text('Februari', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: '3', child: Text('Maret', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: '4', child: Text('April', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: '5', child: Text('Mei', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: '6', child: Text('Juni', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: '7', child: Text('Juli', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: '8', child: Text('Agustus', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: '9', child: Text('September', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: '10', child: Text('Oktober', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: '11', child: Text('November', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: '12', child: Text('Desember', style: TextStyle(fontSize: 13))),
+                      ],
                       onChanged: (v) { if (v != null) { setState(() => _bulan = v); _loadAbsensi(); } },
                     ),
                   ),
@@ -108,9 +118,10 @@ class _AbsensiSantriPageState extends State<AbsensiSantriPage> {
                     child: DropdownButton<String>(
                       value: _tahun,
                       isExpanded: true,
-                      items: [DateTime.now().year.toString(), (DateTime.now().year - 1).toString()].map((t) => DropdownMenuItem(
-                        value: t, child: Text(t, style: const TextStyle(fontSize: 13)),
-                      )).toList(),
+                      items: List.generate(5, (i) {
+                        final year = (DateTime.now().year - i).toString();
+                        return DropdownMenuItem(value: year, child: Text(year, style: const TextStyle(fontSize: 13)));
+                      }).toList(),
                       onChanged: (v) { if (v != null) { setState(() => _tahun = v); _loadAbsensi(); } },
                     ),
                   ),

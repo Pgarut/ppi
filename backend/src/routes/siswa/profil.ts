@@ -4,11 +4,13 @@ import { success, error } from '../../utils/response';
 export async function handleProfil(env: Env, user: UserPayload): Promise<Response> {
   const { results } = await env.DB.prepare(
     `SELECT s.*, k.nama as kelas_nama, t.nama as tingkat_nama,
-            ta.nama as tahun_ajaran_nama
+            ta.nama as tahun_ajaran_nama,
+            g.nama as wali_kelas_nama
      FROM siswa s
      LEFT JOIN kelas k ON s.kelas_id = k.id
      LEFT JOIN tingkat t ON k.tingkat_id = t.id
      LEFT JOIN tahun_ajaran ta ON k.tahun_ajaran_id = ta.id
+     LEFT JOIN guru g ON k.wali_kelas_id = g.id
      WHERE s.id = ?`
   ).bind(user.siswa_id).all();
 
@@ -33,6 +35,7 @@ export async function handleProfil(env: Env, user: UserPayload): Promise<Respons
       nama: siswa.kelas_nama,
       tingkat: siswa.tingkat_nama,
     },
+    wali_kelas: siswa.wali_kelas_nama ?? '-',
     tahun_ajaran: siswa.tahun_ajaran_nama,
   });
 }

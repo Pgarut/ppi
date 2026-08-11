@@ -138,10 +138,17 @@ class ApiClient {
 
       if (refreshResponse.statusCode == 200) {
         final refreshBody = jsonDecode(refreshResponse.body) as Map<String, dynamic>;
-        final data = refreshBody['data'] as Map<String, dynamic>;
-        final newToken = data['token'] as String;
+        final data = refreshBody['data'] as Map<String, dynamic>?;
+        if (data == null) throw ApiException('Response refresh tidak valid');
+
+        final newToken = data['token'] as String?;
+        if (newToken == null) throw ApiException('Token baru tidak ditemukan');
+
+        final newRefreshToken = data['refresh_token'] as String?;
+        if (newRefreshToken == null) throw ApiException('Refresh token baru tidak ditemukan');
+
         await saveToken(newToken);
-        await saveRefreshToken(data['refresh_token'] as String);
+        await saveRefreshToken(newRefreshToken);
         await _saveTokenExpiry(newToken);
         _isRefreshing = false;
         AppLogger.info('[ApiClient] Proactive refresh berhasil');
@@ -280,10 +287,32 @@ class ApiClient {
 
         if (refreshResponse.statusCode == 200) {
           final refreshBody = jsonDecode(refreshResponse.body) as Map<String, dynamic>;
-          final data = refreshBody['data'] as Map<String, dynamic>;
-          final newToken = data['token'] as String;
+          final data = refreshBody['data'] as Map<String, dynamic>?;
+          if (data == null) {
+            _isRefreshing = false;
+            await clearTokens();
+            onSessionExpired?.call();
+            throw ApiException('Response refresh tidak valid', statusCode: 401);
+          }
+
+          final newToken = data['token'] as String?;
+          if (newToken == null) {
+            _isRefreshing = false;
+            await clearTokens();
+            onSessionExpired?.call();
+            throw ApiException('Token baru tidak ditemukan', statusCode: 401);
+          }
+
+          final newRefreshToken = data['refresh_token'] as String?;
+          if (newRefreshToken == null) {
+            _isRefreshing = false;
+            await clearTokens();
+            onSessionExpired?.call();
+            throw ApiException('Refresh token baru tidak ditemukan', statusCode: 401);
+          }
+
           await saveToken(newToken);
-          await saveRefreshToken(data['refresh_token'] as String);
+          await saveRefreshToken(newRefreshToken);
           await _saveTokenExpiry(newToken);
 
           _isRefreshing = false;

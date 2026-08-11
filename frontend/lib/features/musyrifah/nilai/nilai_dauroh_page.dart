@@ -504,6 +504,12 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
   List<Map<String, dynamic>> _programList = [];
   String? _selectedProgramId;
 
+  // Santri list for new input
+  List<Map<String, dynamic>> _santriList = [];
+  String? _selectedSantriId;
+
+  // Jadwal list for new input
+  List<Map<String, dynamic>> _jadwalList = [];
   String? _selectedJadwalId;
 
   // Form fields
@@ -581,8 +587,6 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
     // Load programs for new input
     if (widget.existing == null) {
       try {
-        // Use a dummy call or service to get programs
-        // We can infer programs from listNilai or have a dedicated endpoint
         final nilaiData = await MusyrifahService.listNilai();
         final Map<String, Map<String, dynamic>> progMap = {};
         for (final item in nilaiData) {
@@ -596,6 +600,13 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
         }
         setState(() {
           _programList = progMap.values.toList();
+        });
+      } catch (_) {}
+
+      try {
+        final jadwalData = await MusyrifahService.getJadwal();
+        setState(() {
+          _jadwalList = jadwalData;
         });
       } catch (_) {}
     }
@@ -699,6 +710,18 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
       );
       return;
     }
+    if (widget.existing == null && _selectedSantriId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih santri terlebih dahulu')),
+      );
+      return;
+    }
+    if (widget.existing == null && _selectedProgramId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih program terlebih dahulu')),
+      );
+      return;
+    }
 
     final dariAyat = int.tryParse(_dariAyatCtrl.text) ?? 1;
     final sampaiAyat = int.tryParse(_sampaiAyatCtrl.text) ?? 1;
@@ -767,11 +790,11 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
         );
       } else {
         await MusyrifahService.inputNilai(
-          programId: _selectedProgramId as int,
-          santriId: widget.existing?['santri_id'] as int? ?? 0,
+          programId: int.parse(_selectedProgramId!),
+          santriId: int.parse(_selectedSantriId!),
           suratNomor: params['suratNomor'] as int? ?? 0,
           statusHafalan: params['statusHafalan'] as String? ?? 'melanjutkan',
-          jadwalId: params['jadwalId'] as int?,
+          jadwalId: _selectedJadwalId != null ? int.parse(_selectedJadwalId!) : null,
           dariAyat: params['dariAyat'] as int?,
           sampaiAyat: params['sampaiAyat'] as int?,
           kelancaran: params['kelancaran'] as int?,
@@ -908,8 +931,66 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
                                       child: Text(p['nama'] ?? ''),
                                     ))
                                 .toList(),
+                            onChanged: (v) {
+                              setState(() {
+                                _selectedProgramId = v;
+                                _selectedJadwalId = null;
+                                _selectedSantriId = null;
+                                _santriList = [];
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 14),
+
+                          // --- Jadwal Selector ---
+                          DropdownButtonFormField<String>(
+                            value: _selectedJadwalId,
+                            isDense: true,
+                            decoration: _inputDecoration('Jadwal *'),
+                            items: _jadwalList
+                                .where((j) => _selectedProgramId == null ||
+                                    j['program_id']?.toString() ==
+                                        _selectedProgramId)
+                                .map((j) {
+                              final hari = j['hari'] ?? '';
+                              final jam = j['jam_mulai'] ?? '';
+                              final namaKelas = j['kelas_nama'] ?? j['nama_kelas'] ?? '';
+                              return DropdownMenuItem(
+                                value: j['id']?.toString(),
+                                child: Text('$hari $jam - $namaKelas'),
+                              );
+                            }).toList(),
+                            onChanged: (v) async {
+                              setState(() {
+                                _selectedJadwalId = v;
+                                _selectedSantriId = null;
+                                _santriList = [];
+                              });
+                              if (v != null) {
+                                try {
+                                  final santri =
+                                      await MusyrifahService.listSantriByJadwal(
+                                          int.parse(v));
+                                  setState(() => _santriList = santri);
+                                } catch (_) {}
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 14),
+
+                          // --- Santri Selector ---
+                          DropdownButtonFormField<String>(
+                            value: _selectedSantriId,
+                            isDense: true,
+                            decoration: _inputDecoration('Santri *'),
+                            items: _santriList
+                                .map((s) => DropdownMenuItem(
+                                      value: s['id']?.toString(),
+                                      child: Text(s['nama'] ?? ''),
+                                    ))
+                                .toList(),
                             onChanged: (v) =>
-                                setState(() => _selectedProgramId = v),
+                                setState(() => _selectedSantriId = v),
                           ),
                           const SizedBox(height: 14),
                         ],

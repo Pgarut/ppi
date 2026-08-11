@@ -14,7 +14,9 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
   List<Map<String, dynamic>> _data = [];
   bool _loading = true;
   String? _error;
-  final int _currentPage = 1;
+  int _currentPage = 1;
+  int _totalPages = 1;
+  int _totalItems = 0;
   String? _bulan;
 
   @override
@@ -37,6 +39,12 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
       if (mounted) {
         setState(() {
           _data = (res['items'] as List).cast<Map<String, dynamic>>();
+          final pagination = res['pagination'] as Map<String, dynamic>?;
+          if (pagination != null) {
+            _totalPages = pagination['total_pages'] as int? ?? 1;
+            _totalItems = pagination['total'] as int? ?? 0;
+            _currentPage = pagination['page'] as int? ?? 1;
+          }
           _loading = false;
         });
       }
@@ -84,14 +92,22 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
                       icon: Icons.history,
                       message: 'Belum ada riwayat absensi',
                     )
-                  : RefreshIndicator(
-                      color: AppTheme.primary,
-                      onRefresh: _load,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _data.length,
-                        itemBuilder: (_, i) => _buildAbsensiCard(_data[i]),
-                      ),
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: RefreshIndicator(
+                            color: AppTheme.primary,
+                            onRefresh: _load,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _data.length,
+                              itemBuilder: (_, i) => _buildAbsensiCard(_data[i]),
+                            ),
+                          ),
+                        ),
+                        if (_totalPages > 1)
+                          _buildPaginationBar(),
+                      ],
                     ),
     );
   }
@@ -171,7 +187,10 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
         icon: const Icon(Icons.calendar_month_outlined),
         tooltip: 'Filter Bulan',
         onSelected: (v) {
-          setState(() => _bulan = v);
+          setState(() {
+            _bulan = v;
+            _currentPage = 1;
+          });
           _load();
         },
         itemBuilder: (_) {
@@ -192,5 +211,42 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
   String _bulanLabel(int bulan, int tahun) {
     const names = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     return '${names[bulan]} $tahun';
+  }
+
+  Widget _buildPaginationBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppTheme.grey200)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: _currentPage > 1
+                ? () {
+                    setState(() => _currentPage--);
+                    _load();
+                  }
+                : null,
+          ),
+          Text(
+            'Halaman $_currentPage / $_totalPages',
+            style: const TextStyle(fontSize: 13),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: _currentPage < _totalPages
+                ? () {
+                    setState(() => _currentPage++);
+                    _load();
+                  }
+                : null,
+          ),
+        ],
+      ),
+    );
   }
 }

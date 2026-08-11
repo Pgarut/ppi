@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../services/guru_bk_service.dart';
 
 class LaporanPageBK extends StatefulWidget {
@@ -106,7 +107,7 @@ class _LaporanPageBKState extends State<LaporanPageBK>
           width: double.infinity,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF004D40), Color(0xFF00897B)],
+              colors: [AppTheme.primaryDark, AppTheme.primary],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -279,7 +280,7 @@ class _LaporanPageBKState extends State<LaporanPageBK>
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.calendar_month, color: Color(0xFF00897B), size: 20),
+                    const Icon(Icons.calendar_month, color: AppTheme.primary, size: 20),
                     const SizedBox(width: 8),
                     Text(r['periode']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                     const Spacer(),

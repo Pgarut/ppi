@@ -112,6 +112,10 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Text('Scan QR Dauroh', style: TextStyle(color: Colors.white)),
         backgroundColor: AppTheme.grey900,
         iconTheme: const IconThemeData(color: Colors.white),

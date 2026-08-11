@@ -1,5 +1,6 @@
 import 'package:universal_html/html.dart' as html;
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../services/guru_bk_service.dart';
 
 class BakatMinatPage extends StatefulWidget {
@@ -74,7 +75,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
               children: [
                 Icon(
                   isEdit ? Icons.edit_note : Icons.auto_awesome,
-                  color: const Color(0xFF00897B),
+                  color: AppTheme.primary,
                   size: 22,
                 ),
                 const SizedBox(width: 8),
@@ -101,7 +102,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
                       children: [
                         CircleAvatar(
                           radius: 18,
-                          backgroundColor: const Color(0xFF00897B),
+                          backgroundColor: AppTheme.primary,
                           child: Text(
                             (siswa['nama']?.toString() ?? '?').substring(0, 1).toUpperCase(),
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -228,7 +229,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
                 icon: const Icon(Icons.save, size: 18),
                 label: Text(isEdit ? 'Simpan' : 'Tambah'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF00897B),
+                  backgroundColor: AppTheme.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
@@ -244,7 +245,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Data bakat & minat tersimpan'),
-            backgroundColor: Color(0xFF00897B),
+            backgroundColor: AppTheme.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -261,7 +262,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
           width: double.infinity,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF004D40), Color(0xFF00897B)],
+              colors: [AppTheme.primaryDark, AppTheme.primary],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -327,7 +328,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
                       const SizedBox(width: 6),
                       _actionChip(Icons.upload_file, 'Upload', _uploadMassal, Colors.deepPurple),
                       const SizedBox(width: 6),
-                      _actionChip(Icons.save, 'Simpan', _simpanSemua, const Color(0xFF00897B)),
+                      _actionChip(Icons.save, 'Simpan', _simpanSemua, AppTheme.primary),
                     ],
                   ),
                 ),
@@ -436,7 +437,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
                       )
                     : IconButton(
                         onPressed: () => _showBMDialog(s as Map<String, dynamic>),
-                        icon: const Icon(Icons.add_circle_outline, color: Color(0xFF00897B), size: 22),
+                        icon: const Icon(Icons.add_circle_outline, color: AppTheme.primary, size: 22),
                         tooltip: 'Tambah Bakat & Minat',
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -499,7 +500,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
                     ),
                     Icon(
                       hasBm ? Icons.check_circle : Icons.add_circle_outline,
-                      color: hasBm ? Colors.green : const Color(0xFF00897B),
+                      color: hasBm ? Colors.green : AppTheme.primary,
                       size: 28,
                     ),
                   ],
@@ -590,7 +591,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Upload selesai: $success berhasil, $failed gagal'),
-                backgroundColor: failed > 0 ? Colors.orange : const Color(0xFF00897B),
+                backgroundColor: failed > 0 ? Colors.orange : AppTheme.primary,
                 behavior: SnackBarBehavior.floating,
               ),
             );
@@ -616,7 +617,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Data bakat & minat diperbarui'),
-          backgroundColor: Color(0xFF00897B),
+          backgroundColor: AppTheme.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );

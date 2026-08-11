@@ -90,10 +90,20 @@ export async function handleNilai(
       const avgPts2 = avg('pts2');
       const avgPat = avg('pat');
 
-      // Hitung rata-rata akhir: gunakan jenis yang ada
-      const values = [avgHarian, avgTugas, avgUts, avgUas, avgPts1, avgPas, avgPts2, avgPat].filter(v => v > 0);
-      const avgAkhir = values.length > 0
-        ? Math.round(values.reduce((s, v) => s + v, 0) / values.length * 100) / 100
+      // Hitung rata-rata akhir: gunakan jenis yang punya data
+      const avgPairs: [number, number][] = [
+        [avgHarian, countMap['harian']],
+        [avgTugas, countMap['tugas']],
+        [avgUts, countMap['uts']],
+        [avgUas, countMap['uas']],
+        [avgPts1, countMap['pts1']],
+        [avgPas, countMap['pas']],
+        [avgPts2, countMap['pts2']],
+        [avgPat, countMap['pat']],
+      ];
+      const validAvgs = avgPairs.filter(([, count]) => count > 0).map(([avg]) => avg);
+      const avgAkhir = validAvgs.length > 0
+        ? Math.round(validAvgs.reduce((s, v) => s + v, 0) / validAvgs.length * 100) / 100
         : 0;
 
       return {

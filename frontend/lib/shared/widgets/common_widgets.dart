@@ -448,7 +448,7 @@ class AppInputDecoration {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+        borderSide: const BorderSide(color: AppTheme.primary, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),

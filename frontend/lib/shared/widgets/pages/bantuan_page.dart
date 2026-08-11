@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 
 class BantuanPage extends StatelessWidget {
   const BantuanPage({super.key});
@@ -44,12 +45,12 @@ class BantuanPage extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF2E7D32).withValues(alpha: 0.05),
+            color: AppTheme.primary.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
-              const Icon(Icons.support_agent, color: Color(0xFF2E7D32)),
+              const Icon(Icons.support_agent, color: AppTheme.primary),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -73,10 +74,10 @@ class BantuanPage extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFF2E7D32).withValues(alpha: 0.1),
+              color: AppTheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: const Color(0xFF2E7D32), size: 24),
+            child: Icon(icon, color: AppTheme.primary, size: 24),
           ),
           const SizedBox(width: 16),
           Expanded(

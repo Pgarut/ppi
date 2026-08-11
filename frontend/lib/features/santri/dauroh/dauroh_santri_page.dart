@@ -41,38 +41,29 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: const Text('Dauroh'),
-        backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _buildSectionTitle('Program Yang Diikuti'),
-                  const SizedBox(height: 12),
-                  if (_program.isEmpty)
-                    _buildEmptyCard('Belum terdaftar di program Dauroh')
-                  else
-                    ..._program.map((p) => _buildProgramCard(p)),
-                  const SizedBox(height: 24),
-                  _buildSectionTitle('Riwayat Penilaian'),
-                  const SizedBox(height: 12),
-                  if (_nilai.isEmpty)
-                    _buildEmptyCard('Belum ada penilaian')
-                  else
-                    ..._nilai.map((n) => _buildNilaiCard(n)),
-                ],
-              ),
+    return _loading
+        ? const Center(child: CircularProgressIndicator())
+        : RefreshIndicator(
+            onRefresh: _loadData,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildSectionTitle('Program Yang Diikuti'),
+                const SizedBox(height: 12),
+                if (_program.isEmpty)
+                  _buildEmptyCard('Belum terdaftar di program Dauroh')
+                else
+                  ..._program.map((p) => _buildProgramCard(p)),
+                const SizedBox(height: 24),
+                _buildSectionTitle('Riwayat Penilaian'),
+                const SizedBox(height: 12),
+                if (_nilai.isEmpty)
+                  _buildEmptyCard('Belum ada penilaian')
+                else
+                  ..._nilai.map((n) => _buildNilaiCard(n)),
+              ],
             ),
-    );
+          );
   }
 
   Widget _buildSectionTitle(String title) {

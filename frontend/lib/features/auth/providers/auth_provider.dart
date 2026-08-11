@@ -77,7 +77,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   String? get dashboardRoute {
-    if (_user == null) return null;
-    return AppRoutes.dashboardByRole(_user!.role);
+    final currentUser = _user;
+    if (currentUser == null) return null;
+    return AppRoutes.dashboardByRole(currentUser.role);
   }
 }

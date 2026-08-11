@@ -36,6 +36,11 @@ export async function handleMusyrifahRoutes(
     return handleSuratMusyrifah(request, env, user, pathParts, url);
   }
 
+  // ─── SANTRI BY JADWAL ──────────────────────────────────────
+  if (subPath === 'santri' && request.method === 'GET') {
+    return listSantriByJadwal(env, user, url);
+  }
+
   // ─── RIWAYAT ───────────────────────────────────────────────
   if (subPath.startsWith('riwayat/')) {
     return handleRiwayatSantri(request, env, user, pathParts, url);
@@ -315,7 +320,12 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
   return success({
     action: 'absen_musyrifah',
     time: currentTime,
-    jadwal: jadwal.nama_program,
+    jadwal: {
+      program: jadwal.nama_program,
+      hari: jadwal.hari,
+      jam_mulai: jadwal.jam_mulai,
+      jam_selesai: jadwal.jam_selesai,
+    },
     message: `Absensi musyrifah tercatat pukul ${currentTime}`,
   });
 }
@@ -619,7 +629,7 @@ async function listNilaiMusyrifah(env: Env, user: UserPayload, url: URL) {
     bindings.push(`%${search}%`, `%${search}%`);
   }
   if (status) {
-    where += ' AND dn.status = ?';
+    where += ' AND dn.status_hafalan = ?';
     bindings.push(status);
   }
 
@@ -905,4 +915,46 @@ async function updateNilaiEnhanched(request: Request, env: Env, id: number, user
     message: 'Nilai berhasil diupdate',
     total_nilai: totalNilai
   });
+}
+
+// ============================================================
+// SANTRI BY JADWAL
+// ============================================================
+
+async function listSantriByJadwal(env: Env, user: UserPayload, url: URL) {
+  const jadwalId = parseInt(url.searchParams.get('jadwal_id') || '0');
+  if (!jadwalId) return badRequest('jadwal_id wajib diisi');
+
+  const musyrifah = await env.DB.prepare(
+    'SELECT id FROM dauroh_musyrifah WHERE username = ?'
+  ).bind(user.username).first<{ id: number }>();
+
+  if (!musyrifah) return error('Data musyrifah tidak ditemukan', 404);
+
+  // Pastikan jadwal ini milik musyrifah
+  const jadwal = await env.DB.prepare(`
+    SELECT j.id FROM dauroh_jadwal j
+    WHERE j.id = ? AND (j.musyrifah_1_id = ? OR j.musyrifah_2_id = ?)
+  `).bind(jadwalId, musyrifah.id, musyrifah.id).first<{ id: number }>();
+
+  if (!jadwal) return error('Jadwal tidak ditemukan atau bukan milik Anda', 404);
+
+  // Ambil kelas dari jadwal
+  const kelasList = await env.DB.prepare(`
+    SELECT kelas_id FROM dauroh_jadwal_kelas WHERE jadwal_id = ?
+  `).bind(jadwalId).all<{ kelas_id: number }>();
+
+  if (kelasList.results.length === 0) return success([]);
+
+  const kelasIds = kelasList.results.map(k => k.kelas_id);
+  const placeholders = kelasIds.map(() => '?').join(',');
+
+  // Ambil santri dari kelas-kelas tersebut
+  const santri = await env.DB.prepare(`
+    SELECT id, nama, nis FROM siswa 
+    WHERE kelas_id IN (${placeholders}) AND status = 'aktif'
+    ORDER BY nama
+  `).bind(...kelasIds).all<{ id: number; nama: string; nis: string }>();
+
+  return success(santri.results);
 }

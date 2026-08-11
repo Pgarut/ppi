@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/common_widgets.dart';
 
 class LoginForm extends StatefulWidget {
@@ -103,10 +104,10 @@ class _LoginFormState extends State<LoginForm> {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                gradient: const LinearGradient(colors: [Color(0xFF2E7D32), Color(0xFF43A047)]),
+                gradient: AppTheme.primaryGradient,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
+                    color: AppTheme.primary.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),

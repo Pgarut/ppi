@@ -12,10 +12,18 @@ class AuthService {
       'password': password,
     });
 
-    final data = response['data'] as Map<String, dynamic>;
-    final token = data['token'] as String;
-    final refreshToken = data['refresh_token'] as String;
-    final user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+    final data = response['data'] as Map<String, dynamic>?;
+    if (data == null) throw Exception('Data login tidak valid');
+
+    final token = data['token'] as String?;
+    if (token == null) throw Exception('Token tidak ditemukan');
+
+    final refreshToken = data['refresh_token'] as String?;
+    if (refreshToken == null) throw Exception('Refresh token tidak ditemukan');
+
+    final userData = data['user'] as Map<String, dynamic>?;
+    if (userData == null) throw Exception('Data user tidak ditemukan');
+    final user = UserModel.fromJson(userData);
 
     await ApiClient.saveToken(token);
     await ApiClient.saveRefreshToken(refreshToken);
@@ -30,7 +38,8 @@ class AuthService {
   Future<UserModel?> getCurrentUser() async {
     try {
       final response = await ApiClient.get('/auth/me');
-      final data = response['data'] as Map<String, dynamic>;
+      final data = response['data'] as Map<String, dynamic>?;
+      if (data == null) return null;
       return UserModel.fromJson(data);
     } catch (e) {
       AppLogger.error('[Auth] Gagal getCurrentUser: $e');

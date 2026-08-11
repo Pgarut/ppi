@@ -15,6 +15,7 @@ class MusyrifahPage extends StatelessWidget {
     return DashboardShell(
       title: 'Musyrifah',
       showScanTab: true,
+      scanPage: (_) => const ScanQrMusyrifahPage(),
       dashboardBuilder: (context, onFeatureTap, onLogout) {
         return DashboardMusyrifahPage(onFeatureTap: onFeatureTap);
       },

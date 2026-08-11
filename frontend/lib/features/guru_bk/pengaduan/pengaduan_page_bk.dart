@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../services/guru_bk_service.dart';
 
 class PengaduanPageBK extends StatefulWidget {
@@ -103,7 +104,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(
             children: [
-              Icon(Icons.edit_note, color: Color(0xFF00897B)),
+              Icon(Icons.edit_note, color: AppTheme.primary),
               SizedBox(width: 8),
               Text('Tindak Lanjut'),
             ],
@@ -125,7 +126,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
             FilledButton(
               onPressed: () => Navigator.pop(ctx, ctl.text),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF00897B),
+                backgroundColor: AppTheme.primary,
               ),
               child: const Text('Simpan'),
             ),
@@ -148,7 +149,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
               : status == 'selesai'
                   ? 'Pengaduan selesai'
                   : 'Status diperbarui'),
-          backgroundColor: const Color(0xFF00897B),
+          backgroundColor: AppTheme.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -197,7 +198,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
       opacity: _fadeAnim,
       child: RefreshIndicator(
         onRefresh: _load,
-        color: const Color(0xFF00897B),
+        color: AppTheme.primary,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth > 768;
@@ -240,8 +241,8 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
                                 icon: const Icon(Icons.expand_more),
                                 label: const Text('Muat Lebih Banyak'),
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF00897B),
-                                  side: const BorderSide(color: Color(0xFF00897B)),
+                                  foregroundColor: AppTheme.primary,
+                                  side: const BorderSide(color: AppTheme.primary),
                                 ),
                               ),
                       ),
@@ -266,7 +267,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
       width: double.infinity,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF004D40), Color(0xFF00897B)],
+          colors: [AppTheme.primaryDark, AppTheme.primary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -413,8 +414,8 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
       child: FilterChip(
         label: Text(label, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
         selected: selected,
-        selectedColor: const Color(0xFF00897B).withValues(alpha: 0.15),
-        checkmarkColor: const Color(0xFF00897B),
+        selectedColor: AppTheme.primary.withValues(alpha: 0.15),
+        checkmarkColor: AppTheme.primary,
         onSelected: (_) => _onFilterChanged(
           status: value,
           kategori: _filterKategori,
@@ -585,15 +586,15 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFF00897B).withValues(alpha: 0.1),
+          color: AppTheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: const Color(0xFF00897B)),
+            Icon(icon, size: 14, color: AppTheme.primary),
             const SizedBox(width: 4),
-            Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF00897B), fontWeight: FontWeight.w500)),
+            Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -718,7 +719,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
                           icon: const Icon(Icons.check, size: 18),
                           label: const Text('Selesaikan'),
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF00897B),
+                            backgroundColor: AppTheme.primary,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                         ),

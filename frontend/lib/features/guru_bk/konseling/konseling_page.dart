@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../services/guru_bk_service.dart';
 
 class KonselingPage extends StatefulWidget {
@@ -100,7 +101,7 @@ class _KonselingPageState extends State<KonselingPage>
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: const Row(
               children: [
-                Icon(Icons.calendar_today, color: Color(0xFF00897B), size: 22),
+                Icon(Icons.calendar_today, color: AppTheme.primary, size: 22),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -126,7 +127,7 @@ class _KonselingPageState extends State<KonselingPage>
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          backgroundColor: const Color(0xFF00897B),
+                          backgroundColor: AppTheme.primary,
                           child: Text(
                             (siswa['nama']?.toString() ?? '?').substring(0, 1).toUpperCase(),
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -156,7 +157,7 @@ class _KonselingPageState extends State<KonselingPage>
                     children: hariList.map((h) => ChoiceChip(
                       label: Text(h, style: const TextStyle(fontSize: 12)),
                       selected: hari == h,
-                      selectedColor: const Color(0xFF00897B).withValues(alpha: 0.15),
+                      selectedColor: AppTheme.primary.withValues(alpha: 0.15),
                       onSelected: (v) => setDialogState(() => hari = h),
                       visualDensity: VisualDensity.compact,
                     )).toList(),
@@ -252,7 +253,7 @@ class _KonselingPageState extends State<KonselingPage>
                 icon: const Icon(Icons.save, size: 18),
                 label: const Text('Simpan'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF00897B),
+                  backgroundColor: AppTheme.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
@@ -269,7 +270,7 @@ class _KonselingPageState extends State<KonselingPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Jadwal konseling tersimpan'),
-            backgroundColor: Color(0xFF00897B),
+            backgroundColor: AppTheme.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -285,7 +286,7 @@ class _KonselingPageState extends State<KonselingPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Konseling selesai'),
-            backgroundColor: Color(0xFF00897B),
+            backgroundColor: AppTheme.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -308,7 +309,7 @@ class _KonselingPageState extends State<KonselingPage>
           width: double.infinity,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF004D40), Color(0xFF00897B)],
+              colors: [AppTheme.primaryDark, AppTheme.primary],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -488,7 +489,7 @@ class _KonselingPageState extends State<KonselingPage>
                           icon: const Icon(Icons.add, size: 14),
                           label: const Text('Jadwalkan', style: TextStyle(fontSize: 11)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF00897B),
+                            backgroundColor: AppTheme.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 10),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -550,7 +551,7 @@ class _KonselingPageState extends State<KonselingPage>
                         icon: const Icon(Icons.calendar_month, size: 16),
                         label: const Text('Jadwal', style: TextStyle(fontSize: 12)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00897B),
+                          backgroundColor: AppTheme.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -676,7 +677,7 @@ class _KonselingPageState extends State<KonselingPage>
                         icon: const Icon(Icons.check, size: 14),
                         label: const Text('Selesai', style: TextStyle(fontSize: 11)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00897B),
+                          backgroundColor: AppTheme.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -769,7 +770,7 @@ class _KonselingPageState extends State<KonselingPage>
                       icon: const Icon(Icons.check, size: 16),
                       label: const Text('Selesai', style: TextStyle(fontSize: 12)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00897B),
+                        backgroundColor: AppTheme.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

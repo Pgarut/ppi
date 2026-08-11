@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/login_form.dart';
 
@@ -97,11 +98,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF43A047)],
-              ),
+              gradient: AppTheme.headerGradient,
               image: _backgroundUrl.isNotEmpty
                   ? DecorationImage(image: NetworkImage(_backgroundUrl), fit: BoxFit.cover, opacity: 0.12)
                   : null,
@@ -176,12 +173,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   Widget _buildMobileLayout(BuildContext context, AuthProvider auth) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFFE8F5E9)],
-          stops: [0, 0.3, 0.7],
+          colors: [AppTheme.primaryDark, AppTheme.primary, AppTheme.primaryLight],
+          stops: const [0, 0.3, 0.7],
         ),
       ),
       child: SafeArea(

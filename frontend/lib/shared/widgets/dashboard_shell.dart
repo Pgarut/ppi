@@ -14,6 +14,7 @@ class DashboardShell extends StatefulWidget {
   final Map<String, WidgetBuilder> features;
   final WidgetBuilder? profilePage;
   final WidgetBuilder? settingsPage;
+  final WidgetBuilder? scanPage;
   final bool showScanTab;
 
   const DashboardShell({
@@ -23,6 +24,7 @@ class DashboardShell extends StatefulWidget {
     this.features = const {},
     this.profilePage,
     this.settingsPage,
+    this.scanPage,
     this.showScanTab = false,
   });
 
@@ -33,6 +35,21 @@ class DashboardShell extends StatefulWidget {
 class _DashboardShellState extends State<DashboardShell> {
   int _shellTab = 0;
   String? _activeFeature;
+
+  static const Map<String, String> _featureLabels = {
+    'jadwal': 'Jadwal Pelajaran',
+    'absensi': 'Riwayat Kehadiran',
+    'nilai': 'Nilai Akademik',
+    'materi': 'Materi Pembelajaran',
+    'dauroh': 'Program Dauroh',
+    'santri': 'Data Santri',
+    'guru': 'Data Guru',
+    'kelas': 'Data Kelas',
+    'mata_pelajaran': 'Mata Pelajaran',
+    'semester': 'Semester',
+    'program': 'Program',
+    'pengaturan': 'Pengaturan',
+  };
 
   void _openFeature(String feature) {
     setState(() => _activeFeature = feature);
@@ -71,12 +88,12 @@ class _DashboardShellState extends State<DashboardShell> {
           if (builder != null) return builder(context);
       }
     }
-    // Scan tab (index 3 jika showScanTab aktif)
-    if (widget.showScanTab && _shellTab == 3) {
-      return const ScanAbsenPage();
+    // Scan tab (index 2 jika showScanTab aktif)
+    if (widget.showScanTab && _shellTab == 2) {
+      return widget.scanPage?.call(context) ?? const ScanAbsenPage();
     }
     switch (_shellTab) {
-      case 2:
+      case 3:
         return widget.profilePage?.call(context) ?? ProfilPage(onLogout: _logout);
       default:
         return widget.dashboardBuilder(context, _openFeature, _logout);
@@ -119,7 +136,7 @@ class _DashboardShellState extends State<DashboardShell> {
             icon: const Icon(Icons.arrow_back_ios_new, size: 20),
             onPressed: _goBack,
           ),
-          title: Text(_activeFeature!, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          title: Text(_featureLabels[_activeFeature!] ?? _activeFeature!, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
           backgroundColor: Colors.white,
         ),
         drawer: _buildDrawer(),
@@ -131,7 +148,7 @@ class _DashboardShellState extends State<DashboardShell> {
     }
 
     // Jika showScanTab dan tab scan aktif, gunakan scaffold berbeda
-    if (widget.showScanTab && _shellTab == 3) {
+    if (widget.showScanTab && _shellTab == 2) {
       return _currentPage();
     }
 
@@ -556,7 +573,7 @@ class _DashboardShellState extends State<DashboardShell> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  _activeFeature!,
+                  _featureLabels[_activeFeature!] ?? _activeFeature!,
                   style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppTheme.grey800),
                 ),
               ],

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // ── Modern Emerald Palette ──
-  static const Color primary = Color(0xFF10B981);
-  static const Color primaryDark = Color(0xFF059669);
-  static const Color primaryLight = Color(0xFFD1FAE5);
-  static const Color secondary = Color(0xFFF59E0B);
-  static const Color secondaryLight = Color(0xFFFEF3C7);
+  // ── Dark Green Palette ──
+  static const Color primary = Color(0xFF2E7D32);
+  static const Color primaryDark = Color(0xFF1B5E20);
+  static const Color primaryLight = Color(0xFFE8F5E9);
+  static const Color secondary = Color(0xFFF9A825);
+  static const Color secondaryLight = Color(0xFFFFF8E1);
   static const Color error = Color(0xFFEF4444);
   static const Color surface = Color(0xFFF8FAFC);
   static const Color background = Color(0xFFF1F5F9);
@@ -35,7 +35,7 @@ class AppTheme {
 
   // ── Gradient Presets ──
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [primary, Color(0xFF34D399)],
+    colors: [primary, Color(0xFF43A047)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -47,7 +47,7 @@ class AppTheme {
   );
 
   static const LinearGradient headerGradient = LinearGradient(
-    colors: [Color(0xFF059669), Color(0xFF10B981), Color(0xFF34D399)],
+    colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF43A047)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -66,7 +66,7 @@ class AppTheme {
         primary: primary,
         onPrimary: Colors.white,
         primaryContainer: primaryLight,
-        onPrimaryContainer: Color(0xFF064E3B),
+        onPrimaryContainer: Color(0xFF1B5E20),
         secondary: secondary,
         onSecondary: Colors.white,
         secondaryContainer: secondaryLight,

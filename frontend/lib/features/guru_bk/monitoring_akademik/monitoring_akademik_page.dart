@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../services/guru_bk_service.dart';
 
 class MonitoringAkademikPage extends StatefulWidget {
@@ -78,7 +79,7 @@ class _MonitoringAkademikPageState extends State<MonitoringAkademikPage>
           width: double.infinity,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF004D40), Color(0xFF00897B)],
+              colors: [AppTheme.primaryDark, AppTheme.primary],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),

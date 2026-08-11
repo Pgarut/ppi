@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/dashboard_template.dart';
 import '../services/santri_service.dart';
+import '../services/dauroh_santri_service.dart';
 
 class DashboardSantriPage extends StatefulWidget {
   final void Function(String) onFeatureTap;
@@ -14,7 +15,12 @@ class DashboardSantriPage extends StatefulWidget {
 
 class _DashboardSantriPageState extends State<DashboardSantriPage> {
   final _service = SantriService();
+  final _daurohService = DaurohSantriService();
   List<Map<String, dynamic>> _jadwalHariIni = [];
+  int _totalHadir = 0;
+  int _totalAbsensi = 0;
+  double _rataRataNilai = 0;
+  int _totalProgramDauroh = 0;
   bool _loading = true;
 
   @override
@@ -25,10 +31,34 @@ class _DashboardSantriPageState extends State<DashboardSantriPage> {
 
   Future<void> _loadData() async {
     try {
-      final jadwal = await _service.getJadwal();
+      const hariNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      final hariIni = hariNames[DateTime.now().weekday % 7];
+      final now = DateTime.now();
+      final bulan = now.month.toString();
+      final tahun = now.year.toString();
+
+      final results = await Future.wait([
+        _service.getJadwal(hari: hariIni),
+        _service.getAbsensi(bulan: bulan, tahun: tahun),
+        _service.getNilai(),
+        _daurohService.getProgram(),
+      ]);
+
+      final absensiData = (results[1]['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final nilaiData = results[2] as Map<String, dynamic>;
+
+      int hadir = 0;
+      for (final a in absensiData) {
+        if (a['status'] == 'hadir') hadir++;
+      }
+
       if (mounted) {
         setState(() {
-          _jadwalHariIni = jadwal;
+          _jadwalHariIni = results[0];
+          _totalAbsensi = absensiData.length;
+          _totalHadir = hadir;
+          _rataRataNilai = (nilaiData['rata_rata_keseluruhan'] as num?)?.toDouble() ?? 0;
+          _totalProgramDauroh = results[3].length;
           _loading = false;
         });
       }
@@ -42,8 +72,11 @@ class _DashboardSantriPageState extends State<DashboardSantriPage> {
     return DashboardTemplate(
       loading: _loading,
       stats: [
-        const Icon(Icons.schedule, size: 24), 'Jadwal Hari Ini', '${_jadwalHariIni.length} Mapel', AppTheme.primary,
-      ].cast<StatItem>(),
+        StatItem(Icons.schedule, 'Jadwal Hari Ini', '${_jadwalHariIni.length} Mapel', AppTheme.primary),
+        StatItem(Icons.how_to_reg, 'Kehadiran', '$_totalHadir dari $_totalAbsensi', Colors.green),
+        StatItem(Icons.grade, 'Rata-rata Nilai', _rataRataNilai.toStringAsFixed(1), Colors.orange),
+        StatItem(Icons.bookmark, 'Program Dauroh', '$_totalProgramDauroh Program', Colors.purple),
+      ],
       features: const [
         FeatureItem('Jadwal', 'jadwal', Icons.calendar_today, 'Lihat jadwal pelajaran'),
         FeatureItem('Absensi', 'absensi', Icons.how_to_reg, 'Riwayat kehadiran'),

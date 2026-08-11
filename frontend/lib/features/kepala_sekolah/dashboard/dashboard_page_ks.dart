@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../shared/widgets/dashboard_template.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/dashboard_template.dart';
 import '../services/kepala_sekolah_service.dart';
 
 class DashboardPageKS extends StatefulWidget {
@@ -31,10 +32,10 @@ class _DashboardPageKSState extends State<DashboardPageKS> {
     return DashboardTemplate(
       loading: _loading,
       stats: [
-        StatItem(Icons.people_outline, 'Santri Aktif', '${stats['total_siswa'] ?? 0}', const Color(0xFF2E7D32)),
-        StatItem(Icons.school_outlined, 'Asatidz', '${stats['total_guru'] ?? 0}', const Color(0xFF43A047)),
-        StatItem(Icons.meeting_room_outlined, 'Kelas', '${stats['total_kelas'] ?? 0}', const Color(0xFF66BB6A)),
-        StatItem(Icons.book_outlined, 'Mapel', '${stats['total_mapel'] ?? 0}', const Color(0xFFF9A825)),
+        StatItem(Icons.people_outline, 'Santri Aktif', '${stats['total_siswa'] ?? 0}', AppTheme.primary),
+        StatItem(Icons.school_outlined, 'Asatidz', '${stats['total_guru'] ?? 0}', AppTheme.primaryDark),
+        StatItem(Icons.meeting_room_outlined, 'Kelas', '${stats['total_kelas'] ?? 0}', AppTheme.secondary),
+        StatItem(Icons.book_outlined, 'Mapel', '${stats['total_mapel'] ?? 0}', AppTheme.blue),
       ],
       features: const [
         FeatureItem('Dauroh', 'dauroh', Icons.bookmark_outlined, 'Monitoring nilai Dauroh'),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/user_model.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/theme/app_theme.dart';
 import '../app_utils.dart';
 
 class ProfilPage extends StatefulWidget {
@@ -50,10 +51,10 @@ class _ProfilPageState extends State<ProfilPage> {
         Center(
           child: Column(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 48,
-                backgroundColor: Color(0xFFE8F5E9),
-                child: Icon(Icons.person, color: Color(0xFF2E7D32), size: 48),
+                backgroundColor: AppTheme.primaryLight,
+                child: const Icon(Icons.person, color: AppTheme.primary, size: 48),
               ),
               const SizedBox(height: 16),
               Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
@@ -61,10 +62,10 @@ class _ProfilPageState extends State<ProfilPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2E7D32).withValues(alpha: 0.1),
+                  color: AppTheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(roleDisplay, style: const TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.w500)),
+                child: Text(roleDisplay, style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w500)),
               ),
               if (widget.onLogout != null) ...[
                 const SizedBox(height: 16),
