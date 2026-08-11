@@ -112,6 +112,7 @@ class _NilaiDaurohPageState extends State<NilaiDaurohPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nilai Dauroh'),
+        automaticallyImplyLeading: false,
         actions: [
           if (_items.isNotEmpty)
             IconButton(

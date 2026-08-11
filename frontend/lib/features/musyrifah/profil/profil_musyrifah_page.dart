@@ -31,7 +31,7 @@ class _ProfilMusyrifahPageState extends State<ProfilMusyrifahPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profil Musyrifah')),
+      appBar: AppBar(title: const Text('Profil Musyrifah'), automaticallyImplyLeading: false),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _profil == null
