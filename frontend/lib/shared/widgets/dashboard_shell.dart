@@ -15,6 +15,7 @@ class DashboardShell extends StatefulWidget {
   final WidgetBuilder? profilePage;
   final WidgetBuilder? settingsPage;
   final WidgetBuilder? scanPage;
+  final Widget Function(BuildContext, VoidCallback)? scanPageBuilder;
   final bool showScanTab;
 
   const DashboardShell({
@@ -25,6 +26,7 @@ class DashboardShell extends StatefulWidget {
     this.profilePage,
     this.settingsPage,
     this.scanPage,
+    this.scanPageBuilder,
     this.showScanTab = false,
   });
 
@@ -90,7 +92,14 @@ class _DashboardShellState extends State<DashboardShell> {
     }
     // Scan tab (index 2 jika showScanTab aktif)
     if (widget.showScanTab && _shellTab == 2) {
-      return widget.scanPage?.call(context) ?? const ScanAbsenPage();
+      if (widget.scanPageBuilder != null) {
+        return widget.scanPageBuilder!(context, () {
+          setState(() => _shellTab = 0);
+        });
+      }
+      return widget.scanPage?.call(context) ?? ScanAbsenPage(onBack: () {
+        setState(() => _shellTab = 0);
+      });
     }
 
     // Profil tab: index 3 jika showScanTab aktif, index 2 jika tidak

@@ -6,7 +6,8 @@ import '../../../core/network/api_client.dart';
 import '../../../config/env.dart';
 
 class ScanAbsenPage extends StatefulWidget {
-  const ScanAbsenPage({super.key});
+  final VoidCallback? onBack;
+  const ScanAbsenPage({super.key, this.onBack});
 
   @override
   State<ScanAbsenPage> createState() => _ScanAbsenPageState();
@@ -117,7 +118,7 @@ class _ScanAbsenPageState extends State<ScanAbsenPage> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: widget.onBack ?? () => Navigator.of(context).pop(),
         ),
         title: const Text('Scan Absensi', style: TextStyle(color: Colors.white)),
         backgroundColor: AppTheme.grey900,

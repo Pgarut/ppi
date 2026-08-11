@@ -6,7 +6,8 @@ import '../../../core/network/api_client.dart';
 import '../services/musyrifah_service.dart';
 
 class ScanQrMusyrifahPage extends StatefulWidget {
-  const ScanQrMusyrifahPage({super.key});
+  final VoidCallback? onBack;
+  const ScanQrMusyrifahPage({super.key, this.onBack});
 
   @override
   State<ScanQrMusyrifahPage> createState() => _ScanQrMusyrifahPageState();
@@ -114,7 +115,7 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: widget.onBack ?? () => Navigator.of(context).pop(),
         ),
         title: const Text('Scan QR Dauroh', style: TextStyle(color: Colors.white)),
         backgroundColor: AppTheme.grey900,
