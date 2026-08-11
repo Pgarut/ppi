@@ -78,6 +78,11 @@ export default {
         return success(rows.results);
       }
 
+      // Refresh token (NO auth required - uses refresh_token from body)
+      if (path === '/api/auth/refresh' && request.method === 'POST') {
+        return handleRefresh(request, env);
+      }
+
       // Authenticated routes
       const user = await authMiddleware(request, env);
       if (!user) return unauthorized();
@@ -89,11 +94,6 @@ export default {
 
       if (path === '/api/auth/me' && request.method === 'GET') {
         return handleMe(user, env);
-      }
-
-      // Auth routes (no sign-in required)
-      if (path === '/api/auth/refresh' && request.method === 'POST') {
-        return handleRefresh(request, env);
       }
 
       // Logout endpoint (requires auth)
