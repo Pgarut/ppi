@@ -580,12 +580,12 @@ async function handleRefresh(request: Request, env: Env): Promise<Response> {
   if (!payload) return error('Invalid or expired refresh token', 401);
 
   const user = await env.DB.prepare(
-    'SELECT id, username, role, guru_id, is_active FROM users WHERE id = ?'
-  ).bind(payload.sub).first<{ id: number; username: string; role: Role; guru_id: number | null; is_active: number }>();
+    'SELECT id, username, role, guru_id, siswa_id, is_active FROM users WHERE id = ?'
+  ).bind(payload.sub).first<{ id: number; username: string; role: Role; guru_id: number | null; siswa_id: number | null; is_active: number }>();
 
   if (!user || !user.is_active) return error('User not found or disabled', 401);
 
-  const userPayload = { sub: user.id, username: user.username, role: user.role, guru_id: user.guru_id, siswa_id: (user as any).siswa_id ?? null };
+  const userPayload = { sub: user.id, username: user.username, role: user.role, guru_id: user.guru_id, siswa_id: user.siswa_id ?? null };
   const newToken = await generateToken(userPayload, env);
   const newRefreshToken = await generateRefreshToken(user.id, env);
 
@@ -610,7 +610,7 @@ async function handleRefresh(request: Request, env: Env): Promise<Response> {
   return success({
     token: newToken,
     refresh_token: newRefreshToken,
-    user: { id: user.id, username: user.username, role: user.role, guru_id: user.guru_id, siswa_id: (user as any).siswa_id ?? null },
+    user: { id: user.id, username: user.username, role: user.role, guru_id: user.guru_id, siswa_id: user.siswa_id ?? null },
   });
 }
 
