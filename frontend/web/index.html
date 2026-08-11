@@ -55,6 +55,40 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+
+    /* Update notification styles */
+    .update-toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1B5E20;
+      color: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      z-index: 9999;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translate(-50%, 100%); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
+    }
+    .update-toast button {
+      background: white;
+      color: #1B5E20;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .update-toast button:hover {
+      background: #E8F5E9;
+    }
   </style>
 </head>
 <body>
@@ -91,6 +125,37 @@
     window.addEventListener('offline', function() {
       document.title = '[Offline] MA Persis';
     });
+
+    // Handle PWA update notification
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
+          showUpdateNotification();
+        }
+      });
+    }
+
+    function showUpdateNotification() {
+      // Remove existing toast if any
+      const existing = document.querySelector('.update-toast');
+      if (existing) existing.remove();
+
+      // Create toast notification
+      const toast = document.createElement('div');
+      toast.className = 'update-toast';
+      toast.innerHTML = '
+        <span>🔄 Update tersedia!</span>
+        <button onclick="reloadApp()">Muat Ulang</button>
+      ';
+      document.body.appendChild(toast);
+    }
+
+    function reloadApp() {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+      }
+      window.location.reload();
+    }
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
