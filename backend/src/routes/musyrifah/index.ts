@@ -296,7 +296,7 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
       AND j.hari = ? AND j.is_aktif = 1
       ${jadwalFilter}
     LIMIT 1
-  `).bind(...jadwalBindings).first<{ id: number; nama_program: string }>();
+  `).bind(...jadwalBindings).first<{ id: number; nama_program: string; hari: string; jam_mulai: string; jam_selesai: string }>();
 
   if (!jadwal) {
     return error(`Tidak ada jadwal dauroh aktif hari ini (${hariIni})`, 400);
