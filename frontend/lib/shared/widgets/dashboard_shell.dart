@@ -61,6 +61,30 @@ class _DashboardShellState extends State<DashboardShell> {
     setState(() => _activeFeature = null);
   }
 
+  void _handleBackPress() {
+    if (_activeFeature != null) {
+      _goBack();
+    } else {
+      _showExitDialog();
+    }
+  }
+
+  Future<void> _showExitDialog() async {
+    final confirm = await AppUtils.confirm(
+      context,
+      title: 'Keluar dari aplikasi?',
+      message: 'Anda akan keluar dari aplikasi.',
+      confirmText: 'Keluar',
+      confirmColor: AppTheme.error,
+    );
+    if (confirm && mounted) {
+      await context.read<AuthProvider>().logout();
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    }
+  }
+
   Future<void> _logout() async {
     final confirm = await AppUtils.confirm(
       context,
@@ -140,6 +164,16 @@ class _DashboardShellState extends State<DashboardShell> {
   //  MOBILE - Bottom Navigation + Drawer
   // ═══════════════════════════════════════════════════════════
   Widget _buildMobile() {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _handleBackPress();
+      },
+      child: _buildMobileContent(),
+    );
+  }
+
+  Widget _buildMobileContent() {
     if (_activeFeature != null) {
       return Scaffold(
         appBar: AppBar(
