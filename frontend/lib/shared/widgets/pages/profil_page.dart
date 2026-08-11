@@ -51,7 +51,7 @@ class _ProfilPageState extends State<ProfilPage> {
         Center(
           child: Column(
             children: [
-              CircleAvatar(
+              const CircleAvatar(
                 radius: 48,
                 backgroundColor: AppTheme.primaryLight,
                 child: const Icon(Icons.person, color: AppTheme.primary, size: 48),
@@ -65,7 +65,7 @@ class _ProfilPageState extends State<ProfilPage> {
                   color: AppTheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(roleDisplay, style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w500)),
+                child: Text(roleDisplay, style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w500)),
               ),
               if (widget.onLogout != null) ...[
                 const SizedBox(height: 16),

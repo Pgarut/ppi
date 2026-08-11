@@ -12,7 +12,7 @@ class AbsensiPageGuru extends StatelessWidget {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: AppTheme.headerGradient,
             borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(32),

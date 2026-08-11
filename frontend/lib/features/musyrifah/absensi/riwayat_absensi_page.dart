@@ -214,7 +214,7 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
   Widget _buildPaginationBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: AppTheme.grey200)),
       ),
