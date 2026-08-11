@@ -178,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [AppTheme.primaryDark, AppTheme.primary, AppTheme.primaryLight],
-          stops: const [0, 0.3, 0.7],
+          stops: [0, 0.3, 0.7],
         ),
       ),
       child: SafeArea(
