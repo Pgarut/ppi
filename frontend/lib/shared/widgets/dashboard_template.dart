@@ -21,6 +21,7 @@ class FeatureItem {
 
 class DashboardTemplate extends StatelessWidget {
   final bool loading;
+  final bool showHeader;  // Tampilkan/sembunyikan header greeting
   final List<StatItem> stats;
   final List<FeatureItem> features;
   final void Function(String feature)? onFeatureTap;
@@ -33,6 +34,7 @@ class DashboardTemplate extends StatelessWidget {
   const DashboardTemplate({
     super.key,
     this.loading = false,
+    this.showHeader = true,
     this.stats = const [],
     this.features = const [],
     this.onFeatureTap,
@@ -52,8 +54,10 @@ class DashboardTemplate extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       children: [
-        _Header(subtitle: subtitle, info1: info1, info2: info2),
-        const SizedBox(height: 28),
+        if (showHeader) ...[
+          _Header(subtitle: subtitle, info1: info1, info2: info2),
+          const SizedBox(height: 28),
+        ],
         _buildSectionTitle('Ringkasan'),
         const SizedBox(height: 16),
         _StatGrid(stats: stats),
