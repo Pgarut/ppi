@@ -92,12 +92,14 @@ class _DashboardShellState extends State<DashboardShell> {
     if (widget.showScanTab && _shellTab == 2) {
       return widget.scanPage?.call(context) ?? const ScanAbsenPage();
     }
-    switch (_shellTab) {
-      case 3:
-        return widget.profilePage?.call(context) ?? ProfilPage(onLogout: _logout);
-      default:
-        return widget.dashboardBuilder(context, _openFeature, _logout);
+
+    // Profil tab: index 3 jika showScanTab aktif, index 2 jika tidak
+    final profileIndex = widget.showScanTab ? 3 : 2;
+    if (_shellTab == profileIndex) {
+      return widget.profilePage?.call(context) ?? ProfilPage(onLogout: _logout);
     }
+
+    return widget.dashboardBuilder(context, _openFeature, _logout);
   }
 
   Widget _placeholderPage(String label) {
@@ -430,15 +432,15 @@ class _DashboardShellState extends State<DashboardShell> {
               icon: Icons.qr_code_scanner_outlined,
               selectedIcon: Icons.qr_code_scanner,
               label: 'Scan Absen',
-              isSelected: _shellTab == 3 && _activeFeature == null,
-              onTap: () => setState(() { _shellTab = 3; _activeFeature = null; }),
+              isSelected: _shellTab == 2 && _activeFeature == null,
+              onTap: () => setState(() { _shellTab = 2; _activeFeature = null; }),
             ),
           _sidebarItem(
             icon: Icons.person_outline,
             selectedIcon: Icons.person,
             label: 'Profil',
-            isSelected: _shellTab == 2 && _activeFeature == null,
-            onTap: () => setState(() { _shellTab = 2; _activeFeature = null; }),
+            isSelected: _shellTab == (widget.showScanTab ? 3 : 2) && _activeFeature == null,
+            onTap: () => setState(() { _shellTab = widget.showScanTab ? 3 : 2; _activeFeature = null; }),
           ),
 
           const SizedBox(height: 8),
@@ -654,7 +656,7 @@ class _DashboardShellState extends State<DashboardShell> {
                     label: 'Profil',
                     onTap: () {
                       Navigator.pop(context);
-                      setState(() { _shellTab = 2; _activeFeature = null; });
+                      setState(() { _shellTab = widget.showScanTab ? 3 : 2; _activeFeature = null; });
                     },
                   ),
                   _drawerItem(
