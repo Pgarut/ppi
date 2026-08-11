@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../services/musyrifah_service.dart';
 
 class ProfilMusyrifahPage extends StatefulWidget {
@@ -28,6 +30,30 @@ class _ProfilMusyrifahPageState extends State<ProfilMusyrifahPage> {
     }
   }
 
+  Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Yakin ingin logout?'),
+        content: const Text('Anda akan keluar dari sistem.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    if (!mounted) return;
+    await context.read<AuthProvider>().logout();
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed('/login');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,6 +69,8 @@ class _ProfilMusyrifahPageState extends State<ProfilMusyrifahPage> {
                       _buildAvatar(),
                       const SizedBox(height: 24),
                       _buildInfoCard(),
+                      const SizedBox(height: 24),
+                      _buildLogoutButton(),
                     ],
                   ),
                 ),
@@ -105,6 +133,23 @@ class _ProfilMusyrifahPageState extends State<ProfilMusyrifahPage> {
             child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _logout,
+        icon: const Icon(Icons.logout, size: 18),
+        label: const Text('Keluar'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.red,
+          side: const BorderSide(color: Colors.red),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
       ),
     );
   }
