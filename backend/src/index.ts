@@ -88,7 +88,7 @@ export default {
       }
 
       if (path === '/api/auth/me' && request.method === 'GET') {
-        return handleMe(user);
+        return handleMe(user, env);
       }
 
       // Auth routes (no sign-in required)
@@ -538,8 +538,25 @@ async function handleLoginSiswa(request: Request, env: Env): Promise<Response> {
   });
 }
 
-function handleMe(user: { sub: number; username: string; role: string; guru_id: number | null; siswa_id: number | null }): Response {
-  return success({ id: user.sub, username: user.username, role: user.role, guru_id: user.guru_id, siswa_id: user.siswa_id });
+async function handleMe(user: { sub: number; username: string; role: string; guru_id: number | null; siswa_id: number | null }, env: Env): Promise<Response> {
+  let nama: string | null = null;
+
+  if (user.role === 'siswa' && user.siswa_id) {
+    const siswa = await env.DB.prepare('SELECT nama FROM siswa WHERE id = ?').bind(user.siswa_id).first<{ nama: string }>();
+    nama = siswa?.nama ?? null;
+  } else if (user.guru_id) {
+    const guru = await env.DB.prepare('SELECT nama FROM guru WHERE id = ?').bind(user.guru_id).first<{ nama: string }>();
+    nama = guru?.nama ?? null;
+  }
+
+  return success({
+    id: user.sub,
+    username: user.username,
+    role: user.role,
+    guru_id: user.guru_id,
+    siswa_id: user.siswa_id,
+    nama,
+  });
 }
 
 async function handleRefresh(request: Request, env: Env): Promise<Response> {
