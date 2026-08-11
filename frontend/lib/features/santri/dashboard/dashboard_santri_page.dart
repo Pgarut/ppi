@@ -22,6 +22,11 @@ class _DashboardSantriPageState extends State<DashboardSantriPage> {
   double _rataRataNilai = 0;
   int _totalProgramDauroh = 0;
   bool _loading = true;
+  
+  // Data profil santri
+  String? _nis;
+  String? _waliKelas;
+  String? _kelas;
 
   @override
   void initState() {
@@ -37,10 +42,20 @@ class _DashboardSantriPageState extends State<DashboardSantriPage> {
       final bulan = now.month.toString();
       final tahun = now.year.toString();
 
-      final jadwal = await _service.getJadwal(hari: hariIni);
-      final absensiRes = await _service.getAbsensi(bulan: bulan, tahun: tahun);
-      final nilaiRes = await _service.getNilai();
-      final programDauroh = await _daurohService.getProgram();
+      // Fetch semua data secara paralel
+      final results = await Future.wait([
+        _service.getJadwal(hari: hariIni),
+        _service.getAbsensi(bulan: bulan, tahun: tahun),
+        _service.getNilai(),
+        _daurohService.getProgram(),
+        _service.getProfil(),  // Tambahkan fetch profil
+      ]);
+
+      final jadwal = results[0] as List<Map<String, dynamic>>;
+      final absensiRes = results[1] as Map<String, dynamic>;
+      final nilaiRes = results[2] as Map<String, dynamic>;
+      final programDauroh = results[3] as List<Map<String, dynamic>>;
+      final profil = results[4] as Map<String, dynamic>;
 
       final absensiData = (absensiRes['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
@@ -57,6 +72,11 @@ class _DashboardSantriPageState extends State<DashboardSantriPage> {
           _rataRataNilai = (nilaiRes['rata_rata_keseluruhan'] as num?)?.toDouble() ?? 0;
           _totalProgramDauroh = programDauroh.length;
           _loading = false;
+          
+          // Simpan data profil
+          _nis = profil['nis']?.toString();
+          _waliKelas = profil['wali_kelas']?.toString();
+          _kelas = profil['kelas']?['nama']?.toString();
         });
       }
     } catch (e) {
@@ -68,6 +88,9 @@ class _DashboardSantriPageState extends State<DashboardSantriPage> {
   Widget build(BuildContext context) {
     return DashboardTemplate(
       loading: _loading,
+      subtitle: _nis,
+      info1: _waliKelas,
+      info2: _kelas,
       stats: [
         StatItem(Icons.schedule, 'Jadwal Hari Ini', '${_jadwalHariIni.length} Mapel', AppTheme.primary),
         StatItem(Icons.how_to_reg, 'Kehadiran', '$_totalHadir dari $_totalAbsensi', Colors.green),

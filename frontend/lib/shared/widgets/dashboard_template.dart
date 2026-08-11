@@ -24,6 +24,11 @@ class DashboardTemplate extends StatelessWidget {
   final List<StatItem> stats;
   final List<FeatureItem> features;
   final void Function(String feature)? onFeatureTap;
+  
+  // Data profil tambahan (opsional)
+  final String? subtitle;  // Contoh: NIS
+  final String? info1;     // Contoh: Wali Kelas
+  final String? info2;     // Contoh: Kelas
 
   const DashboardTemplate({
     super.key,
@@ -31,6 +36,9 @@ class DashboardTemplate extends StatelessWidget {
     this.stats = const [],
     this.features = const [],
     this.onFeatureTap,
+    this.subtitle,
+    this.info1,
+    this.info2,
   });
 
   @override
@@ -44,7 +52,7 @@ class DashboardTemplate extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       children: [
-        const _Header(),
+        _Header(subtitle: subtitle, info1: info1, info2: info2),
         const SizedBox(height: 28),
         _buildSectionTitle('Ringkasan'),
         const SizedBox(height: 16),
@@ -86,7 +94,11 @@ class DashboardTemplate extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header();
+  final String? subtitle;
+  final String? info1;
+  final String? info2;
+  
+  const _Header({this.subtitle, this.info1, this.info2});
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +133,7 @@ class _Header extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Avatar
           CircleAvatar(
             radius: 28,
             backgroundColor: Colors.white.withValues(alpha: 0.2),
@@ -134,10 +147,12 @@ class _Header extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
+          // Info User
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Greeting
                 Text(
                   '$greeting,',
                   style: TextStyle(
@@ -147,6 +162,7 @@ class _Header extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
+                // Nama
                 Text(
                   name,
                   style: const TextStyle(
@@ -155,17 +171,65 @@ class _Header extends StatelessWidget {
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  roleDisplay,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.7),
+                // NIS (subtitle)
+                if (subtitle != null && subtitle!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'NIS: $subtitle',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
+                ],
+                // Info tambahan (NIS, Wali Kelas, Kelas) atau Role
+                if (subtitle != null && subtitle!.isNotEmpty || 
+                    info1 != null && info1!.isNotEmpty || 
+                    info2 != null && info2!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      if (info1 != null && info1!.isNotEmpty)
+                        Text(
+                          'Wali: $info1',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      if (info1 != null && info1!.isNotEmpty && info2 != null && info2!.isNotEmpty)
+                        Text(
+                          ' • ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      if (info2 != null && info2!.isNotEmpty)
+                        Text(
+                          'Kelas: $info2',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
+                    ],
+                  ),
+                ] else ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    roleDisplay,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
+          // Ikon User/Notifikasi
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -173,7 +237,7 @@ class _Header extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
-              Icons.notifications_outlined,
+              Icons.person_outline,
               color: Colors.white,
               size: 22,
             ),
