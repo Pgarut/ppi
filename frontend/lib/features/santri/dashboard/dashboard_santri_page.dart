@@ -37,15 +37,12 @@ class _DashboardSantriPageState extends State<DashboardSantriPage> {
       final bulan = now.month.toString();
       final tahun = now.year.toString();
 
-      final results = await Future.wait([
-        _service.getJadwal(hari: hariIni),
-        _service.getAbsensi(bulan: bulan, tahun: tahun),
-        _service.getNilai(),
-        _daurohService.getProgram(),
-      ]);
+      final jadwal = await _service.getJadwal(hari: hariIni);
+      final absensiRes = await _service.getAbsensi(bulan: bulan, tahun: tahun);
+      final nilaiRes = await _service.getNilai();
+      final programDauroh = await _daurohService.getProgram();
 
-      final absensiData = (results[1]['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      final nilaiData = results[2] as Map<String, dynamic>;
+      final absensiData = (absensiRes['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
       int hadir = 0;
       for (final a in absensiData) {
@@ -54,11 +51,11 @@ class _DashboardSantriPageState extends State<DashboardSantriPage> {
 
       if (mounted) {
         setState(() {
-          _jadwalHariIni = results[0];
+          _jadwalHariIni = jadwal;
           _totalAbsensi = absensiData.length;
           _totalHadir = hadir;
-          _rataRataNilai = (nilaiData['rata_rata_keseluruhan'] as num?)?.toDouble() ?? 0;
-          _totalProgramDauroh = results[3].length;
+          _rataRataNilai = (nilaiRes['rata_rata_keseluruhan'] as num?)?.toDouble() ?? 0;
+          _totalProgramDauroh = programDauroh.length;
           _loading = false;
         });
       }
