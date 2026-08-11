@@ -16,7 +16,6 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
   String? _error;
   int _currentPage = 1;
   int _totalPages = 1;
-  int _totalItems = 0;
   String? _bulan;
 
   @override
