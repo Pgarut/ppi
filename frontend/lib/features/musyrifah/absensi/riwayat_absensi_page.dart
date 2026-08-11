@@ -41,7 +41,6 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
           final pagination = res['pagination'] as Map<String, dynamic>?;
           if (pagination != null) {
             _totalPages = pagination['total_pages'] as int? ?? 1;
-            _totalItems = pagination['total'] as int? ?? 0;
             _currentPage = pagination['page'] as int? ?? 1;
           }
           _loading = false;
