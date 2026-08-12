@@ -28,12 +28,15 @@ class _ProfilPageState extends State<ProfilPage> {
     try {
       final auth = context.read<AuthProvider>();
       final user = auth.user;
-      if (user?.guruId != null) {
+      // Hanya admin yang boleh akses /admin/guru/{id}
+      // Role lain tidak perlu load profil dari API admin
+      if (user?.role == 'admin' && user?.guruId != null) {
         final guruRes = await ApiClient.get('/admin/guru/${user!.guruId}');
         _profil = guruRes['data'] as Map<String, dynamic>?;
       }
     } catch (e) {
-      if (mounted) AppUtils.showError(context, 'Gagal memuat profil');
+      // Tidak perlu tampilkan error, cukup tampilkan data dari auth provider
+      debugPrint('[ProfilPage] Gagal load profil: $e');
     }
     if (mounted) setState(() => _loading = false);
   }

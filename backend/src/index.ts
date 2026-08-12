@@ -322,6 +322,8 @@ export default {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Internal Server Error';
       return error(msg, 500);
+    } finally {
+      // CORS headers sudah di-handle oleh error()/success()/json()
     }
   },
 };
