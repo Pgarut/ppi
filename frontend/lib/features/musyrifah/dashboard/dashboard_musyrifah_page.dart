@@ -190,8 +190,7 @@ class _DashboardMusyrifahPageState extends State<DashboardMusyrifahPage> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildHeaderChip(IconData icon, String label, {Color? color}) {

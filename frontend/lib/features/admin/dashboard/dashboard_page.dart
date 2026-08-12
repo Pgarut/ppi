@@ -180,8 +180,7 @@ class _DashboardPageState extends State<DashboardPage> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildHeaderChip(IconData icon, String label) {
