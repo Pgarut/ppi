@@ -51,8 +51,10 @@ class DashboardTemplate extends StatelessWidget {
       );
     }
 
+    final topPadding = MediaQuery.of(context).viewPadding.top;
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 12, 20, 24),
       children: [
         if (showHeader) ...[
           _Header(subtitle: subtitle, info1: info1, info2: info2),

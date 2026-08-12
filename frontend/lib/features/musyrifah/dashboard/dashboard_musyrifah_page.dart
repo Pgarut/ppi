@@ -130,10 +130,8 @@ class _DashboardMusyrifahPageState extends State<DashboardMusyrifahPage> {
         gradient: AppTheme.headerGradient,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      child: Padding(
+          padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).viewPadding.top + 12, 24, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
