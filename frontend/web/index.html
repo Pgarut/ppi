@@ -104,6 +104,20 @@
       document.getElementById('loading')?.remove();
     });
 
+    // Fallback: jika Flutter gagal load dalam 15 detik, sembunyikan loading
+    // dan tampilkan pesan error yang lebih jelas
+    setTimeout(function() {
+      var loading = document.getElementById('loading');
+      if (loading) {
+        loading.innerHTML = '<div class="loading-spinner" style="text-align:center;">'
+          + '<div style="font-size:48px;margin-bottom:16px;">⚠️</div>'
+          + '<div style="font-size:16px;font-weight:600;margin-bottom:8px;">Gagal memuat aplikasi</div>'
+          + '<div style="font-size:13px;opacity:0.7;margin-bottom:16px;">Periksa koneksi internet dan coba lagi</div>'
+          + '<button onclick="window.location.reload()" style="background:white;color:#2E7D32;border:none;padding:10px 24px;border-radius:10px;font-weight:600;cursor:pointer;font-size:14px;">Muat Ulang</button>'
+          + '</div>';
+      }
+    }, 15000);
+
     // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {

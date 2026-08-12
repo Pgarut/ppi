@@ -32,19 +32,32 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> tryAutoLogin() async {
-    final loggedIn = await _authService.isLoggedIn();
-    if (loggedIn) {
-      final user = await _authService.getCurrentUser();
-      if (user != null) {
-        _user = user;
-        _status = AuthStatus.authenticated;
-        await ApiClient.startRefreshTimer();
-        notifyListeners();
-        return;
+    try {
+      final loggedIn = await _authService.isLoggedIn();
+      if (loggedIn) {
+        final user = await _authService.getCurrentUser();
+        if (user != null) {
+          _user = user;
+          _status = AuthStatus.authenticated;
+          try {
+            await ApiClient.startRefreshTimer();
+          } catch (e) {
+            // Refresh timer gagal, tapi login tetap berhasil
+            debugPrint('[AuthProvider] Refresh timer gagal: $e');
+          }
+          notifyListeners();
+          return;
+        }
       }
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+    } catch (e) {
+      // Jangan crash app! Fallback ke unauthenticated
+      debugPrint('[AuthProvider] tryAutoLogin error: $e');
+      _status = AuthStatus.unauthenticated;
+      _user = null;
+      notifyListeners();
     }
-    _status = AuthStatus.unauthenticated;
-    notifyListeners();
   }
 
   Future<void> login(String credential, String password) async {
