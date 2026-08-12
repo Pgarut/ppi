@@ -111,7 +111,7 @@ class _NilaiDaurohPageState extends State<NilaiDaurohPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nilai Dauroh'),
+        title: const Text('Nilai at-Ta\'wid'),
         automaticallyImplyLeading: false,
         actions: [
           if (_items.isNotEmpty)
@@ -120,7 +120,7 @@ class _NilaiDaurohPageState extends State<NilaiDaurohPage> {
               tooltip: 'Export Semua ke PDF',
               onPressed: () => DaurohPdfExport.exportBatch(
                 _items,
-                title: 'Laporan Penilaian Dauroh',
+                title: 'Laporan Penilaian at-Ta\'wid',
               ),
             ),
           IconButton(
@@ -871,7 +871,7 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      isEditing ? 'Edit Nilai Dauroh' : 'Input Nilai Dauroh',
+                      isEditing ? 'Edit Nilai at-Ta\'wid' : 'Input Nilai at-Ta\'wid',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),

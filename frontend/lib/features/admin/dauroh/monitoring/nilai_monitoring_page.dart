@@ -84,7 +84,7 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
             children: [
               const Expanded(
                 child: Text(
-                  'Monitoring Nilai Dauroh',
+                  'Monitoring Nilai at-Ta\'wid',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -92,7 +92,7 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
                 FilledButton.icon(
                   onPressed: () => DaurohPdfExport.exportBatch(
                     _data,
-                    title: 'Monitoring Nilai Dauroh',
+                    title: 'Monitoring Nilai at-Ta\'wid',
                   ),
                   icon: const Icon(Icons.picture_as_pdf, size: 18),
                   label: const Text('Export PDF'),
@@ -249,7 +249,7 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
     if (_data.isEmpty) {
       return const EmptyState(
         icon: Icons.grading_outlined,
-        message: 'Belum ada data nilai dauroh',
+        message: 'Belum ada data nilai at-Ta\'wid',
       );
     }
 

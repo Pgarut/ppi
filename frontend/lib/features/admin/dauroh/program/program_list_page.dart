@@ -103,7 +103,7 @@ class _ProgramListPageState extends State<ProgramListPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Program Kegiatan Dauroh',
+                    'Program Kegiatan at-Ta\'wid',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                   if (_data.isNotEmpty)
@@ -152,7 +152,7 @@ class _ProgramListPageState extends State<ProgramListPage> {
               columns: const [
                 DaurohTableColumn(key: 'nama_program', label: 'Nama Program', width: 200),
                 DaurohTableColumn(key: 'jenis_program', label: 'Jenis', width: 100),
-                DaurohTableColumn(key: 'jenis_dauroh', label: 'Dauroh', width: 100),
+                DaurohTableColumn(key: 'jenis_dauroh', label: 'at-Ta\'wid', width: 100),
                 DaurohTableColumn(key: 'keterangan', label: 'Keterangan', width: 200),
                 DaurohTableColumn(key: 'jumlah_jadwal', label: 'Jadwal', width: 80),
                 DaurohTableColumn(key: 'is_aktif', label: 'Status', width: 80),

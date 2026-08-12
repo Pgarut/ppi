@@ -112,7 +112,7 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
         build: (context) => [
           pw.Center(
             child: pw.Text(
-              'ABSENSI DAUROH',
+              'ABSENSI AT-TA\'WID',
               style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
             ),
           ),
@@ -208,7 +208,7 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'QR Code Dauroh',
+            'QR Code at-Ta\'wid',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
@@ -418,7 +418,7 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'ABSENSI DAUROH',
+              'ABSENSI AT-TA\'WID',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),

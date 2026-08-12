@@ -95,14 +95,14 @@ class _DashboardSantriPageState extends State<DashboardSantriPage> {
         StatItem(Icons.schedule, 'Jadwal Hari Ini', '${_jadwalHariIni.length} Mapel', AppTheme.primary),
         StatItem(Icons.how_to_reg, 'Kehadiran', '$_totalHadir dari $_totalAbsensi', Colors.green),
         StatItem(Icons.grade, 'Rata-rata Nilai', _rataRataNilai.toStringAsFixed(1), Colors.orange),
-        StatItem(Icons.bookmark, 'Program Dauroh', '$_totalProgramDauroh Program', Colors.purple),
+        StatItem(Icons.bookmark, 'Program at-Ta\'wid', '$_totalProgramDauroh Program', Colors.purple),
       ],
       features: const [
         FeatureItem('Jadwal', 'jadwal', Icons.calendar_today, 'Lihat jadwal pelajaran'),
         FeatureItem('Absensi', 'absensi', Icons.how_to_reg, 'Riwayat kehadiran'),
         FeatureItem('Nilai', 'nilai', Icons.grade, 'Nilai akademik'),
         FeatureItem('Materi', 'materi', Icons.menu_book, 'Materi pelajaran'),
-        FeatureItem('Dauroh', 'dauroh', Icons.bookmark, 'Program Dauroh & Nilai'),
+        FeatureItem('at-Ta\'wid', 'dauroh', Icons.bookmark, 'Program at-Ta\'wid & Nilai'),
       ],
       onFeatureTap: widget.onFeatureTap,
     );

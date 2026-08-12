@@ -147,7 +147,7 @@ class _ProgramFormPageState extends State<ProgramFormPage> {
                     Expanded(
                       child: DaurohDropdown<String>(
                         value: _jenisDauroh,
-                        label: 'Jenis Dauroh',
+                        label: 'Jenis at-Ta\'wid',
                         icon: Icons.menu_book_outlined,
                         items: const [
                           DropdownMenuItem(value: 'tahfidz', child: Text('Tahfidz')),

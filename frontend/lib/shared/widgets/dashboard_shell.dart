@@ -43,7 +43,7 @@ class _DashboardShellState extends State<DashboardShell> {
     'absensi': 'Riwayat Kehadiran',
     'nilai': 'Nilai Akademik',
     'materi': 'Materi Pembelajaran',
-    'dauroh': 'Program Dauroh',
+    'dauroh': 'Program at-Ta\'wid',
     'santri': 'Data Santri',
     'guru': 'Data Guru',
     'kelas': 'Data Kelas',

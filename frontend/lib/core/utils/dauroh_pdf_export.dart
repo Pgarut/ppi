@@ -64,7 +64,7 @@ class DaurohPdfExport {
             child: pw.Column(
               children: [
                 pw.Text(
-                  'LAPORAN PENILAIAN DAUROH',
+                  'LAPORAN PENILAIAN AT-TA\'WID',
                   style: pw.TextStyle(
                     fontSize: 18,
                     fontWeight: pw.FontWeight.bold,
@@ -249,7 +249,7 @@ class DaurohPdfExport {
           // ── HEADER ──
           pw.Center(
             child: pw.Text(
-              title ?? 'Laporan Penilaian Dauroh',
+              title ?? 'Laporan Penilaian at-Ta\'wid',
               style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
             ),
           ),

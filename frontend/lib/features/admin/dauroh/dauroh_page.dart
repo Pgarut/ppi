@@ -34,7 +34,7 @@ class _DaurohPageState extends State<DaurohPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Modul Dauroh'),
+        title: const Text('Modul at-Ta\'wid'),
         automaticallyImplyLeading: false,
       ),
       body: Row(
@@ -60,7 +60,7 @@ class _DaurohPageState extends State<DaurohPage> {
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
-              'Menu Dauroh',
+              'Menu at-Ta\'wid',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,

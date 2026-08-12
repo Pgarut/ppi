@@ -51,7 +51,7 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
                 _buildSectionTitle('Program Yang Diikuti'),
                 const SizedBox(height: 12),
                 if (_program.isEmpty)
-                  _buildEmptyCard('Belum terdaftar di program Dauroh')
+                  _buildEmptyCard('Belum terdaftar di program at-Ta\'wid')
                 else
                   ..._program.map((p) => _buildProgramCard(p)),
                 const SizedBox(height: 24),

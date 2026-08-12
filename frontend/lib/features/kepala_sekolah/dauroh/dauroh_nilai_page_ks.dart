@@ -105,7 +105,7 @@ class _DaurohNilaiPageKSState extends State<DaurohNilaiPageKS> {
         header: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text('Monitoring Nilai Dauroh', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+            pw.Text('Monitoring Nilai at-Ta\'wid', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 4),
             pw.Text('Dicetak: $dateStr', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
             if (_selectedJenjang != null || _selectedKelasId != null || _selectedProgramId != null)
@@ -163,7 +163,7 @@ class _DaurohNilaiPageKSState extends State<DaurohNilaiPageKS> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Monitoring Nilai Dauroh'),
+        title: const Text('Monitoring Nilai at-Ta\'wid'),
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -354,7 +354,7 @@ class _DaurohNilaiPageKSState extends State<DaurohNilaiPageKS> {
           children: [
             Icon(Icons.inbox_outlined, size: 64, color: AppTheme.grey400),
             SizedBox(height: 16),
-            Text('Tidak ada data nilai dauroh', style: TextStyle(fontSize: 16, color: AppTheme.grey500)),
+            Text('Tidak ada data nilai at-Ta\'wid', style: TextStyle(fontSize: 16, color: AppTheme.grey500)),
           ],
         ),
       );

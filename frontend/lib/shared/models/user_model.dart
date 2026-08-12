@@ -55,7 +55,7 @@ class UserModel {
       case 'guru_mapel_wali_kelas': return 'Asatidz Mapel / Wali Kelas';
       case 'guru_bk': return 'Asatidz BK';
       case 'siswa': return 'Santri';
-      case 'musyrifah': return 'Musyrifah Dauroh';
+      case 'musyrifah': return 'Musyrifah at-Ta\'wid';
       default: return role;
     }
   }

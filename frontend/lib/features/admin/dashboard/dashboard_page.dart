@@ -291,7 +291,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildFeatureGrid() {
     final features = [
       _FeatureItem(Icons.storage_outlined, 'Master Data', 'Kelola data master', () => widget.onFeatureTap?.call('master-data')),
-      _FeatureItem(Icons.menu_book_outlined, 'Dauroh', 'Kelola program dauroh', () => widget.onFeatureTap?.call('dauroh')),
+      _FeatureItem(Icons.menu_book_outlined, 'at-Ta\'wid', 'Kelola program at-Ta\'wid', () => widget.onFeatureTap?.call('dauroh')),
       _FeatureItem(Icons.calendar_today_outlined, 'Absensi', 'Monitoring absensi', () => widget.onFeatureTap?.call('absensi')),
       _FeatureItem(Icons.grading_outlined, 'Nilai', 'Monitoring nilai', () => widget.onFeatureTap?.call('nilai')),
       _FeatureItem(Icons.description_outlined, 'Rapor', 'Monitoring rapor', () => widget.onFeatureTap?.call('rapor')),

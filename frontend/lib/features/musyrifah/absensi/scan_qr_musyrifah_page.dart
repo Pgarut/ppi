@@ -117,7 +117,7 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
           onPressed: widget.onBack ?? () => Navigator.of(context).pop(),
         ),
-        title: const Text('Scan QR Dauroh', style: TextStyle(color: Colors.white)),
+        title: const Text('Scan QR at-Ta\'wid', style: TextStyle(color: Colors.white)),
         backgroundColor: AppTheme.grey900,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
@@ -235,7 +235,7 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
             const Icon(Icons.qr_code_scanner, color: Colors.white, size: 48),
             const SizedBox(height: 12),
             const Text(
-              'Arahkan kamera ke QR Code Dauroh',
+              'Arahkan kamera ke QR Code at-Ta\'wid',
               style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 8),

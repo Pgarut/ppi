@@ -332,7 +332,7 @@ class _DashboardMusyrifahPageState extends State<DashboardMusyrifahPage> {
   Widget _buildFeatureGrid() {
     final features = [
       _FeatureItem(Icons.calendar_month_outlined, 'Jadwal', 'Lihat jadwal mengajar', () => widget.onFeatureTap?.call('jadwal')),
-      _FeatureItem(Icons.qr_code_scanner, 'Scan QR', 'Absensi dauroh', () => widget.onFeatureTap?.call('scan-qr')),
+      _FeatureItem(Icons.qr_code_scanner, 'Scan QR', 'Absensi at-Ta\'wid', () => widget.onFeatureTap?.call('scan-qr')),
       _FeatureItem(Icons.history, 'Riwayat', 'Riwayat absensi', () => widget.onFeatureTap?.call('riwayat')),
       _FeatureItem(Icons.grading_outlined, 'Nilai', 'Input & lihat nilai', () => widget.onFeatureTap?.call('nilai')),
     ];
