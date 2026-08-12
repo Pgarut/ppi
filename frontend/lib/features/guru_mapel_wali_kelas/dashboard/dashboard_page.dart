@@ -46,7 +46,7 @@ class _DashboardPageGuruState extends State<DashboardPageGuru> {
 
     return DashboardTemplate(
       loading: _loading,
-      showHeader: false,
+      showHeader: true,
       stats: [
         StatItem(Icons.calendar_today, 'Jadwal Hari Ini', '${_stats?['jadwal_hari_ini'] ?? 0}', Colors.blue),
         StatItem(Icons.checklist, 'Total Absensi', '${_stats?['total_absensi'] ?? 0}', Colors.green),
