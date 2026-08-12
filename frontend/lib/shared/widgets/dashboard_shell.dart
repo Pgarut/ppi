@@ -199,9 +199,11 @@ class _DashboardShellState extends State<DashboardShell> {
 
     return Scaffold(
       drawer: _buildDrawer(),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
-        child: KeyedSubtree(key: ValueKey('tab$_shellTab'), child: _currentPage()),
+      body: SafeArea(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: KeyedSubtree(key: ValueKey('tab$_shellTab'), child: _currentPage()),
+        ),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
