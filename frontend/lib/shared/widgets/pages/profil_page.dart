@@ -4,7 +4,6 @@ import '../../models/user_model.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
-import '../app_utils.dart';
 
 class ProfilPage extends StatefulWidget {
   final VoidCallback? onLogout;
