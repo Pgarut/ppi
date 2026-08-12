@@ -157,10 +157,8 @@
       // Create toast notification
       const toast = document.createElement('div');
       toast.className = 'update-toast';
-      toast.innerHTML = '
-        <span>🔄 Update tersedia!</span>
-        <button onclick="reloadApp()">Muat Ulang</button>
-      ';
+      toast.innerHTML = '<span style="margin-right:8px;">🔄 Update tersedia!</span>'
+        + '<button onclick="reloadApp()" style="background:white;color:#1B5E20;border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Muat Ulang</button>';
       document.body.appendChild(toast);
     }
 
