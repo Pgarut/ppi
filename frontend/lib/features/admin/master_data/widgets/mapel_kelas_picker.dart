@@ -133,11 +133,11 @@ class _MapelKelasPickerState extends State<MapelKelasPicker> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.grey200),
                 ),
-                child: Column(
+                child: const Column(
                   children: [
-                    const Icon(Icons.add_circle_outline, size: 32, color: AppTheme.grey400),
-                    const SizedBox(height: 8),
-                    Text('Tap untuk menambah mata pelajaran', style: const TextStyle(fontSize: 13, color: AppTheme.grey500)),
+                    Icon(Icons.add_circle_outline, size: 32, color: AppTheme.grey400),
+                    SizedBox(height: 8),
+                    Text('Tap untuk menambah mata pelajaran', style: TextStyle(fontSize: 13, color: AppTheme.grey500)),
                   ],
                 ),
               ),
@@ -146,9 +146,9 @@ class _MapelKelasPickerState extends State<MapelKelasPicker> {
             // Header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppTheme.grey100,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
               ),
               child: const Row(
                 children: [
@@ -164,7 +164,7 @@ class _MapelKelasPickerState extends State<MapelKelasPicker> {
               final row = _rows[index];
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   border: Border(bottom: BorderSide(color: AppTheme.grey200)),
                 ),
                 child: Row(
