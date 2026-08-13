@@ -105,7 +105,12 @@ describe('Wakil Kurikulum Routes', () => {
 
     it('should create jadwal', async () => {
       const db = makeDb();
-      db.first.mockResolvedValue(null);
+      // validasiGuruMapelKelas: cek guru_mapel_kelas (spesifik)
+      db.first.mockResolvedValueOnce({ guru_id: 1, mata_pelajaran_id: 1, kelas_id: 1 });
+      // cekBentrok: guru tidak bentrok
+      db.first.mockResolvedValueOnce(null);
+      // cekBentrok: kelas tidak bentrok
+      db.first.mockResolvedValueOnce(null);
       db.run.mockResolvedValue({ meta: { last_row_id: 1 } });
       const req = makePost('/api/wakil-kurikulum/jadwal', { kelas_id: 1, mata_pelajaran_id: 1, guru_id: 1, hari: 'Senin', jam_mulai: '07:00', jam_selesai: '07:45', semester_id: 1 });
       const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'jadwal'], makeUrl(''));
@@ -114,7 +119,10 @@ describe('Wakil Kurikulum Routes', () => {
 
     it('should reject bentrok jadwal', async () => {
       const db = makeDb();
-      db.first.mockResolvedValue({ id: 99 });
+      // validasiGuruMapelKelas: cek guru_mapel_kelas (spesifik) - lolos
+      db.first.mockResolvedValueOnce({ guru_id: 1, mata_pelajaran_id: 1, kelas_id: 1 });
+      // cekBentrok: guru bentrok
+      db.first.mockResolvedValueOnce({ kelas_id: 2, kelas_nama: 'X-B' });
       const req = makePost('/api/wakil-kurikulum/jadwal', { kelas_id: 1, mata_pelajaran_id: 1, guru_id: 1, hari: 'Senin', jam_mulai: '07:00', jam_selesai: '07:45', semester_id: 1 });
       const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'jadwal'], makeUrl(''));
       expect(res.status).toBe(400);
