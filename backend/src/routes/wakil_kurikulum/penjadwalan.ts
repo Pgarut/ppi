@@ -58,7 +58,22 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
     const mapelId = url.searchParams.get('mata_pelajaran_id');
     if (!kelasId || !mapelId) return badRequest('kelas_id dan mata_pelajaran_id diperlukan');
 
-    const rows = await env.DB.prepare(
+    // Prioritas: gunakan guru_mapel_kelas (spesifik), fallback ke guru_mapel × guru_kelas
+    const rowsSpesifik = await env.DB.prepare(
+      `SELECT DISTINCT g.id, g.nama, g.nip
+       FROM guru g
+       INNER JOIN guru_mapel_kelas gmk ON g.id = gmk.guru_id
+       WHERE gmk.mata_pelajaran_id = ? AND gmk.kelas_id = ? AND g.status_aktif = 1
+       ORDER BY g.nip ASC`
+    ).bind(parseInt(mapelId), parseInt(kelasId)).all();
+
+    // Jika ada data spesifik, gunakan itu
+    if (rowsSpesifik.results.length > 0) {
+      return success(rowsSpesifik.results);
+    }
+
+    // Fallback: gunakan guru_mapel × guru_kelas (cross join)
+    const rowsFallback = await env.DB.prepare(
       `SELECT DISTINCT g.id, g.nama, g.nip
        FROM guru g
        INNER JOIN guru_kelas gk ON g.id = gk.guru_id AND gk.kelas_id = ?
@@ -67,7 +82,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
        ORDER BY g.nip ASC`
     ).bind(parseInt(kelasId), parseInt(mapelId)).all();
 
-    return success(rows.results);
+    return success(rowsFallback.results);
   }
 
   // ═══════════════════════════════════════════════
@@ -262,6 +277,12 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
         return badRequest('Hari tidak valid. Hari yang tersedia: ' + HARI.join(', '));
       }
 
+      // Validasi guru mengajar mapel di kelas ini
+      const validasiGuru = await validasiGuruMapelKelas(env, guru_id as number, mata_pelajaran_id as number, kelas_id as number);
+      if (validasiGuru) {
+        return badRequest(validasiGuru);
+      }
+
       const bentrok = await cekBentrok(env, guru_id as number, kelas_id as number, hari as string, jam_mulai as string, jam_selesai as string, semester_id as number, undefined);
       if (bentrok) {
         return badRequest(bentrok);
@@ -300,6 +321,13 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       const guruIdFinal = body['guru_id'] as number || existing['guru_id'] as number;
       const kelasIdFinal = body['kelas_id'] as number || existing['kelas_id'] as number;
       const semesterIdFinal = body['semester_id'] as number || existing['semester_id'] as number;
+      const mapelIdFinal = body['mata_pelajaran_id'] as number || existing['mata_pelajaran_id'] as number;
+
+      // Validasi guru mengajar mapel di kelas ini
+      const validasiGuru = await validasiGuruMapelKelas(env, guruIdFinal, mapelIdFinal, kelasIdFinal);
+      if (validasiGuru) {
+        return badRequest(validasiGuru);
+      }
 
       const bentrok = await cekBentrok(env, guruIdFinal, kelasIdFinal, hariFinal, jamMulaiFinal, jamSelesaiFinal, semesterIdFinal, id);
       if (bentrok) {
@@ -324,10 +352,19 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
   // ── Cek Bentrok (sebelum simpan) ──
   if (subPath === 'jadwal/cek-bentrok' && request.method === 'POST') {
     const body = await request.json() as {
-      guru_id: number; kelas_id: number; hari: string;
+      guru_id: number; kelas_id: number; mata_pelajaran_id?: number; hari: string;
       jam_mulai: string; jam_selesai: string; semester_id: number;
       exclude_id?: number; exclude_kelas_id?: number;
     };
+
+    // Validasi guru mengajar mapel di kelas ini (jika mapel_id disediakan)
+    if (body.mata_pelajaran_id) {
+      const validasiGuru = await validasiGuruMapelKelas(env, body.guru_id, body.mata_pelajaran_id, body.kelas_id);
+      if (validasiGuru) {
+        return success({ bentrok: true, message: validasiGuru });
+      }
+    }
+
     const msg = await cekBentrok(env, body.guru_id, body.kelas_id, body.hari, body.jam_mulai, body.jam_selesai, body.semester_id, body.exclude_id);
     return success({ bentrok: !!msg, message: msg });
   }
@@ -346,6 +383,13 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
     let saved = 0;
 
     for (const item of body.jadwal) {
+      // Validasi guru mengajar mapel di kelas ini
+      const validasiGuru = await validasiGuruMapelKelas(env, item.guru_id, item.mata_pelajaran_id, item.kelas_id);
+      if (validasiGuru) {
+        errors.push(`Baris ${saved + 1}: ${validasiGuru}`);
+        continue;
+      }
+
       const bentrok = await cekBentrok(env, item.guru_id, item.kelas_id, item.hari, item.jam_mulai, item.jam_selesai, item.semester_id, item.id);
       if (bentrok) {
         errors.push(`Baris ${saved + 1}: ${bentrok}`);
@@ -471,6 +515,34 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
 // ═══════════════════════════════════════════════
 // FUNGSI CEK BENTROK
 // ═══════════════════════════════════════════════
+
+/**
+ * Validasi apakah guru diizinkan mengajar mapel di kelas tersebut
+ * Cek dari guru_mapel_kelas (spesifik) atau guru_mapel × guru_kelas (fallback)
+ */
+async function validasiGuruMapelKelas(
+  env: Env, guruId: number, mapelId: number, kelasId: number
+): Promise<string | null> {
+  // Cek di guru_mapel_kelas (spesifik)
+  const spesifik = await env.DB.prepare(
+    'SELECT 1 FROM guru_mapel_kelas WHERE guru_id = ? AND mata_pelajaran_id = ? AND kelas_id = ?'
+  ).bind(guruId, mapelId, kelasId).first();
+
+  if (spesifik) return null; // Ada data spesifik, lolos
+
+  // Fallback: cek guru_mapel × guru_kelas
+  const mapel = await env.DB.prepare(
+    'SELECT 1 FROM guru_mapel WHERE guru_id = ? AND mata_pelajaran_id = ?'
+  ).bind(guruId, mapelId).first();
+
+  const kelas = await env.DB.prepare(
+    'SELECT 1 FROM guru_kelas WHERE guru_id = ? AND kelas_id = ?'
+  ).bind(guruId, kelasId).first();
+
+  if (mapel && kelas) return null; // Ada di kedua tabel, lolos
+
+  return 'Guru tidak terdaftar untuk mengajar mata pelajaran ini di kelas ini';
+}
 
 async function cekBentrok(
   env: Env, guruId: number, kelasId: number,

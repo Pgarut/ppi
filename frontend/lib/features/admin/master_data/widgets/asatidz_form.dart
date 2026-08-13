@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../features/admin/services/admin_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/models/guru_mapel_kelas_model.dart';
 import '../../../../shared/widgets/common_widgets.dart';
 import 'form_fields.dart';
+import 'mapel_kelas_picker.dart';
 
 class AsatidzForm extends StatefulWidget {
   final Map<String, dynamic>? editData;
@@ -25,8 +27,7 @@ class _AsatidzFormState extends State<AsatidzForm> {
   String? _selectedJk;
   String? _selectedStatus;
   Set<String> _selectedJabatan = {};
-  Set<int> _selectedMapelIds = {};
-  Set<int> _selectedKelasIds = {};
+  List<GuruMapelKelas> _assignments = [];
   int? _waliKelasId;
 
   List<Map<String, dynamic>> _kelasList = [];
@@ -97,13 +98,11 @@ class _AsatidzFormState extends State<AsatidzForm> {
   Future<void> _loadExistingAssignments() async {
     final gid = widget.editData!['id'] as int;
     try {
-      final r = await ApiClient.get('/admin/guru-mapel/$gid/mapel');
-      _selectedMapelIds = (r['data'] as List).cast<int>().toSet();
-    } catch (_) {}
-    try {
-      final r = await ApiClient.get('/admin/guru-kelas/$gid/kelas');
-      _selectedKelasIds = (r['data'] as List).cast<int>().toSet();
-    } catch (_) {}
+      final data = await AdminService.getGuruMapelKelas(gid);
+      _assignments = data.map((e) => GuruMapelKelas.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      _assignments = [];
+    }
     try {
       final r = await ApiClient.get('/admin/guru-wali-kelas/$gid');
       _waliKelasId = r['data']?['kelas_id'] as int?;
@@ -124,9 +123,7 @@ class _AsatidzFormState extends State<AsatidzForm> {
               const SizedBox(height: 16),
               _buildAkunLoginCard(),
               const SizedBox(height: 16),
-              _buildMapelCard(),
-              const SizedBox(height: 16),
-              _buildKelasCard(),
+              _buildMapelKelasCard(),
               if (_selectedJabatan.contains('wali_kelas')) ...[
                 const SizedBox(height: 16),
                 _buildWaliKelasCard(),
@@ -236,59 +233,12 @@ class _AsatidzFormState extends State<AsatidzForm> {
     );
   }
 
-  Widget _buildMapelCard() {
-    return SelectableChipGroup<int>(
-      title: 'Mata Pelajaran yang Diampu',
-      icon: Icons.book_outlined,
-      allItems: _mapelList.map((m) => m['id'] as int).toList(),
-      selectedIds: _selectedMapelIds,
-      labelFn: (id) {
-        final m = _mapelList.firstWhere((x) => x['id'] == id, orElse: () => {});
-        return m['nama']?.toString() ?? '';
-      },
-      chipColor: AppTheme.blue,
-      onTap: () async {
-        final result = await showMultiSelectDialog<int>(
-          context: context,
-          title: 'Pilih Mata Pelajaran',
-          icon: Icons.book_outlined,
-          items: _mapelList.map((m) => m['id'] as int).toList(),
-          selectedIds: _selectedMapelIds,
-          labelFn: (id) {
-            final m = _mapelList.firstWhere((x) => x['id'] == id, orElse: () => {});
-            return m['nama']?.toString() ?? '';
-          },
-        );
-        if (result != null) setState(() => _selectedMapelIds = result);
-      },
-    );
-  }
-
-  Widget _buildKelasCard() {
-    return SelectableChipGroup<int>(
-      title: 'Kelas yang Diajar',
-      icon: Icons.meeting_room_outlined,
-      allItems: _kelasList.map((k) => k['id'] as int).toList(),
-      selectedIds: _selectedKelasIds,
-      labelFn: (id) {
-        final k = _kelasList.firstWhere((x) => x['id'] == id, orElse: () => {});
-        return k['nama']?.toString() ?? '';
-      },
-      chipColor: AppTheme.orange,
-      onTap: () async {
-        final result = await showMultiSelectDialog<int>(
-          context: context,
-          title: 'Pilih Kelas',
-          icon: Icons.meeting_room_outlined,
-          items: _kelasList.map((k) => k['id'] as int).toList(),
-          selectedIds: _selectedKelasIds,
-          labelFn: (id) {
-            final k = _kelasList.firstWhere((x) => x['id'] == id, orElse: () => {});
-            return k['nama']?.toString() ?? '';
-          },
-        );
-        if (result != null) setState(() => _selectedKelasIds = result);
-      },
+  Widget _buildMapelKelasCard() {
+    return MapelKelasPicker(
+      mapelList: _mapelList,
+      kelasList: _kelasList,
+      assignments: _assignments,
+      onChanged: (value) => setState(() => _assignments = value),
     );
   }
 
@@ -354,12 +304,11 @@ class _AsatidzFormState extends State<AsatidzForm> {
       }
 
       if (savedId != null) {
-        await ApiClient.put('/admin/guru-mapel/$savedId/mapel', body: {
-          'mapel_ids': _selectedMapelIds.toList(),
-        });
-        await ApiClient.put('/admin/guru-kelas/$savedId/kelas', body: {
-          'kelas_ids': _selectedKelasIds.toList(),
-        });
+        // Simpan guru_mapel_kelas (gabungan spesifik)
+        final assignmentsData = _assignments.map((a) => a.toJson()).toList();
+        await AdminService.saveGuruMapelKelas(savedId, assignmentsData);
+
+        // Simpan wali kelas
         if (_selectedJabatan.contains('wali_kelas')) {
           await ApiClient.put('/admin/guru-wali-kelas/$savedId', body: {
             'kelas_id': _waliKelasId,

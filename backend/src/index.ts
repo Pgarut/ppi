@@ -4,7 +4,7 @@ import { generalRateLimit, bruteForceCheck, bruteForceRecordFailure, bruteForceR
 import { createSession, validateSession, revokeSession, hashToken } from './middleware/session';
 import { Env, Role, UserPayload } from './types';
 import { json, success, error, unauthorized, cors, setCorsOrigin, resolveCorsOrigin } from './utils/response';
-import { handleAdminMasterData, handleMapelKelas, handleGuruMapelAmpu, handleGuruKelasAmpu, handleWaliKelasList, handleGuruBKList, handleSiswaTemplate, handleSiswaPreview, handleSiswaBulk, handleMapelTemplate, handleMapelPreview, handleMapelBulk, handleGuruTemplate, handleGuruPreview, handleGuruBulk, handleWaliKelasAssign } from './routes/admin/master_data';
+import { handleAdminMasterData, handleMapelKelas, handleGuruMapelAmpu, handleGuruKelasAmpu, handleGuruMapelKelas, handleGuruByMapelKelas, handleWaliKelasList, handleGuruBKList, handleSiswaTemplate, handleSiswaPreview, handleSiswaBulk, handleMapelTemplate, handleMapelPreview, handleMapelBulk, handleGuruTemplate, handleGuruPreview, handleGuruBulk, handleWaliKelasAssign } from './routes/admin/master_data';
 import { handleAdminUsers, handleHakAkses } from './routes/admin/users';
 import { handleBackup, handleRestore, handleLogAktivitas } from './routes/admin/system';
 import { handlePengaturanTampilan, handleProfilSekolah } from './routes/admin/pengaturan_tampilan';
@@ -149,6 +149,12 @@ export default {
         }
 
         // Guru associations
+        if (subPath.startsWith('guru-mapel-kelas/guru-by-mapel-kelas')) {
+          return handleGuruByMapelKelas(request, env, url);
+        }
+        if (subPath.startsWith('guru-mapel-kelas/')) {
+          return handleGuruMapelKelas(request, env, user, pathParts);
+        }
         if (subPath.startsWith('guru-mapel/')) {
           return handleGuruMapelAmpu(request, env, user, pathParts);
         }

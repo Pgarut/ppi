@@ -198,4 +198,16 @@ class AdminService {
   static Future<void> updatePengaturanTampilan(Map<String, String> body) async {
     await ApiClient.put('/admin/pengaturan-tampilan', body: body);
   }
+
+  // ── Guru Mapel Kelas (Gabungan Spesifik) ──
+  static Future<List<dynamic>> getGuruMapelKelas(int guruId) async {
+    final res = await ApiClient.get('/admin/guru-mapel-kelas/$guruId');
+    return res['data'] as List<dynamic>;
+  }
+
+  static Future<void> saveGuruMapelKelas(int guruId, List<Map<String, dynamic>> assignments) async {
+    await ApiClient.post('/admin/guru-mapel-kelas/$guruId', body: {
+      'assignments': assignments,
+    });
+  }
 }

@@ -292,6 +292,125 @@ export async function handleGuruKelasAmpu(request: Request, env: Env, user: User
   return badRequest('Method tidak didukung');
 }
 
+// ═══════════════════════════════════════════════
+// GURU MAPEL KELAS (Gabungan Spesifik)
+// ═══════════════════════════════════════════════
+
+/**
+ * Sinkronisasi guru_mapel_kelas → guru_mapel + guru_kelas
+ * Dipanggil setiap kali data guru_mapel_kelas berubah
+ */
+export async function syncGuruMapelKelas(env: Env, guruId: number): Promise<void> {
+  // Sync guru_mapel: ambil distinct mapel_ids dari guru_mapel_kelas
+  const mapelRows = await env.DB.prepare(
+    'SELECT DISTINCT mata_pelajaran_id FROM guru_mapel_kelas WHERE guru_id = ?'
+  ).bind(guruId).all<{ mata_pelajaran_id: number }>();
+
+  await env.DB.prepare('DELETE FROM guru_mapel WHERE guru_id = ?').bind(guruId).run();
+  for (const m of mapelRows.results) {
+    await env.DB.prepare('INSERT OR IGNORE INTO guru_mapel (guru_id, mata_pelajaran_id) VALUES (?, ?)')
+      .bind(guruId, m.mata_pelajaran_id).run();
+  }
+
+  // Sync guru_kelas: ambil distinct kelas_ids dari guru_mapel_kelas
+  const kelasRows = await env.DB.prepare(
+    'SELECT DISTINCT kelas_id FROM guru_mapel_kelas WHERE guru_id = ?'
+  ).bind(guruId).all<{ kelas_id: number }>();
+
+  await env.DB.prepare('DELETE FROM guru_kelas WHERE guru_id = ?').bind(guruId).run();
+  for (const k of kelasRows.results) {
+    await env.DB.prepare('INSERT OR IGNORE INTO guru_kelas (guru_id, kelas_id) VALUES (?, ?)')
+      .bind(guruId, k.kelas_id).run();
+  }
+}
+
+/**
+ * GET /api/admin/guru-mapel-kelas/:guruId
+ * POST /api/admin/guru-mapel-kelas/:guruId (bulk replace)
+ */
+export async function handleGuruMapelKelas(request: Request, env: Env, user: UserPayload, pathParts: string[]): Promise<Response> {
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+
+  if (pathParts.length < 4) return badRequest('URL tidak valid');
+  const guruId = parseInt(pathParts[3]);
+  if (!guruId) return badRequest('guru_id diperlukan');
+
+  // GET: Ambil semua kombinasi mapel+kelas untuk guru
+  if (request.method === 'GET') {
+    const rows = await env.DB.prepare(
+      `SELECT gmk.id, gmk.mata_pelajaran_id, mp.nama as mapel_nama,
+              gmk.kelas_id, k.nama as kelas_nama
+       FROM guru_mapel_kelas gmk
+       LEFT JOIN mata_pelajaran mp ON gmk.mata_pelajaran_id = mp.id
+       LEFT JOIN kelas k ON gmk.kelas_id = k.id
+       WHERE gmk.guru_id = ?
+       ORDER BY mp.nama, k.nama`
+    ).bind(guruId).all();
+
+    return success(rows.results);
+  }
+
+  // POST: Bulk replace (delete all + insert baru)
+  if (request.method === 'POST') {
+    const body = await request.json() as { assignments?: { mata_pelajaran_id: number; kelas_id: number }[] };
+    const assignments = body.assignments;
+    if (!Array.isArray(assignments)) return badRequest('Field assignments harus array');
+
+    // Cek apakah guru ada
+    const existing = await env.DB.prepare('SELECT id FROM guru WHERE id = ?').bind(guruId).first();
+    if (!existing) return notFound('Asatidz');
+
+    // Hapus semua data lama
+    await env.DB.prepare('DELETE FROM guru_mapel_kelas WHERE guru_id = ?').bind(guruId).run();
+
+    // Insert data baru
+    let inserted = 0;
+    for (const a of assignments) {
+      if (!a.mata_pelajaran_id || !a.kelas_id) continue;
+      try {
+        await env.DB.prepare(
+          'INSERT OR IGNORE INTO guru_mapel_kelas (guru_id, mata_pelajaran_id, kelas_id) VALUES (?, ?, ?)'
+        ).bind(guruId, a.mata_pelajaran_id, a.kelas_id).run();
+        inserted++;
+      } catch (e) {
+        // Skip duplicate atau error lain
+        continue;
+      }
+    }
+
+    // Sinkronisasi ke guru_mapel + guru_kelas
+    await syncGuruMapelKelas(env, guruId);
+
+    // Log aktivitas
+    await env.DB.prepare("INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'guru_mapel_kelas', ?, ?)")
+      .bind(user.sub, `Update mapel+kelas guru id=${guruId} (${inserted} kombinasi)`, ip).run();
+
+    return success({ guru_id: guruId, total: inserted });
+  }
+
+  return badRequest('Method tidak didukung');
+}
+
+/**
+ * GET /api/admin/guru-mapel-kelas/guru-by-mapel-kelas?mapel_id=X&kelas_id=Y
+ * Ambil guru yang mengajar mapel X di kelas Y
+ */
+export async function handleGuruByMapelKelas(request: Request, env: Env, url: URL): Promise<Response> {
+  const mapelId = url.searchParams.get('mata_pelajaran_id');
+  const kelasId = url.searchParams.get('kelas_id');
+  if (!mapelId || !kelasId) return badRequest('mata_pelajaran_id dan kelas_id diperlukan');
+
+  const rows = await env.DB.prepare(
+    `SELECT DISTINCT g.id, g.nama, g.nip
+     FROM guru g
+     INNER JOIN guru_mapel_kelas gmk ON g.id = gmk.guru_id
+     WHERE gmk.mata_pelajaran_id = ? AND gmk.kelas_id = ? AND g.status_aktif = 1
+     ORDER BY g.nip ASC`
+  ).bind(parseInt(mapelId), parseInt(kelasId)).all();
+
+  return success(rows.results);
+}
+
 export async function handleMapelKelas(request: Request, env: Env, user: UserPayload, pathParts: string[]): Promise<Response> {
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
 

@@ -126,6 +126,16 @@ CREATE TABLE guru_kelas (
     UNIQUE(guru_id, kelas_id)
 );
 
+-- Gabungan guru + mapel + kelas (spesifik: guru mengajar mapel X di kelas Y)
+CREATE TABLE guru_mapel_kelas (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    guru_id           INTEGER NOT NULL REFERENCES guru(id) ON DELETE CASCADE,
+    mata_pelajaran_id INTEGER NOT NULL REFERENCES mata_pelajaran(id) ON DELETE CASCADE,
+    kelas_id          INTEGER NOT NULL REFERENCES kelas(id) ON DELETE CASCADE,
+    created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(guru_id, mata_pelajaran_id, kelas_id)
+);
+
 CREATE TABLE kelas (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     nama            TEXT NOT NULL,          -- contoh: 'X IPA 1'
@@ -421,6 +431,11 @@ CREATE INDEX idx_pengaduan_siswa      ON pengaduan(siswa_id);
 CREATE INDEX idx_pengaduan_pelapor    ON pengaduan(dilaporkan_oleh);
 CREATE INDEX idx_pengaduan_status     ON pengaduan(status);
 CREATE INDEX idx_konseling_siswa      ON konseling(siswa_id);
+CREATE INDEX idx_gmk_guru             ON guru_mapel_kelas(guru_id);
+CREATE INDEX idx_gmk_mapel            ON guru_mapel_kelas(mata_pelajaran_id);
+CREATE INDEX idx_gmk_kelas            ON guru_mapel_kelas(kelas_id);
+CREATE INDEX idx_gmk_guru_mapel       ON guru_mapel_kelas(guru_id, mata_pelajaran_id);
+CREATE INDEX idx_gmk_guru_kelas       ON guru_mapel_kelas(guru_id, kelas_id);
 
 -- ============================================================
 -- 10. MODUL DAUROH (Musyrifah & Admin)
