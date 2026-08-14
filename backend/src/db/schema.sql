@@ -169,17 +169,24 @@ CREATE TABLE siswa (
 );
 
 -- Penugasan mengajar guru per kelas/mapel (dipakai untuk beban mengajar & distribusi)
+-- Kolom mata_pelajaran_id/kelas_id nullable: baris Kesiapan Mengajar disimpan
+-- per guru+semester tanpa mapel/kelas (lihat migrasi 0021).
 CREATE TABLE guru_mata_pelajaran (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     guru_id             INTEGER NOT NULL REFERENCES guru(id),
-    mata_pelajaran_id   INTEGER NOT NULL REFERENCES mata_pelajaran(id),
-    kelas_id            INTEGER NOT NULL REFERENCES kelas(id),
+    mata_pelajaran_id   INTEGER REFERENCES mata_pelajaran(id),
+    kelas_id            INTEGER REFERENCES kelas(id),
     semester_id         INTEGER NOT NULL REFERENCES semester(id),
     hari_aktif          TEXT DEFAULT '[]',          -- JSON array hari aktif (mis. ["Senin","Selasa"])
     jp_max_per_hari     INTEGER DEFAULT 8,          -- batas jam pelajaran per hari
     jp_max_per_minggu   INTEGER DEFAULT 24,         -- batas jam pelajaran per minggu
     UNIQUE (guru_id, mata_pelajaran_id, kelas_id, semester_id)
 );
+
+-- Satu baris Kesiapan Mengajar per guru+semester (mapel/kelas NULL)
+CREATE UNIQUE INDEX IF NOT EXISTS ux_guru_mata_pelajaran_kesiapan
+ON guru_mata_pelajaran (guru_id, semester_id)
+WHERE mata_pelajaran_id IS NULL AND kelas_id IS NULL;
 
 -- ============================================================
 -- 3. PENJADWALAN (Wakil Kurikulum)
