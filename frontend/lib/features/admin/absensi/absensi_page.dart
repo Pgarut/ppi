@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/common_widgets.dart';
 import '../services/admin_service.dart';
@@ -19,9 +20,24 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
   int _totalPages = 1;
   String _filterTanggal = '';
   String _statusFilter = '';
+  String? _kelasId;
+  List<dynamic> _kelas = [];
 
   @override
-  void initState() { super.initState(); _tabCtrl = TabController(length: 5, vsync: this); _load(); }
+  void initState() {
+    super.initState();
+    _tabCtrl = TabController(length: 5, vsync: this);
+    _loadKelas();
+    _load();
+  }
+
+  Future<void> _loadKelas() async {
+    try {
+      final res = await ApiClient.get('/referensi');
+      final data = res['data'] as Map<String, dynamic>;
+      _kelas = data['kelas'] as List<dynamic>? ?? [];
+    } catch (_) {}
+  }
 
   @override
   void dispose() { _tabCtrl.dispose(); super.dispose(); }
@@ -35,7 +51,7 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
       } else if (idx < 2) {
         final res = idx == 0
             ? await AdminService.getAbsensiGuru(page: _page, tanggal: _filterTanggal, status: _statusFilter)
-            : await AdminService.getAbsensiSiswa(page: _page, tanggal: _filterTanggal, status: _statusFilter, kelasId: _filterTanggal);
+            : await AdminService.getAbsensiSiswa(page: _page, tanggal: _filterTanggal, status: _statusFilter, kelasId: _kelasId);
         _data = (res['items'] as List<dynamic>).cast<Map<String, dynamic>>();
         _totalPages = res['pagination']?['total_pages'] ?? 1;
       }
@@ -72,6 +88,24 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
       Padding(
         padding: const EdgeInsets.all(16),
         child: FilterCard(children: [
+          if (!isGuru) ...[
+            SizedBox(
+              width: 180,
+              child: DropdownButtonFormField<String>(
+                value: _kelasId,
+                isDense: true,
+                decoration: inputDecoration('Kelas', Icons.school_outlined),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Semua Kelas', style: TextStyle(fontSize: 13))),
+                  ..._kelas.map((k) => DropdownMenuItem(
+                    value: k['id'].toString(),
+                    child: Text(k['nama'] as String? ?? '', style: const TextStyle(fontSize: 13)),
+                  )),
+                ],
+                onChanged: (v) { _kelasId = v; },
+              ),
+            ),
+          ],
           SizedBox(
             width: 200,
             child: TextField(
@@ -101,46 +135,94 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _data.isEmpty
               ? const EmptyState(message: 'Tidak ada data absensi.')
-              : ListView.builder(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), itemCount: _data.length + 1,
-                  itemBuilder: (_, i) {
-                    if (i == _data.length) {
-                      if (_page >= _totalPages) return const SizedBox.shrink();
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Center(child: OutlinedButton.icon(
-                          onPressed: () { _page++; _load(); },
-                          icon: const Icon(Icons.expand_more, size: 18),
-                          label: const Text('Muat lebih banyak'),
-                        )),
-                      );
-                    }
-                    final d = _data[i];
-                    final st = d['status'] as String? ?? '';
-                    final nama = d[isGuru ? 'guru_nama' : 'siswa_nama'] as String? ?? '-';
-                    final subtitle = isGuru
-                        ? '${d['tanggal'] ?? '-'} | ${d['jam_masuk'] ?? '-'} - ${d['jam_keluar'] ?? '-'}'
-                        : '${d['tanggal'] ?? '-'} | ${d['kelas_nama'] ?? '-'}${d['mapel_nama'] != null ? ' | ${d['mapel_nama']}' : ''}';
-                    final statusColor = AttendanceStatus.colorFor(st);
-                    return Card(
-                      margin: const EdgeInsets.only(top: 10),
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Row(children: [
-                          CircleAvatar(radius: 22, backgroundColor: statusColor.withValues(alpha: 0.12),
-                            child: Text(nama.isNotEmpty ? nama[0] : '?', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: statusColor))),
-                          const SizedBox(width: 14),
-                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(nama, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.grey800)),
-                            const SizedBox(height: 4),
-                            Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.grey500)),
-                          ])),
-                          AttendanceStatus.fromString(st),
-                        ]),
-                      ),
-                    );
-                  },
-                )),
+              : isGuru
+                  ? ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), children: [
+                      _buildGuruTable(),
+                      if (_page < _totalPages)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Center(child: OutlinedButton.icon(
+                            onPressed: () { _page++; _load(); },
+                            icon: const Icon(Icons.expand_more, size: 18),
+                            label: const Text('Muat lebih banyak'),
+                          )),
+                        ),
+                    ])
+                  : ListView.builder(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), itemCount: _data.length + 1,
+                      itemBuilder: (_, i) {
+                        if (i == _data.length) {
+                          if (_page >= _totalPages) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Center(child: OutlinedButton.icon(
+                              onPressed: () { _page++; _load(); },
+                              icon: const Icon(Icons.expand_more, size: 18),
+                              label: const Text('Muat lebih banyak'),
+                            )),
+                          );
+                        }
+                        final d = _data[i];
+                        final st = d['status'] as String? ?? '';
+                        final nama = d['siswa_nama'] as String? ?? '-';
+                        final subtitle = '${d['tanggal'] ?? '-'} | ${d['kelas_nama'] ?? '-'}${d['mapel_nama'] != null ? ' | ${d['mapel_nama']}' : ''}';
+                        final statusColor = AttendanceStatus.colorFor(st);
+                        return Card(
+                          margin: const EdgeInsets.only(top: 10),
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Row(children: [
+                              CircleAvatar(radius: 22, backgroundColor: statusColor.withValues(alpha: 0.12),
+                                child: Text(nama.isNotEmpty ? nama[0] : '?', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: statusColor))),
+                              const SizedBox(width: 14),
+                              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text(nama, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.grey800)),
+                                const SizedBox(height: 4),
+                                Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.grey500)),
+                              ])),
+                              AttendanceStatus.fromString(st),
+                            ]),
+                          ),
+                        );
+                      },
+                    )),
     ]);
+  }
+
+  Widget _buildGuruTable() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.grey200),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columns: const [
+            DataColumn(label: Text('NIP', style: TextStyle(fontWeight: FontWeight.w600))),
+            DataColumn(label: Text('Nama Asatidz', style: TextStyle(fontWeight: FontWeight.w600))),
+            DataColumn(label: Text('Tanggal', style: TextStyle(fontWeight: FontWeight.w600))),
+            DataColumn(label: Text('Jam Masuk', style: TextStyle(fontWeight: FontWeight.w600))),
+            DataColumn(label: Text('Jam Keluar', style: TextStyle(fontWeight: FontWeight.w600))),
+            DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
+            DataColumn(label: Text('Keterangan', style: TextStyle(fontWeight: FontWeight.w600))),
+          ],
+          rows: _data.map((item) {
+            final s = item;
+            final st = s['status'] as String? ?? '';
+            return DataRow(cells: [
+              DataCell(Text(s['guru_nip']?.toString() ?? '')),
+              DataCell(Text(s['guru_nama']?.toString() ?? '')),
+              DataCell(Text(s['tanggal']?.toString() ?? '')),
+              DataCell(Text(s['jam_masuk']?.toString() ?? '-')),
+              DataCell(Text(s['jam_keluar']?.toString() ?? '-')),
+              DataCell(AttendanceStatus.fromString(st)),
+              DataCell(Text(s['keterangan']?.toString() ?? '-')),
+            ]);
+          }).toList(),
+        ),
+      ),
+    );
   }
 
   Widget _buildRekapTab() {

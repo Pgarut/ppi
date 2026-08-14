@@ -98,7 +98,7 @@ class AttendanceStatus {
       case 'hadir': return hadir();
       case 'izin': return izin();
       case 'sakit': return sakit();
-      case 'alpa': return alpa();
+      case 'alpa': case 'alpha': return alpa();
       default: return StatusBadge(label: status, color: AppTheme.grey400);
     }
   }
@@ -108,7 +108,7 @@ class AttendanceStatus {
       case 'hadir': return AppTheme.primary;
       case 'izin': return AppTheme.orange;
       case 'sakit': return AppTheme.blue;
-      case 'alpa': return AppTheme.error;
+      case 'alpa': case 'alpha': return AppTheme.error;
       default: return AppTheme.grey400;
     }
   }
