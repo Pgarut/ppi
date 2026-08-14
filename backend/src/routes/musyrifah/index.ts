@@ -3,6 +3,20 @@ import { success, error, badRequest, notFound } from '../../utils/response';
 
 type Row = Record<string, unknown>;
 
+const WIB_MS = 7 * 60 * 60 * 1000;
+
+function wibNow(): Date {
+  return new Date(Date.now() + WIB_MS);
+}
+
+function wibDate(): string {
+  return wibNow().toISOString().split('T')[0];
+}
+
+function wibTime(): string {
+  return wibNow().toISOString().slice(11, 19);
+}
+
 // ============================================================
 // HANDLER: Musyrifah Routes
 // ============================================================
@@ -71,8 +85,8 @@ async function handleDashboardMusyrifah(env: Env, user: UserPayload): Promise<Re
 
   if (!musyrifah) return error('Data musyrifah tidak ditemukan', 404);
 
-  const today = new Date().toISOString().split('T')[0];
-  const hariIni = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][new Date().getDay()];
+  const today = wibDate();
+  const hariIni = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][wibNow().getUTCDay()];
 
   const [jadwalHari, absensiHari, nilaiCount] = await Promise.all([
     // Jadwal hari ini
@@ -263,7 +277,7 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
   const body = await request.json() as { token?: string; jadwal_id?: number };
   const { token, jadwal_id } = body;
 
-  const QR_TOKEN = 'PPI_DAUROH_QR_2026';
+  const QR_TOKEN = env.QR_DAUROH_TOKEN || 'PPI_DAUROH_QR_2026';
   if (token !== QR_TOKEN) {
     return error('QR token tidak valid', 400);
   }
@@ -274,10 +288,10 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
 
   if (!musyrifah) return error('Data musyrifah tidak ditemukan', 404);
 
-  const now = new Date();
-  const today = now.toISOString().split('T')[0];
-  const currentTime = now.toTimeString().split(' ')[0];
-  const hariIni = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][now.getDay()];
+  const wib = wibNow();
+  const today = wibDate();
+  const currentTime = wibTime();
+  const hariIni = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][wib.getUTCDay()];
 
   // Cari jadwal aktif hari ini
   let jadwalFilter = '';
@@ -288,37 +302,76 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
     jadwalBindings.push(jadwal_id);
   }
 
-  const jadwal = await env.DB.prepare(`
-    SELECT j.*, p.nama_program
+  const jadwalList = await env.DB.prepare(`
+    SELECT j.id, p.nama_program, j.hari, j.jam_mulai, j.jam_selesai
     FROM dauroh_jadwal j
     JOIN dauroh_program p ON j.program_id = p.id
     WHERE (j.musyrifah_1_id = ? OR j.musyrifah_2_id = ?)
       AND j.hari = ? AND j.is_aktif = 1
       ${jadwalFilter}
-    LIMIT 1
-  `).bind(...jadwalBindings).first<{ id: number; nama_program: string; hari: string; jam_mulai: string; jam_selesai: string }>();
+    ORDER BY j.jam_mulai
+  `).bind(...jadwalBindings).all<{ id: number; nama_program: string; hari: string; jam_mulai: string; jam_selesai: string }>();
 
-  if (!jadwal) {
+  if (jadwalList.results.length === 0) {
     return error(`Tidak ada jadwal dauroh aktif hari ini (${hariIni})`, 400);
   }
 
-  // Cek apakah sudah absen
-  const existing = await env.DB.prepare(
-    'SELECT id FROM dauroh_absensi_musyrifah WHERE musyrifah_id = ? AND jadwal_id = ? AND tanggal = ?'
-  ).bind(musyrifah.id, jadwal.id, today).first();
-
-  if (existing) {
-    return error('Anda sudah melakukan absensi untuk jadwal ini hari ini', 400);
+  let jadwal: { id: number; nama_program: string; hari: string; jam_mulai: string; jam_selesai: string };
+  if (jadwal_id) {
+    jadwal = jadwalList.results[0];
+  } else if (jadwalList.results.length > 1) {
+    // Musyrifah punya >1 jadwal aktif hari ini — minta memilih jadwal
+    return success({
+      action: 'pilih_jadwal',
+      jadwal: jadwalList.results.map((j) => ({
+        id: j.id,
+        program: j.nama_program,
+        hari: j.hari,
+        jam_mulai: j.jam_mulai,
+        jam_selesai: j.jam_selesai,
+      })),
+      message: 'Ada lebih dari satu jadwal aktif hari ini. Pilih jadwal yang akan diabsensi.',
+    });
+  } else {
+    jadwal = jadwalList.results[0];
   }
 
-  // Insert absensi
+  // Cek absensi hari ini (check-in / check-out)
+  const existing = await env.DB.prepare(
+    'SELECT id, waktu_keluar FROM dauroh_absensi_musyrifah WHERE musyrifah_id = ? AND jadwal_id = ? AND tanggal = ?'
+  ).bind(musyrifah.id, jadwal.id, today).first<{ id: number; waktu_keluar: string | null }>();
+
+  if (existing) {
+    if (existing.waktu_keluar) {
+      return error('Anda sudah melakukan absensi masuk dan keluar hari ini', 400);
+    }
+
+    // Scan kedua = absensi keluar
+    await env.DB.prepare(
+      'UPDATE dauroh_absensi_musyrifah SET waktu_keluar = ? WHERE id = ?'
+    ).bind(currentTime, existing.id).run();
+
+    return success({
+      action: 'absen_keluar',
+      time: currentTime,
+      jadwal: {
+        program: jadwal.nama_program,
+        hari: jadwal.hari,
+        jam_mulai: jadwal.jam_mulai,
+        jam_selesai: jadwal.jam_selesai,
+      },
+      message: `Absensi keluar tercatat pukul ${currentTime}`,
+    });
+  }
+
+  // Scan pertama = absensi masuk
   await env.DB.prepare(`
-    INSERT INTO dauroh_absensi_musyrifah (musyrifah_id, jadwal_id, tanggal, waktu_scan, status)
-    VALUES (?, ?, ?, ?, 'hadir')
-  `).bind(musyrifah.id, jadwal.id, today, currentTime).run();
+    INSERT INTO dauroh_absensi_musyrifah (musyrifah_id, jadwal_id, tanggal, waktu_scan, waktu_masuk, status)
+    VALUES (?, ?, ?, ?, ?, 'hadir')
+  `).bind(musyrifah.id, jadwal.id, today, currentTime, currentTime).run();
 
   return success({
-    action: 'absen_musyrifah',
+    action: 'absen_masuk',
     time: currentTime,
     jadwal: {
       program: jadwal.nama_program,
@@ -326,7 +379,7 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
       jam_mulai: jadwal.jam_mulai,
       jam_selesai: jadwal.jam_selesai,
     },
-    message: `Absensi musyrifah tercatat pukul ${currentTime}`,
+    message: `Absensi masuk tercatat pukul ${currentTime}`,
   });
 }
 
@@ -400,7 +453,7 @@ async function inputAbsensiSantri(request: Request, env: Env, user: UserPayload)
 
   if (!jadwal) return error('Jadwal tidak ditemukan atau bukan jadwal Anda', 404);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = wibDate();
 
   // Upsert absensi
   await env.DB.prepare(`
@@ -633,6 +686,17 @@ async function listNilaiMusyrifah(env: Env, user: UserPayload, url: URL) {
     bindings.push(status);
   }
 
+  const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
+  const perPage = Math.min(200, Math.max(1, parseInt(url.searchParams.get('per_page') || '100')));
+  const offset = (page - 1) * perPage;
+
+  const totalRow = await env.DB.prepare(`
+    SELECT COUNT(*) AS total
+    FROM dauroh_nilai dn
+    JOIN siswa s ON dn.santri_id = s.id
+    ${where}
+  `).bind(...bindings).first<{ total: number }>();
+
   const rows = await env.DB.prepare(`
     SELECT 
       dn.id,
@@ -666,9 +730,14 @@ async function listNilaiMusyrifah(env: Env, user: UserPayload, url: URL) {
     LEFT JOIN dauroh_musyrifah dm ON dn.diinput_oleh = dm.id
     ${where}
     ORDER BY dp.nama_program, k.nama, s.nama
-  `).bind(...bindings).all();
+    LIMIT ? OFFSET ?
+  `).bind(...bindings, perPage, offset).all();
 
-  return success(rows.results);
+  const total = totalRow?.total ?? 0;
+  return success({
+    items: rows.results,
+    pagination: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) },
+  });
 }
 
 async function getNilaiDetail(env: Env, user: UserPayload, id: number) {
@@ -808,9 +877,9 @@ async function inputNilaiBaru(request: Request, env: Env, user: UserPayload) {
   const newId = result.meta.last_row_id;
 
   // Hitung total_nilai
-  const totalNilai = (40 - (kelancaran || 0) - (ketepatan_ayat || 0) - (murojaah_sambung || 0) - (konsistensi_hafalan || 0)) +
-    (30 - (makhorijul_huruf || 0) - (sifatul_huruf || 0) - (ahkamul_huruf || 0) - (ahkamul_madd || 0)) +
-    (30 - (ahkamul_waqfi || 0) - (adabut_tilawah || 0) - (kerapihan_bacaan || 0) - (ketepatan_tempo || 0));
+  const totalNilai = (44 - (kelancaran || 0) - (ketepatan_ayat || 0) - (murojaah_sambung || 0) - (konsistensi_hafalan || 0)) +
+    (34 - (makhorijul_huruf || 0) - (sifatul_huruf || 0) - (ahkamul_huruf || 0) - (ahkamul_madd || 0)) +
+    (34 - (ahkamul_waqfi || 0) - (adabut_tilawah || 0) - (kerapihan_bacaan || 0) - (ketepatan_tempo || 0));
 
   return success({ 
     id: newId,
@@ -905,9 +974,9 @@ async function updateNilaiEnhanched(request: Request, env: Env, id: number, user
   // Hitung total_nilai
   const updated = await env.DB.prepare('SELECT * FROM dauroh_nilai WHERE id = ?').bind(id).first<Row>();
   const totalNilai = updated ? 
-    (40 - ((updated.kelancaran as number) || 0) - ((updated.ketepatan_ayat as number) || 0) - ((updated.murojaah_sambung as number) || 0) - ((updated.konsistensi_hafalan as number) || 0)) +
-    (30 - ((updated.makhorijul_huruf as number) || 0) - ((updated.sifatul_huruf as number) || 0) - ((updated.ahkamul_huruf as number) || 0) - ((updated.ahkamul_madd as number) || 0)) +
-    (30 - ((updated.ahkamul_waqfi as number) || 0) - ((updated.adabut_tilawah as number) || 0) - ((updated.kerapihan_bacaan as number) || 0) - ((updated.ketepatan_tempo as number) || 0))
+    (44 - ((updated.kelancaran as number) || 0) - ((updated.ketepatan_ayat as number) || 0) - ((updated.murojaah_sambung as number) || 0) - ((updated.konsistensi_hafalan as number) || 0)) +
+    (34 - ((updated.makhorijul_huruf as number) || 0) - ((updated.sifatul_huruf as number) || 0) - ((updated.ahkamul_huruf as number) || 0) - ((updated.ahkamul_madd as number) || 0)) +
+    (34 - ((updated.ahkamul_waqfi as number) || 0) - ((updated.adabut_tilawah as number) || 0) - ((updated.kerapihan_bacaan as number) || 0) - ((updated.ketepatan_tempo as number) || 0))
     : null;
 
   return success({ 

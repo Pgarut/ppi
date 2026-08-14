@@ -102,13 +102,23 @@ class MusyrifahService {
     String? search,
     String? status,
   }) async {
-    final params = <String, String>{};
-    if (programId != null && programId.isNotEmpty) params['program_id'] = programId;
-    if (kelasId != null && kelasId.isNotEmpty) params['kelas_id'] = kelasId;
-    if (search != null && search.isNotEmpty) params['search'] = search;
-    if (status != null && status.isNotEmpty) params['status'] = status;
-    final res = await ApiClient.get('/musyrifah/nilai', queryParams: params);
-    return (res['data'] as List).cast<Map<String, dynamic>>();
+    final all = <Map<String, dynamic>>[];
+    var page = 1;
+    while (true) {
+      final params = <String, String>{'page': '$page', 'per_page': '100'};
+      if (programId != null && programId.isNotEmpty) params['program_id'] = programId;
+      if (kelasId != null && kelasId.isNotEmpty) params['kelas_id'] = kelasId;
+      if (search != null && search.isNotEmpty) params['search'] = search;
+      if (status != null && status.isNotEmpty) params['status'] = status;
+      final res = await ApiClient.get('/musyrifah/nilai', queryParams: params);
+      final data = res['data'] as Map<String, dynamic>;
+      all.addAll((data['items'] as List? ?? []).cast<Map<String, dynamic>>());
+      final pagination = (data['pagination'] as Map?) ?? const {};
+      final totalPages = (pagination['total_pages'] as num?)?.toInt() ?? 1;
+      if (page >= totalPages) break;
+      page++;
+    }
+    return all;
   }
 
   static Future<Map<String, dynamic>> getNilaiDetail(int id) async {

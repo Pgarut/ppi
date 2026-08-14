@@ -585,12 +585,12 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
       });
     } catch (_) {}
 
-    // Load programs for new input
+    // Load programs for new input (dari jadwal yang diampu, agar nilai pertama bisa diinput)
     if (widget.existing == null) {
       try {
-        final nilaiData = await MusyrifahService.listNilai();
+        final jadwalData = await MusyrifahService.getJadwal();
         final Map<String, Map<String, dynamic>> progMap = {};
-        for (final item in nilaiData) {
+        for (final item in jadwalData) {
           final pid = item['program_id']?.toString() ?? '';
           if (pid.isNotEmpty && !progMap.containsKey(pid)) {
             progMap[pid] = {
@@ -600,14 +600,8 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
           }
         }
         setState(() {
-          _programList = progMap.values.toList();
-        });
-      } catch (_) {}
-
-      try {
-        final jadwalData = await MusyrifahService.getJadwal();
-        setState(() {
           _jadwalList = jadwalData;
+          _programList = progMap.values.toList();
         });
       } catch (_) {}
     }

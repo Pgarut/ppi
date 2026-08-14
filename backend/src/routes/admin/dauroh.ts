@@ -4,6 +4,12 @@ import bcrypt from 'bcryptjs';
 
 type Row = Record<string, unknown>;
 
+const WIB_MS = 7 * 60 * 60 * 1000;
+
+function wibDate(): string {
+  return new Date(Date.now() + WIB_MS).toISOString().split('T')[0];
+}
+
 function logAction(env: Env, userId: number, aksi: string, modul: string, detail: string, ip: string) {
   return env.DB.prepare(
     "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, ?, ?, ?, ?)"
@@ -177,6 +183,12 @@ async function createProgram(request: Request, env: Env, user: UserPayload, ip: 
   if (!nama_program || !jenis_program || !jenis_dauroh) {
     return badRequest('nama_program, jenis_program, jenis_dauroh wajib diisi');
   }
+  if (!['kelas', 'khusus'].includes(jenis_program as string)) {
+    return badRequest('jenis_program harus "kelas" atau "khusus"');
+  }
+  if (!['murojaah', 'tahfidz'].includes(jenis_dauroh as string)) {
+    return badRequest('jenis_dauroh harus "murojaah" atau "tahfidz"');
+  }
 
   const result = await env.DB.prepare(`
     INSERT INTO dauroh_program (
@@ -193,16 +205,8 @@ async function createProgram(request: Request, env: Env, user: UserPayload, ip: 
 
   const newId = result.meta.last_row_id;
 
-  // Simpan kelas (untuk program khusus)
-  if (jenis_program === 'khusus' && Array.isArray(body.kelas_ids)) {
-    for (const kelasId of body.kelas_ids) {
-      await env.DB.prepare(
-        'INSERT OR IGNORE INTO dauroh_jadwal_kelas (jadwal_id, kelas_id) VALUES (?, ?)'
-      ).bind(newId, kelasId).run();
-    }
-  }
-
   // Simpan santri (untuk program khusus)
+  // Catatan: kelas hanya dikaitkan via jadwal (dauroh_jadwal_kelas), bukan di program.
   if (jenis_program === 'khusus' && Array.isArray(body.santri_ids)) {
     for (const santriId of body.santri_ids) {
       await env.DB.prepare(
@@ -335,7 +339,8 @@ async function listMusyrifah(env: Env, url: URL) {
   bindings.push(perPage, offset);
 
   const rows = await env.DB.prepare(`
-    SELECT m.*,
+    SELECT m.id, m.nipmus, m.nama, m.jenis_kelamin, m.status_pendidikan, m.gelar,
+           m.username, m.is_aktif, m.created_at, m.updated_at,
            (SELECT COUNT(*) FROM dauroh_jadwal j WHERE j.musyrifah_1_id = m.id OR j.musyrifah_2_id = m.id) as jumlah_jadwal
     FROM dauroh_musyrifah m
     ${where}
@@ -351,7 +356,7 @@ async function listMusyrifah(env: Env, url: URL) {
 
 async function getMusyrifah(env: Env, id: number) {
   const musyrifah = await env.DB.prepare(
-    'SELECT * FROM dauroh_musyrifah WHERE id = ?'
+    'SELECT id, nipmus, nama, jenis_kelamin, status_pendidikan, gelar, username, is_aktif, created_at, updated_at FROM dauroh_musyrifah WHERE id = ?'
   ).bind(id).first<Row>();
 
   if (!musyrifah) return notFound('Musyrifah');
@@ -727,7 +732,7 @@ async function handleGenerateQR(request: Request, env: Env, user: UserPayload, i
 // ============================================================
 
 async function handleMonitoringAbsensi(request: Request, env: Env, url: URL) {
-  const tanggal = url.searchParams.get('tanggal') || new Date().toISOString().split('T')[0];
+  const tanggal = url.searchParams.get('tanggal') || wibDate();
   const programId = url.searchParams.get('program_id');
 
   let where = 'WHERE am.tanggal = ?';
@@ -741,7 +746,7 @@ async function handleMonitoringAbsensi(request: Request, env: Env, url: URL) {
   const rows = await env.DB.prepare(`
     SELECT 
       m.nipmus, m.nama, m.jenis_kelamin,
-      j.hari, am.waktu_scan, am.status,
+      j.hari, am.waktu_masuk, am.waktu_keluar, am.status,
       p.nama_program
     FROM dauroh_absensi_musyrifah am
     JOIN dauroh_musyrifah m ON am.musyrifah_id = m.id
@@ -792,7 +797,7 @@ async function handleMonitoringNilai(request: Request, env: Env, url: URL) {
     bindings.push(programId);
   }
   if (status) {
-    where += ' AND n.status = ?';
+    where += ' AND n.status_hafalan = ?';
     bindings.push(status);
   }
 

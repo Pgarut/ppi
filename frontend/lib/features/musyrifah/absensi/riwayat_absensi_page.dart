@@ -111,7 +111,8 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
   }
 
   Widget _buildAbsensiCard(Map<String, dynamic> absensi) {
-    final waktuScan = absensi['waktu_scan']?.toString() ?? '-';
+    final waktuMasuk = absensi['waktu_masuk']?.toString() ?? '-';
+    final waktuKeluar = absensi['waktu_keluar']?.toString() ?? '-';
     final status = absensi['status']?.toString() ?? 'hadir';
     final hari = absensi['hari']?.toString() ?? '-';
     final jamMulai = absensi['jam_mulai']?.toString() ?? '';
@@ -156,7 +157,7 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Scan: $waktuScan',
+                  'Masuk: $waktuMasuk   Keluar: $waktuKeluar',
                   style: const TextStyle(fontSize: 11, color: AppTheme.grey400),
                 ),
               ],

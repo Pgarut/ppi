@@ -178,7 +178,7 @@ class _ProgramListPageState extends State<ProgramListPage> {
               onDelete: (row) => _delete(row['id'] as int, row['nama_program']?.toString() ?? ''),
               displayFn: (key, value, row) {
                 if (key == 'jenis_program') return value == 'khusus' ? 'Khusus' : 'Kelas';
-                if (key == 'jenis_dauroh') return value == 'hafalan' ? 'Hafalan' : 'Bacaan';
+                if (key == 'jenis_dauroh') return value == 'tahfidz' ? 'Tahfidz' : 'Murojaah';
                 if (key == 'is_aktif') return value == 1 ? 'Aktif' : 'Nonaktif';
                 return value?.toString() ?? '-';
               },

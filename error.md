@@ -1,14 +1,10 @@
-Uncaught SyntaxError: '' string literal contains an unescaped line break ppi-bo8.pages.dev:160:26
-Injecting <script> tag. Using callback.
+Gagal: ClientException: NetworkError when attempting to fetch resource., uri=https://ppi-backend.pgarut77.workers.dev/api/admin/tautan/program
 
-Project Flutter web (ppi_frontend) dideploy ke Cloudflare Pages 
-sebagai ppi-bo8.pages.dev. Halaman stuck di splash screen 
-"Memuat aplikasi..." dan tidak selesai load.
+XHR 
+POST
+https://ppi-backend.pgarut77.workers.dev/api/admin/dauroh/program
+CORS Missing Allow Origin
+Permintaan Lintas Asal Diblokir: Kebijakan Asal yang Sama melarang membaca sumber daya jarak jauh di https://ppi-backend.pgarut77.workers.dev/api/admin/dauroh/program. (Alasan: header CORS ‘Access-Control-Allow-Origin’ tidak ada). Kode status: 500.
 
-Error dari Console browser:
-Uncaught SyntaxError: '' string literal contains an unescaped line break
-at ppi-bo8.pages.dev:160:26
+​
 
-Cari file yang menghasilkan baris 160 tersebut - kemungkinan di 
-web/index.html atau di build/web/index.html. Tunjukkan isi baris 
-itu dan sekitarnya, jelaskan penyebabnya, jangan dulu di perbaiki atau push dan deploy

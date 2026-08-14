@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS dauroh_program (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     nama_program    TEXT NOT NULL,
     jenis_program   TEXT NOT NULL CHECK (jenis_program IN ('khusus', 'kelas')),
-    jenis_dauroh    TEXT NOT NULL CHECK (jenis_dauroh IN ('hafalan', 'bacaan')),
+    jenis_dauroh    TEXT NOT NULL CHECK (jenis_dauroh IN ('murojaah', 'tahfidz')),
     keterangan      TEXT,
     tahun_ajaran_id INTEGER REFERENCES tahun_ajaran(id),
     is_aktif        INTEGER NOT NULL DEFAULT 1,

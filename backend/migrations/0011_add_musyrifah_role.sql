@@ -4,6 +4,11 @@
 -- Workaround: recreate users table with updated CHECK constraint.
 -- ============================================================
 
+-- Kolom siswa_id dibutuhkan oleh rebuild di bawah, tapi tidak dibuat
+-- di 0001_initial.sql. Tambahkan dulu agar migration ini reproducible
+-- dari DB kosong (DB yang sudah ter-apply tidak akan menjalankan ulang).
+ALTER TABLE users ADD COLUMN siswa_id INTEGER REFERENCES siswa(id);
+
 PRAGMA foreign_keys = OFF;
 
 -- 1. Create new table with updated CHECK constraint

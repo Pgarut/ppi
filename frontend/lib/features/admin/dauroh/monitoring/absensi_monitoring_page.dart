@@ -18,13 +18,21 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
   String _tanggal = '';
   String? _programId;
   List<Map<String, dynamic>> _programList = [];
+  late final TextEditingController _tanggalCtrl;
 
   @override
   void initState() {
     super.initState();
     _tanggal = DateTime.now().toIso8601String().split('T')[0];
+    _tanggalCtrl = TextEditingController(text: _tanggal);
     _loadPrograms();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _tanggalCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadPrograms() async {
@@ -99,7 +107,7 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
               isDense: true,
               border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
             ),
-            controller: TextEditingController(text: _tanggal),
+            controller: _tanggalCtrl,
             readOnly: true,
             onTap: () async {
               final date = await showDatePicker(
@@ -111,6 +119,7 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
               if (date != null) {
                 setState(() {
                   _tanggal = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+                  _tanggalCtrl.text = _tanggal;
                 });
                 _load();
               }
@@ -210,7 +219,8 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
             DataColumn(label: Text('JK')),
             DataColumn(label: Text('Program')),
             DataColumn(label: Text('Hari')),
-            DataColumn(label: Text('Waktu Scan')),
+            DataColumn(label: Text('Masuk')),
+            DataColumn(label: Text('Keluar')),
             DataColumn(label: Text('Status')),
           ],
           rows: _data.map((row) {
@@ -221,7 +231,8 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
               DataCell(Text(row['jenis_kelamin']?.toString() == 'L' ? 'L' : 'P')),
               DataCell(Text(row['nama_program']?.toString() ?? '-')),
               DataCell(Text(row['hari']?.toString() ?? '-')),
-              DataCell(Text(row['waktu_scan']?.toString() ?? '-')),
+              DataCell(Text(row['waktu_masuk']?.toString() ?? '-')),
+              DataCell(Text(row['waktu_keluar']?.toString() ?? '-')),
               DataCell(AttendanceStatus.fromString(status)),
             ]);
           }).toList(),

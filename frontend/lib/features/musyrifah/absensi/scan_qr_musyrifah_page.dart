@@ -21,8 +21,6 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
   bool? _isSuccess;
   DateTime? _lastScanTime;
 
-  static const String _qrToken = 'PPI_DAUROH_QR_2026';
-
   @override
   void initState() {
     super.initState();
@@ -50,7 +48,7 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
     final barcode = capture.barcodes.first;
     final scannedValue = barcode.rawValue ?? '';
 
-    if (scannedValue != _qrToken) {
+    if (scannedValue.isEmpty) {
       _showResult(false, 'QR Code tidak valid');
       return;
     }
@@ -60,10 +58,10 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
       if (diff.inSeconds < 3) return;
     }
 
-    _processScan();
+    _processScan(token: scannedValue);
   }
 
-  Future<void> _processScan() async {
+  Future<void> _processScan({required String token, int? jadwalId}) async {
     setState(() {
       _isProcessing = true;
       _hasResult = false;
@@ -72,11 +70,29 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
     _lastScanTime = DateTime.now();
 
     try {
-      final data = await MusyrifahService.scanAbsensi(token: _qrToken);
+      final data = await MusyrifahService.scanAbsensi(token: token, jadwalId: jadwalId);
+
+      if (data['action'] == 'pilih_jadwal') {
+        final options = (data['jadwal'] as List? ?? []).cast<Map<String, dynamic>>();
+        setState(() {
+          _isProcessing = false;
+          _hasResult = false;
+        });
+        if (options.isEmpty) {
+          _showResult(false, 'Tidak ada jadwal untuk dipilih');
+          return;
+        }
+        final selected = await _pickJadwal(options: options);
+        if (selected == null) return;
+        await _processScan(token: token, jadwalId: selected);
+        return;
+      }
+
       final jadwal = data['jadwal'] as Map<String, dynamic>?;
       final time = data['time']?.toString() ?? '';
+      final message = data['message']?.toString();
 
-      String displayMessage = 'Absensi Tercatat\nJam $time';
+      String displayMessage = message ?? 'Absensi Tercatat\nJam $time';
       if (jadwal != null) {
         displayMessage += '\n\n${jadwal['program'] ?? ''}';
         displayMessage += '\n${jadwal['hari'] ?? ''}, ${jadwal['jam_mulai'] ?? ''} - ${jadwal['jam_selesai'] ?? ''}';
@@ -88,6 +104,40 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
     } catch (e) {
       _showResult(false, 'Gagal mengirim data absensi');
     }
+  }
+
+  Future<int?> _pickJadwal({required List<Map<String, dynamic>> options}) async {
+    final selected = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Pilih Jadwal'),
+        children: [
+          for (final j in options)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, j),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      j['program']?.toString() ?? 'Program',
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${j['hari'] ?? ''}, ${j['jam_mulai'] ?? ''} - ${j['jam_selesai'] ?? ''}',
+                      style: const TextStyle(fontSize: 13, color: Colors.black54),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (selected == null) return null;
+    return (selected['id'] as num).toInt();
   }
 
   void _showResult(bool success, String message) {
@@ -240,7 +290,7 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Token: PPI_DAUROH_QR_2026',
+              'QR Code berlaku untuk absensi harian',
               style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
             ),
           ],

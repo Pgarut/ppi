@@ -510,6 +510,8 @@ CREATE TABLE dauroh_absensi_musyrifah (
     jadwal_id       INTEGER NOT NULL REFERENCES dauroh_jadwal(id),
     tanggal         TEXT NOT NULL,
     waktu_scan      TEXT NOT NULL,
+    waktu_masuk     TEXT,
+    waktu_keluar    TEXT,
     status          TEXT NOT NULL DEFAULT 'hadir' CHECK (status IN ('hadir', 'izin', 'sakit', 'alpha')),
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(musyrifah_id, jadwal_id, tanggal)
@@ -581,26 +583,26 @@ CREATE TABLE dauroh_nilai (
     
     -- Computed Columns (SQLite 3.31.0+)
     nilai_bidang1 INTEGER GENERATED ALWAYS AS (
-        40 - COALESCE(kelancaran, 0) - COALESCE(ketepatan_ayat, 0) - 
+        44 - COALESCE(kelancaran, 0) - COALESCE(ketepatan_ayat, 0) - 
         COALESCE(murojaah_sambung, 0) - COALESCE(konsistensi_hafalan, 0)
     ) STORED,
     
     nilai_bidang2 INTEGER GENERATED ALWAYS AS (
-        30 - COALESCE(makhorijul_huruf, 0) - COALESCE(sifatul_huruf, 0) - 
+        34 - COALESCE(makhorijul_huruf, 0) - COALESCE(sifatul_huruf, 0) - 
         COALESCE(ahkamul_huruf, 0) - COALESCE(ahkamul_madd, 0)
     ) STORED,
     
     nilai_bidang3 INTEGER GENERATED ALWAYS AS (
-        30 - COALESCE(ahkamul_waqfi, 0) - COALESCE(adabut_tilawah, 0) - 
+        34 - COALESCE(ahkamul_waqfi, 0) - COALESCE(adabut_tilawah, 0) - 
         COALESCE(kerapihan_bacaan, 0) - COALESCE(ketepatan_tempo, 0)
     ) STORED,
     
     total_nilai INTEGER GENERATED ALWAYS AS (
-        (40 - COALESCE(kelancaran, 0) - COALESCE(ketepatan_ayat, 0) - 
+        (44 - COALESCE(kelancaran, 0) - COALESCE(ketepatan_ayat, 0) - 
          COALESCE(murojaah_sambung, 0) - COALESCE(konsistensi_hafalan, 0)) +
-        (30 - COALESCE(makhorijul_huruf, 0) - COALESCE(sifatul_huruf, 0) - 
+        (34 - COALESCE(makhorijul_huruf, 0) - COALESCE(sifatul_huruf, 0) - 
          COALESCE(ahkamul_huruf, 0) - COALESCE(ahkamul_madd, 0)) +
-        (30 - COALESCE(ahkamul_waqfi, 0) - COALESCE(adabut_tilawah, 0) - 
+        (34 - COALESCE(ahkamul_waqfi, 0) - COALESCE(adabut_tilawah, 0) - 
          COALESCE(kerapihan_bacaan, 0) - COALESCE(ketepatan_tempo, 0))
     ) STORED,
     

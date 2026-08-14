@@ -120,7 +120,7 @@ class _JadwalDaurohPageState extends State<JadwalDaurohPage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  jenisDauroh == 'hafalan' ? Icons.menu_book_outlined : Icons.chrome_reader_mode_outlined,
+                  jenisDauroh == 'tahfidz' ? Icons.menu_book_outlined : Icons.chrome_reader_mode_outlined,
                   color: AppTheme.primary,
                   size: 20,
                 ),

@@ -311,9 +311,9 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
                   ),
                 ),
               ),
-              DataCell(_buildNilaiValue(row['nilai_bidang1'])),
-              DataCell(_buildNilaiValue(row['nilai_bidang2'])),
-              DataCell(_buildNilaiValue(row['nilai_bidang3'])),
+              DataCell(_buildNilaiValue(row['nilai_bidang1'], max: 40)),
+              DataCell(_buildNilaiValue(row['nilai_bidang2'], max: 30)),
+              DataCell(_buildNilaiValue(row['nilai_bidang3'], max: 30)),
               DataCell(_buildTotalValue(row['total_nilai'])),
               DataCell(Text(row['musyrifah_nama']?.toString() ?? '-')),
             ]);
@@ -328,14 +328,15 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
     );
   }
 
-  Widget _buildNilaiValue(dynamic value) {
+  Widget _buildNilaiValue(dynamic value, {required double max}) {
     if (value == null) return const Text('-', style: TextStyle(color: AppTheme.grey400));
     final num = double.tryParse(value.toString());
     if (num == null) return Text(value.toString());
+    final ratio = max <= 0 ? 1 : num / max;
     Color color;
-    if (num >= 80) {
+    if (ratio >= 0.8) {
       color = AppTheme.primary;
-    } else if (num >= 60) {
+    } else if (ratio >= 0.6) {
       color = AppTheme.orange;
     } else {
       color = AppTheme.error;
