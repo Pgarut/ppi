@@ -121,7 +121,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: _logoUrl.isNotEmpty
-                              ? Image.network(_logoUrl, width: 64, height: 64, color: Colors.white)
+                              ? Image.network(
+                                  _logoUrl,
+                                  width: 64,
+                                  height: 64,
+                                  color: Colors.white,
+                                  errorBuilder: (_, __, ___) =>
+                                      const Icon(Icons.school, size: 56, color: Colors.white),
+                                )
                               : const Icon(Icons.school, size: 56, color: Colors.white),
                         ),
                         const SizedBox(height: 32),
@@ -199,7 +206,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: _logoUrl.isNotEmpty
-                            ? Image.network(_logoUrl, width: 56, height: 56, color: Colors.white)
+                            ? Image.network(
+                                _logoUrl,
+                                width: 56,
+                                height: 56,
+                                color: Colors.white,
+                                errorBuilder: (_, __, ___) =>
+                                    const Icon(Icons.school, size: 52, color: Colors.white),
+                              )
                             : const Icon(Icons.school, size: 52, color: Colors.white),
                       ),
                       const SizedBox(height: 20),

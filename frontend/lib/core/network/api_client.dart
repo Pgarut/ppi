@@ -127,14 +127,14 @@ class ApiClient {
         return false;
       }
 
-      final refreshResponse = await http.post(
-        Uri.parse('${Env.apiUrl}/auth/refresh'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'refresh_token': refreshToken,
-          'token': currentToken,
-        }),
-      );
+      final refreshResponse = await _send(() => http.post(
+            Uri.parse('${Env.apiUrl}/auth/refresh'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'refresh_token': refreshToken,
+              'token': currentToken,
+            }),
+          ));
 
       if (refreshResponse.statusCode == 200) {
         final refreshBody = jsonDecode(refreshResponse.body) as Map<String, dynamic>;
@@ -213,6 +213,34 @@ class ApiClient {
     return headers;
   }
 
+  static const Duration _timeout = Duration(seconds: 30);
+
+  /// Kirim request HTTP dengan timeout dan satu kali retry untuk error jaringan.
+  /// Timeout tidak di-retry karena sudah memakan waktu 30 detik.
+  static Future<http.Response> _send(
+    Future<http.Response> Function() request, {
+    int retries = 1,
+  }) async {
+    for (var attempt = 0; attempt <= retries; attempt++) {
+      try {
+        return await request().timeout(_timeout);
+      } on TimeoutException {
+        throw ApiException(
+          'Waktu koneksi habis. Periksa koneksi internet Anda.',
+          statusCode: 0,
+        );
+      } on http.ClientException {
+        if (attempt == retries) {
+          throw ApiException(
+            'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+            statusCode: 0,
+          );
+        }
+      }
+    }
+    throw ApiException('Tidak dapat terhubung ke server.', statusCode: 0);
+  }
+
   /// Kirim request logout ke backend untuk revoke session
   static Future<void> logout() async {
     try {
@@ -228,25 +256,29 @@ class ApiClient {
 
   static Future<Map<String, dynamic>> get(String path, {Map<String, String>? queryParams}) async {
     final uri = Uri.parse('${Env.apiUrl}$path').replace(queryParameters: queryParams);
-    final response = await http.get(uri, headers: await _headers());
+    final headers = await _headers();
+    final response = await _send(() => http.get(uri, headers: headers));
     return _handleResponse(response, path: path, method: 'GET', queryParams: queryParams);
   }
 
   static Future<Map<String, dynamic>> post(String path, {Map<String, dynamic>? body}) async {
     final uri = Uri.parse('${Env.apiUrl}$path');
-    final response = await http.post(uri, headers: await _headers(), body: body != null ? jsonEncode(body) : null);
+    final headers = await _headers();
+    final response = await _send(() => http.post(uri, headers: headers, body: body != null ? jsonEncode(body) : null));
     return _handleResponse(response, path: path, method: 'POST', body: body);
   }
 
   static Future<Map<String, dynamic>> put(String path, {Map<String, dynamic>? body}) async {
     final uri = Uri.parse('${Env.apiUrl}$path');
-    final response = await http.put(uri, headers: await _headers(), body: body != null ? jsonEncode(body) : null);
+    final headers = await _headers();
+    final response = await _send(() => http.put(uri, headers: headers, body: body != null ? jsonEncode(body) : null));
     return _handleResponse(response, path: path, method: 'PUT', body: body);
   }
 
   static Future<Map<String, dynamic>> delete(String path) async {
     final uri = Uri.parse('${Env.apiUrl}$path');
-    final response = await http.delete(uri, headers: await _headers());
+    final headers = await _headers();
+    final response = await _send(() => http.delete(uri, headers: headers));
     return _handleResponse(response, path: path, method: 'DELETE');
   }
 
@@ -276,14 +308,14 @@ class ApiClient {
           throw ApiException('Sesi telah berakhir. Silakan login kembali.', statusCode: 401);
         }
 
-        final refreshResponse = await http.post(
-          Uri.parse('${Env.apiUrl}/auth/refresh'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'refresh_token': refreshToken,
-            'token': currentToken,
-          }),
-        );
+        final refreshResponse = await _send(() => http.post(
+              Uri.parse('${Env.apiUrl}/auth/refresh'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'refresh_token': refreshToken,
+                'token': currentToken,
+              }),
+            ));
 
         if (refreshResponse.statusCode == 200) {
           final refreshBody = jsonDecode(refreshResponse.body) as Map<String, dynamic>;
@@ -356,13 +388,13 @@ class ApiClient {
     Map<String, String> headers,
     String? method,
     Map<String, dynamic>? body,
-  ) async {
+  ) {
     switch (method) {
-      case 'GET': return http.get(uri, headers: headers);
-      case 'POST': return http.post(uri, headers: headers, body: body != null ? jsonEncode(body) : null);
-      case 'PUT': return http.put(uri, headers: headers, body: body != null ? jsonEncode(body) : null);
-      case 'DELETE': return http.delete(uri, headers: headers);
-      default: return http.get(uri, headers: headers);
+      case 'GET': return _send(() => http.get(uri, headers: headers));
+      case 'POST': return _send(() => http.post(uri, headers: headers, body: body != null ? jsonEncode(body) : null));
+      case 'PUT': return _send(() => http.put(uri, headers: headers, body: body != null ? jsonEncode(body) : null));
+      case 'DELETE': return _send(() => http.delete(uri, headers: headers));
+      default: return _send(() => http.get(uri, headers: headers));
     }
   }
 }
