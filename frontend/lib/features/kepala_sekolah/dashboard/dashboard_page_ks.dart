@@ -38,6 +38,10 @@ class _DashboardPageKSState extends State<DashboardPageKS> {
         StatItem(Icons.book_outlined, 'Mapel', '${stats['total_mapel'] ?? 0}', AppTheme.blue),
       ],
       features: const [
+        FeatureItem('Jadwal', 'jadwal', Icons.calendar_month_outlined, 'Jadwal pelajaran'),
+        FeatureItem('Absensi', 'absensi', Icons.checklist_outlined, 'Monitoring kehadiran'),
+        FeatureItem('Nilai', 'nilai', Icons.grading_outlined, 'Rekap nilai akademik'),
+        FeatureItem('Rapor', 'rapor', Icons.assignment_outlined, 'Nilai rapor santri'),
         FeatureItem('at-Ta\'wid', 'dauroh', Icons.bookmark_outlined, 'Monitoring nilai at-Ta\'wid'),
         FeatureItem('Laporan', 'laporan', Icons.description_outlined, 'Generate & unduh laporan'),
         FeatureItem('Monitoring', 'monitoring', Icons.trending_up_outlined, 'Pantau aktivitas sekolah'),

@@ -22,9 +22,10 @@ class _NilaiPageKSState extends State<NilaiPageKS> {
     setState(() => _loading = true);
     try {
       final data = await KepalaSekolahService.getNilai();
-      _data = data['data'] as List<dynamic>? ?? [];
+      if (!mounted) return;
+      _data = data;
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
   }
 
   @override

@@ -339,7 +339,8 @@ CREATE TABLE jadwal_konseling (
     guru_bk_id  INTEGER NOT NULL REFERENCES guru(id),
     tanggal     TEXT NOT NULL,
     jam         TEXT,
-    jenis       TEXT NOT NULL CHECK (jenis IN ('individu','kelompok')),
+    hari        TEXT,                            -- hari dalam seminggu (opsional)
+    jenis       TEXT NOT NULL CHECK (jenis IN ('individu','kelompok','online')),
     status      TEXT NOT NULL DEFAULT 'terjadwal'
                     CHECK (status IN ('terjadwal','selesai','batal'))
 );

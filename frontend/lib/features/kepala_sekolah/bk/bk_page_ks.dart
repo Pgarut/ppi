@@ -21,9 +21,11 @@ class _BKPageKSState extends State<BKPageKS> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      _data = await KepalaSekolahService.getBK();
+      final data = await KepalaSekolahService.getBK();
+      if (!mounted) return;
+      _data = data;
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
   }
 
   @override

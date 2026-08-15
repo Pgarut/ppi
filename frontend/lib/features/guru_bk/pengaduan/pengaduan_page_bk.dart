@@ -19,6 +19,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
   String? _filterKategori;
   int _page = 1;
   int _totalPages = 1;
+  int _requestSeq = 0;
   late AnimationController _animCtrl;
   late Animation<double> _fadeAnim;
 
@@ -40,8 +41,10 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
   }
 
   Future<void> _load() async {
+    final seq = ++_requestSeq;
     setState(() {
       _loading = true;
+      _loadingMore = false;
       _page = 1;
       _errorMessage = null;
     });
@@ -51,7 +54,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
         kategori: _filterKategori,
         page: _page,
       );
-      if (!mounted) return;
+      if (!mounted || seq != _requestSeq) return;
       _items = data['items'] as List<dynamic>? ?? [];
       final pag = data['pagination'] as Map<String, dynamic>?;
       _totalPages = pag?['total_pages'] as int? ?? 1;
@@ -59,7 +62,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
       _animCtrl.reset();
       _animCtrl.forward();
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || seq != _requestSeq) return;
       setState(() {
         _loading = false;
         _errorMessage = 'Gagal memuat data pengaduan. Periksa koneksi Anda.';
@@ -69,6 +72,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
 
   Future<void> _loadMore() async {
     if (_loadingMore || _page >= _totalPages) return;
+    final seq = ++_requestSeq;
     setState(() => _loadingMore = true);
     try {
       final data = await GuruBKService.getPengaduan(
@@ -76,7 +80,7 @@ class _PengaduanPageBKState extends State<PengaduanPageBK>
         kategori: _filterKategori,
         page: _page + 1,
       );
-      if (!mounted) return;
+      if (!mounted || seq != _requestSeq) return;
       final newItems = data['items'] as List<dynamic>? ?? [];
       final pag = data['pagination'] as Map<String, dynamic>?;
       _items.addAll(newItems);

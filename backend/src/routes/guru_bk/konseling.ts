@@ -85,15 +85,15 @@ export async function handleKonselingBK(request: Request, env: Env, user: UserPa
 
     if (request.method === 'POST') {
       const body = await request.json() as Record<string, unknown>;
-      const { siswa_id, tanggal, jam, jenis, catatan } = body;
+      const { siswa_id, tanggal, jam, hari, jenis, catatan } = body;
       if (!tanggal || !jenis) return badRequest('tanggal dan jenis wajib diisi');
       const validJenis = ['individu', 'kelompok', 'online'];
       if (!validJenis.includes(jenis as string)) return badRequest('jenis harus individu, kelompok, atau online');
 
       // Insert jadwal
       const result = await env.DB.prepare(
-        'INSERT INTO jadwal_konseling (siswa_id, guru_bk_id, tanggal, jam, jenis, status) VALUES (?, ?, ?, ?, ?, ?)'
-      ).bind(siswa_id || null, user.guru_id, tanggal, jam || null, jenis, 'dijadwalkan').run();
+        'INSERT INTO jadwal_konseling (siswa_id, guru_bk_id, tanggal, jam, hari, jenis, status) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      ).bind(siswa_id || null, user.guru_id, tanggal, jam || null, hari || null, jenis, 'dijadwalkan').run();
 
       const jadwalId = result.meta?.last_row_id;
 
@@ -116,7 +116,7 @@ export async function handleKonselingBK(request: Request, env: Env, user: UserPa
       const setClauses: string[] = [];
       const vals: unknown[] = [];
 
-      for (const f of ['siswa_id', 'tanggal', 'jam', 'jenis', 'status']) {
+      for (const f of ['siswa_id', 'tanggal', 'jam', 'hari', 'jenis', 'status']) {
         if (body[f] !== undefined) {
           if (f === 'jenis') {
             const validJenis = ['individu', 'kelompok', 'online'];

@@ -53,22 +53,32 @@ class DashboardTemplate extends StatelessWidget {
 
     final topPadding = MediaQuery.of(context).viewPadding.top;
 
-    return ListView(
-      padding: EdgeInsets.fromLTRB(20, topPadding + 12, 20, 24),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showHeader) ...[
-          _Header(subtitle: subtitle, info1: info1, info2: info2),
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, topPadding + 12, 20, 0),
+            child: _Header(subtitle: subtitle, info1: info1, info2: info2),
+          ),
           const SizedBox(height: 28),
         ],
-        _buildSectionTitle('Ringkasan'),
-        const SizedBox(height: 16),
-        _StatGrid(stats: stats),
-        if (features.isNotEmpty) ...[
-          const SizedBox(height: 32),
-          _buildSectionTitle('Menu Utama'),
-          const SizedBox(height: 16),
-          _FeatureGrid(features: features, onFeatureTap: onFeatureTap),
-        ],
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            children: [
+              _buildSectionTitle('Ringkasan'),
+              const SizedBox(height: 16),
+              _StatGrid(stats: stats),
+              if (features.isNotEmpty) ...[
+                const SizedBox(height: 32),
+                _buildSectionTitle('Menu Utama'),
+                const SizedBox(height: 16),
+                _FeatureGrid(features: features, onFeatureTap: onFeatureTap),
+              ],
+            ],
+          ),
+        ),
       ],
     );
   }

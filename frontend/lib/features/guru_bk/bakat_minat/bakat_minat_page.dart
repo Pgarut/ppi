@@ -1,4 +1,8 @@
+import 'dart:convert';
 import 'package:universal_html/html.dart' as html;
+import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../services/guru_bk_service.dart';
@@ -38,8 +42,11 @@ class _BakatMinatPageState extends State<BakatMinatPage>
 
   Future<void> _loadKelas() async {
     try {
-      _kelasList = await GuruBKService.getKelasList();
-    } catch (_) {}
+      final list = await GuruBKService.getKelasList();
+      if (mounted) setState(() => _kelasList = list);
+    } catch (_) {
+      if (mounted) setState(() => _kelasList = []);
+    }
   }
 
   Future<void> _loadSiswa() async {
@@ -104,7 +111,11 @@ class _BakatMinatPageState extends State<BakatMinatPage>
                           radius: 18,
                           backgroundColor: AppTheme.primary,
                           child: Text(
-                            (siswa['nama']?.toString() ?? '?').substring(0, 1).toUpperCase(),
+                            ((siswa['nama']?.toString() ?? '?').isNotEmpty
+                                    ? siswa['nama'].toString()
+                                    : '?')
+                                .substring(0, 1)
+                                .toUpperCase(),
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -327,8 +338,6 @@ class _BakatMinatPageState extends State<BakatMinatPage>
                       _actionChip(Icons.download, 'Template', _downloadTemplate, Colors.blue),
                       const SizedBox(width: 6),
                       _actionChip(Icons.upload_file, 'Upload', _uploadMassal, Colors.deepPurple),
-                      const SizedBox(width: 6),
-                      _actionChip(Icons.save, 'Simpan', _simpanSemua, AppTheme.primary),
                     ],
                   ),
                 ),
@@ -514,7 +523,7 @@ class _BakatMinatPageState extends State<BakatMinatPage>
   }
 
   // ─── TEMPLATE & UPLOAD ────────────────────────────────
-  void _downloadTemplate() {
+  Future<void> _downloadTemplate() async {
     final kelasNama = _kelasList.firstWhere(
       (k) => k['id'].toString() == _selectedKelasId,
       orElse: () => {'nama': 'Kelas'},
@@ -525,102 +534,117 @@ class _BakatMinatPageState extends State<BakatMinatPage>
     for (final s in _siswaList) {
       buffer.write('${s['nis'] ?? ''},${s['nisn'] ?? ''},${s['nama'] ?? ''},${s['kelas_nama'] ?? ''},,,,\n');
     }
+    final csvText = buffer.toString();
+    final fileName = 'Template_BakatMinat_$kelasNama.csv';
 
-    final blob = html.Blob([buffer.toString()], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..target = '_blank'
-      ..download = 'Template_BakatMinat_$kelasNama.csv'
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    try {
+      if (kIsWeb) {
+        final blob = html.Blob([csvText], 'text/csv');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        html.AnchorElement(href: url)
+          ..target = '_blank'
+          ..download = fileName
+          ..click();
+        html.Url.revokeObjectUrl(url);
+      } else {
+        await Share.shareXFiles(
+          [XFile.fromData(utf8.encode(csvText), mimeType: 'text/csv', name: fileName)],
+          subject: 'Template Bakat & Minat',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal mengunduh template'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
-  void _uploadMassal() {
-    final input = html.FileUploadInputElement()..accept = '.csv';
-    input.click();
-    input.onChange.listen((_) {
-      final file = input.files?.first;
-      if (file == null) return;
-      final reader = html.FileReader();
-      reader.readAsText(file);
-      reader.onLoadEnd.listen((_) async {
-        final csvText = reader.result as String?;
-        if (csvText == null || csvText.isEmpty) return;
+  Future<void> _uploadMassal() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final bytes = result.files.first.bytes;
+      if (bytes == null) return;
+      final csvText = utf8.decode(bytes);
+
+      // Parse CSV
+      final lines = csvText.split('\n').where((l) => l.trim().isNotEmpty).toList();
+      if (lines.length < 2) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('File CSV kosong (hanya header)'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      int success = 0;
+      int failed = 0;
+      for (int i = 1; i < lines.length; i++) {
+        final cols = lines[i].split(',').map((c) => c.trim()).toList();
+        if (cols.length < 6) { failed++; continue; }
+        final nis = cols[0];
+        final jenis = cols[4].toLowerCase();
+        final deskripsi = cols[5];
+        final catatan = cols.length > 6 ? cols[6] : '';
+
+        if (nis.isEmpty || jenis.isEmpty || deskripsi.isEmpty) { failed++; continue; }
+        if (jenis != 'bakat' && jenis != 'minat') { failed++; continue; }
+
+        // Cari siswa_id dari NIS
+        final siswa = _siswaList.cast<Map<String, dynamic>>().firstWhere(
+          (s) => s['nis']?.toString() == nis,
+          orElse: () => <String, dynamic>{},
+        );
+        if (siswa.isEmpty) { failed++; continue; }
 
         try {
-          // Parse CSV
-          final lines = csvText.split('\n').where((l) => l.trim().isNotEmpty).toList();
-          if (lines.length < 2) return; // header only
-
-          int success = 0;
-          int failed = 0;
-          for (int i = 1; i < lines.length; i++) {
-            final cols = lines[i].split(',').map((c) => c.trim()).toList();
-            if (cols.length < 6) { failed++; continue; }
-            final nis = cols[0];
-            final jenis = cols[4].toLowerCase();
-            final deskripsi = cols[5];
-            final catatan = cols.length > 6 ? cols[6] : '';
-
-            if (nis.isEmpty || jenis.isEmpty || deskripsi.isEmpty) { failed++; continue; }
-            if (jenis != 'bakat' && jenis != 'minat') { failed++; continue; }
-
-            // Cari siswa_id dari NIS
-            final siswa = _siswaList.cast<Map<String, dynamic>>().firstWhere(
-              (s) => s['nis']?.toString() == nis,
-              orElse: () => <String, dynamic>{},
-            );
-            if (siswa.isEmpty) { failed++; continue; }
-
-            try {
-              await GuruBKService.saveBakatMinat({
-                'id': siswa['bm_id'],
-                'siswa_id': siswa['id'],
-                'jenis': jenis,
-                'deskripsi': deskripsi,
-                'catatan_pengembangan': catatan,
-              });
-              success++;
-            } catch (_) {
-              failed++;
-            }
-          }
-
-          _loadSiswa();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Upload selesai: $success berhasil, $failed gagal'),
-                backgroundColor: failed > 0 ? Colors.orange : AppTheme.primary,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
+          await GuruBKService.saveBakatMinat({
+            'id': siswa['bm_id'],
+            'siswa_id': siswa['id'],
+            'jenis': jenis,
+            'deskripsi': deskripsi,
+            'catatan_pengembangan': catatan,
+          });
+          success++;
         } catch (_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Gagal memproses file CSV'),
-                backgroundColor: Colors.red,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
+          failed++;
         }
-      });
-    });
-  }
+      }
 
-  void _simpanSemua() {
-    _loadSiswa();
-    if (mounted) {
+      if (!mounted) return;
+      _loadSiswa();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Data bakat & minat diperbarui'),
-          backgroundColor: AppTheme.primary,
+        SnackBar(
+          content: Text('Upload selesai: $success berhasil, $failed gagal'),
+          backgroundColor: failed > 0 ? Colors.orange : AppTheme.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal memproses file CSV'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 }

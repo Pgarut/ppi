@@ -30,7 +30,7 @@ class _LaporanPageKSState extends State<LaporanPageKS> {
       _kelas = data['kelas'] as List<dynamic>? ?? [];
       _semester = data['semester'] as List<dynamic>? ?? [];
     } catch (_) {}
-    _loadLaporan();
+    if (mounted) _loadLaporan();
   }
 
   Future<void> _loadLaporan() async {
@@ -45,7 +45,7 @@ class _LaporanPageKSState extends State<LaporanPageKS> {
     } catch (_) {
       _items = [];
     }
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -129,20 +129,23 @@ class _LaporanPageKSState extends State<LaporanPageKS> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        DataTable(
-          columns: const [
-            DataColumn(label: Text('Mapel')), DataColumn(label: Text('Asatidz')),
-            DataColumn(label: Text('Kelas')), DataColumn(label: Text('Hari')),
-            DataColumn(label: Text('JP')), DataColumn(label: Text('Ruangan')),
-          ],
-          rows: _items.map((j) => DataRow(cells: [
-            DataCell(Text(j['mapel_nama']?.toString() ?? '')),
-            DataCell(Text(j['guru_nama']?.toString() ?? '')),
-            DataCell(Text(j['kelas_nama']?.toString() ?? '')),
-            DataCell(Text(j['hari']?.toString() ?? '')),
-            DataCell(Text('${j['jp_ke'] ?? ''}')),
-            DataCell(Text(j['ruangan_nama']?.toString() ?? '')),
-          ])).toList(),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columns: const [
+              DataColumn(label: Text('Mapel')), DataColumn(label: Text('Asatidz')),
+              DataColumn(label: Text('Kelas')), DataColumn(label: Text('Hari')),
+              DataColumn(label: Text('JP')), DataColumn(label: Text('Ruangan')),
+            ],
+            rows: _items.map((j) => DataRow(cells: [
+              DataCell(Text(j['mapel_nama']?.toString() ?? '')),
+              DataCell(Text(j['guru_nama']?.toString() ?? '')),
+              DataCell(Text(j['kelas_nama']?.toString() ?? '')),
+              DataCell(Text(j['hari']?.toString() ?? '')),
+              DataCell(Text('${j['jp_ke'] ?? ''}')),
+              DataCell(Text(j['ruangan_nama']?.toString() ?? '')),
+            ])).toList(),
+          ),
         ),
       ],
     );
@@ -152,17 +155,20 @@ class _LaporanPageKSState extends State<LaporanPageKS> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        DataTable(
-          columns: const [
-            DataColumn(label: Text('Periode')), DataColumn(label: Text('Status')),
-            DataColumn(label: Text('Kelas')), DataColumn(label: Text('Jumlah')),
-          ],
-          rows: _items.map((a) => DataRow(cells: [
-            DataCell(Text(a['periode']?.toString() ?? '')),
-            DataCell(Text(a['status']?.toString() ?? '')),
-            DataCell(Text(a['kelas_nama']?.toString() ?? '')),
-            DataCell(Text('${a['jumlah'] ?? 0}')),
-          ])).toList(),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columns: const [
+              DataColumn(label: Text('Periode')), DataColumn(label: Text('Status')),
+              DataColumn(label: Text('Kelas')), DataColumn(label: Text('Jumlah')),
+            ],
+            rows: _items.map((a) => DataRow(cells: [
+              DataCell(Text(a['periode']?.toString() ?? '')),
+              DataCell(Text(a['status']?.toString() ?? '')),
+              DataCell(Text(a['kelas_nama']?.toString() ?? '')),
+              DataCell(Text('${a['jumlah'] ?? 0}')),
+            ])).toList(),
+          ),
         ),
       ],
     );
@@ -172,22 +178,25 @@ class _LaporanPageKSState extends State<LaporanPageKS> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        DataTable(
-          columns: const [
-            DataColumn(label: Text('Jenis')), DataColumn(label: Text('Kelas')),
-            DataColumn(label: Text('Mapel')), DataColumn(label: Text('Total')),
-            DataColumn(label: Text('Rata')), DataColumn(label: Text('Min')),
-            DataColumn(label: Text('Max')),
-          ],
-          rows: _items.map((n) => DataRow(cells: [
-            DataCell(Text(n['jenis']?.toString() ?? '')),
-            DataCell(Text(n['kelas_nama']?.toString() ?? '')),
-            DataCell(Text(n['mapel_nama']?.toString() ?? '')),
-            DataCell(Text('${n['total'] ?? 0}')),
-            DataCell(Text('${n['rata_rata'] ?? '-'}')),
-            DataCell(Text('${n['min'] ?? '-'}')),
-            DataCell(Text('${n['max'] ?? '-'}')),
-          ])).toList(),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columns: const [
+              DataColumn(label: Text('Jenis')), DataColumn(label: Text('Kelas')),
+              DataColumn(label: Text('Mapel')), DataColumn(label: Text('Total')),
+              DataColumn(label: Text('Rata')), DataColumn(label: Text('Min')),
+              DataColumn(label: Text('Max')),
+            ],
+            rows: _items.map((n) => DataRow(cells: [
+              DataCell(Text(n['jenis']?.toString() ?? '')),
+              DataCell(Text(n['kelas_nama']?.toString() ?? '')),
+              DataCell(Text(n['mapel_nama']?.toString() ?? '')),
+              DataCell(Text('${n['total'] ?? 0}')),
+              DataCell(Text('${n['rata_rata'] ?? '-'}')),
+              DataCell(Text('${n['min'] ?? '-'}')),
+              DataCell(Text('${n['max'] ?? '-'}')),
+            ])).toList(),
+          ),
         ),
       ],
     );
@@ -197,20 +206,23 @@ class _LaporanPageKSState extends State<LaporanPageKS> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        DataTable(
-          columns: const [
-            DataColumn(label: Text('NIS')), DataColumn(label: Text('Santri')),
-            DataColumn(label: Text('Mapel')), DataColumn(label: Text('Nilai')),
-            DataColumn(label: Text('Predikat')), DataColumn(label: Text('Catatan')),
-          ],
-          rows: _items.map((r) => DataRow(cells: [
-            DataCell(Text(r['siswa_nis']?.toString() ?? '')),
-            DataCell(Text(r['siswa_nama']?.toString() ?? '')),
-            DataCell(Text(r['mapel_nama']?.toString() ?? '')),
-            DataCell(Text('${r['nilai_akhir'] ?? '-'}')),
-            DataCell(Text(r['predikat']?.toString() ?? '-')),
-            DataCell(Text(r['catatan_wali_kelas']?.toString() ?? '-', maxLines: 2)),
-          ])).toList(),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columns: const [
+              DataColumn(label: Text('NIS')), DataColumn(label: Text('Santri')),
+              DataColumn(label: Text('Mapel')), DataColumn(label: Text('Nilai')),
+              DataColumn(label: Text('Predikat')), DataColumn(label: Text('Catatan')),
+            ],
+            rows: _items.map((r) => DataRow(cells: [
+              DataCell(Text(r['siswa_nis']?.toString() ?? '')),
+              DataCell(Text(r['siswa_nama']?.toString() ?? '')),
+              DataCell(Text(r['mapel_nama']?.toString() ?? '')),
+              DataCell(Text('${r['nilai_akhir'] ?? '-'}')),
+              DataCell(Text(r['predikat']?.toString() ?? '-')),
+              DataCell(Text(r['catatan_wali_kelas']?.toString() ?? '-', maxLines: 2)),
+            ])).toList(),
+          ),
         ),
       ],
     );

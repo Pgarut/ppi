@@ -3,20 +3,22 @@ import '../../../core/network/api_client.dart';
 /// Service untuk endpoint Kepala Sekolah.
 ///
 /// Konvensi response:
-/// - Endpoint list (jadwal, absensi, nilai, rapor) return full response `{data: {data: [...], meta: {...}}}`.
-///   Caller harus extract `['data']` untuk mendapatkan list.
-/// - Endpoint detail (dashboard, bk) return `res['data']` langsung.
+/// Semua method mengembalikan `res['data']` (payload dari `{success, data}`),
+/// sehingga caller tinggal pakai hasilnya langsung:
+/// - Endpoint list (jadwal, nilai, rapor, laporan) → `List<dynamic>`.
+/// - Endpoint paginasi (absensi guru/siswa) → `{items, pagination}`.
+/// - Endpoint detail (dashboard, bk, referensi, dauroh) → `Map<String, dynamic>`.
 class KepalaSekolahService {
   static Future<Map<String, dynamic>> getDashboard() async {
     final res = await ApiClient.get('/kepala-sekolah/dashboard');
     return res['data'] as Map<String, dynamic>;
   }
 
-  static Future<Map<String, dynamic>> getJadwal({String? kelasId}) async {
+  static Future<List<dynamic>> getJadwal({String? kelasId}) async {
     final params = <String, String>{};
     if (kelasId != null) params['kelas_id'] = kelasId;
     final res = await ApiClient.get('/kepala-sekolah/jadwal', queryParams: params);
-    return res;
+    return res['data'] as List<dynamic>;
   }
 
   static Future<Map<String, dynamic>> getAbsensiGuru({int page = 1, int perPage = 20, String? tanggal, String? status}) async {
@@ -36,19 +38,19 @@ class KepalaSekolahService {
     return res['data'] as Map<String, dynamic>;
   }
 
-  static Future<Map<String, dynamic>> getNilai({String? kelasId}) async {
+  static Future<List<dynamic>> getNilai({String? kelasId}) async {
     final params = <String, String>{};
     if (kelasId != null) params['kelas_id'] = kelasId;
     final res = await ApiClient.get('/kepala-sekolah/nilai', queryParams: params);
-    return res;
+    return res['data'] as List<dynamic>;
   }
 
-  static Future<Map<String, dynamic>> getRapor({String? kelasId, String? semesterId}) async {
+  static Future<List<dynamic>> getRapor({String? kelasId, String? semesterId}) async {
     final params = <String, String>{};
     if (kelasId != null) params['kelas_id'] = kelasId;
     if (semesterId != null) params['semester_id'] = semesterId;
     final res = await ApiClient.get('/kepala-sekolah/rapor', queryParams: params);
-    return res;
+    return res['data'] as List<dynamic>;
   }
 
   static Future<Map<String, dynamic>> getBK() async {

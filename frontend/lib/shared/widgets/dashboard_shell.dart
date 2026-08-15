@@ -42,6 +42,7 @@ class _DashboardShellState extends State<DashboardShell> {
     'jadwal': 'Jadwal Pelajaran',
     'absensi': 'Riwayat Kehadiran',
     'nilai': 'Nilai Akademik',
+    'rapor': 'Rapor Santri',
     'materi': 'Materi Pembelajaran',
     'dauroh': 'Program at-Ta\'wid',
     'santri': 'Data Santri',
@@ -189,6 +190,7 @@ class _DashboardShellState extends State<DashboardShell> {
           duration: const Duration(milliseconds: 250),
           child: KeyedSubtree(key: ValueKey('feature$_activeFeature'), child: _currentPage()),
         ),
+        bottomNavigationBar: _buildMobileBottomNav(),
       );
     }
 
@@ -203,50 +205,54 @@ class _DashboardShellState extends State<DashboardShell> {
         duration: const Duration(milliseconds: 250),
         child: KeyedSubtree(key: ValueKey('tab$_shellTab'), child: _currentPage()),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: NavigationBar(
-          selectedIndex: _shellTab,
-          onDestinationSelected: (i) {
-            setState(() { _shellTab = i; _activeFeature = null; });
-          },
-          backgroundColor: Colors.white,
-          elevation: 0,
-          height: 70,
-          labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-          destinations: [
+      bottomNavigationBar: _buildMobileBottomNav(),
+    );
+  }
+
+  Widget _buildMobileBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: NavigationBar(
+        selectedIndex: _shellTab,
+        onDestinationSelected: (i) {
+          setState(() { _shellTab = i; _activeFeature = null; });
+        },
+        backgroundColor: Colors.white,
+        elevation: 0,
+        height: 70,
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+        destinations: [
+          const NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined, size: 22),
+            selectedIcon: Icon(Icons.dashboard, size: 22),
+            label: 'Beranda',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.timeline_outlined, size: 22),
+            selectedIcon: Icon(Icons.timeline, size: 22),
+            label: 'Aktivitas',
+          ),
+          if (widget.showScanTab)
             const NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined, size: 22),
-              selectedIcon: Icon(Icons.dashboard, size: 22),
-              label: 'Beranda',
+              icon: Icon(Icons.qr_code_scanner_outlined, size: 22),
+              selectedIcon: Icon(Icons.qr_code_scanner, size: 22),
+              label: 'Scan',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.timeline_outlined, size: 22),
-              selectedIcon: Icon(Icons.timeline, size: 22),
-              label: 'Aktivitas',
-            ),
-            if (widget.showScanTab)
-              const NavigationDestination(
-                icon: Icon(Icons.qr_code_scanner_outlined, size: 22),
-                selectedIcon: Icon(Icons.qr_code_scanner, size: 22),
-                label: 'Scan',
-              ),
-            const NavigationDestination(
-              icon: Icon(Icons.person_outline, size: 22),
-              selectedIcon: Icon(Icons.person, size: 22),
-              label: 'Profil',
-            ),
-          ],
-        ),
+          const NavigationDestination(
+            icon: Icon(Icons.person_outline, size: 22),
+            selectedIcon: Icon(Icons.person, size: 22),
+            label: 'Profil',
+          ),
+        ],
       ),
     );
   }

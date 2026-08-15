@@ -49,8 +49,11 @@ class _KonselingPageState extends State<KonselingPage>
 
   Future<void> _loadKelas() async {
     try {
-      _kelasList = await GuruBKService.getKelasList();
-    } catch (_) {}
+      final list = await GuruBKService.getKelasList();
+      if (mounted) setState(() => _kelasList = list);
+    } catch (_) {
+      if (mounted) setState(() => _kelasList = []);
+    }
   }
 
   Future<void> _loadSiswa() async {
@@ -129,7 +132,11 @@ class _KonselingPageState extends State<KonselingPage>
                           radius: 20,
                           backgroundColor: AppTheme.primary,
                           child: Text(
-                            (siswa['nama']?.toString() ?? '?').substring(0, 1).toUpperCase(),
+                            ((siswa['nama']?.toString() ?? '').isEmpty
+                                    ? '?'
+                                    : siswa['nama'].toString())
+                                .substring(0, 1)
+                                .toUpperCase(),
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -238,6 +245,7 @@ class _KonselingPageState extends State<KonselingPage>
                       'siswa_id': siswa['id'],
                       'tanggal': tanggalCtl.text,
                       'jam': jamCtl.text,
+                      'hari': hari,
                       'jenis': jenis,
                       'catatan': catatanCtl.text,
                     });
@@ -647,12 +655,16 @@ class _KonselingPageState extends State<KonselingPage>
           final status = h['status']?.toString() ?? 'dijadwalkan';
           final catatan = h['catatan']?.toString() ?? h['konseling_tindak_lanjut']?.toString() ?? '-';
           final statusColor = status == 'selesai' ? Colors.green : status == 'dibatalkan' ? Colors.red : Colors.orange;
+          final jadwalInfo = [h['hari'], h['tanggal'], h['jam']]
+              .where((v) => v != null && v.toString().isNotEmpty)
+              .map((v) => v.toString())
+              .join(' · ');
           return DataRow(cells: [
             DataCell(Text(h['siswa_nis']?.toString() ?? '', style: const TextStyle(fontSize: 12))),
             DataCell(Text(h['siswa_nisn']?.toString() ?? '-', style: const TextStyle(fontSize: 12))),
             DataCell(Text(h['siswa_nama']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13))),
             DataCell(Text(h['kelas_nama']?.toString() ?? '-', style: const TextStyle(fontSize: 12))),
-            DataCell(Text('${h['tanggal'] ?? ''} ${h['jam'] ?? ''}', style: const TextStyle(fontSize: 11))),
+            DataCell(Text(jadwalInfo, style: const TextStyle(fontSize: 11))),
             DataCell(SizedBox(
               width: 160,
               child: Text(catatan, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
@@ -702,6 +714,10 @@ class _KonselingPageState extends State<KonselingPage>
         final status = h['status']?.toString() ?? 'dijadwalkan';
         final catatan = h['catatan']?.toString() ?? h['konseling_tindak_lanjut']?.toString() ?? '-';
         final statusColor = status == 'selesai' ? Colors.green : status == 'dibatalkan' ? Colors.red : Colors.orange;
+        final jadwalInfo = [h['hari'], h['tanggal'], h['jam']]
+            .where((v) => v != null && v.toString().isNotEmpty)
+            .map((v) => v.toString())
+            .join(' · ');
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -749,7 +765,7 @@ class _KonselingPageState extends State<KonselingPage>
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text('${h['tanggal'] ?? ''} ${h['jam'] ?? ''}',
+                Text(jadwalInfo,
                     style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
                 const SizedBox(height: 4),
                 Container(

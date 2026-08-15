@@ -44,8 +44,11 @@ class _MonitoringAkademikPageState extends State<MonitoringAkademikPage>
 
   Future<void> _loadKelas() async {
     try {
-      _kelasList = await GuruBKService.getKelasList();
-    } catch (_) {}
+      final list = await GuruBKService.getKelasList();
+      if (mounted) setState(() => _kelasList = list);
+    } catch (_) {
+      if (mounted) setState(() => _kelasList = []);
+    }
   }
 
   Future<void> _loadData() async {

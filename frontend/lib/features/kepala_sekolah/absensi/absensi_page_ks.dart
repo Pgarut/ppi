@@ -118,11 +118,12 @@ class _TabGuruState extends State<_TabGuru> {
       final data = await KepalaSekolahService.getAbsensiGuru(
         page: _page, tanggal: _tanggalCtl.text, status: _status,
       );
+      if (!mounted) return;
       _items = data['items'] as List<dynamic>? ?? [];
       final pag = data['pagination'] as Map<String, dynamic>? ?? {};
       _totalPages = pag['total_pages'] as int? ?? 1;
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -150,7 +151,16 @@ class _TabGuruState extends State<_TabGuru> {
         else ...[
           _buildDataTable(),
           const SizedBox(height: 12),
-          _buildPagination(),
+          _buildPaginationRow(
+            page: _page,
+            totalPages: _totalPages,
+            onPrev: () {
+              if (_page > 1) { _page--; _load(); }
+            },
+            onNext: () {
+              if (_page < _totalPages) { _page++; _load(); }
+            },
+          ),
         ],
       ],
     );
@@ -239,61 +249,12 @@ class _TabGuruState extends State<_TabGuru> {
               DataCell(Text(s['tanggal']?.toString() ?? '')),
               DataCell(Text(s['jam_masuk']?.toString() ?? '-')),
               DataCell(Text(s['jam_keluar']?.toString() ?? '-')),
-              DataCell(_statusChip(s['status']?.toString() ?? '')),
+              DataCell(_statusChipWidget(s['status']?.toString() ?? '')),
               DataCell(Text(s['keterangan']?.toString() ?? '-')),
             ]);
           }).toList(),
         ),
       ),
-    );
-  }
-
-  Widget _buildPagination() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.chevron_left, size: 20),
-          onPressed: _page > 1 ? () { _page--; _load(); } : null,
-          color: AppTheme.grey600,
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppTheme.primaryLight,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '$_page / $_totalPages',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.primaryDark),
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.chevron_right, size: 20),
-          onPressed: _page < _totalPages ? () { _page++; _load(); } : null,
-          color: AppTheme.grey600,
-        ),
-      ],
-    );
-  }
-
-  Widget _statusChip(String status) {
-    Color color;
-    String label;
-    switch (status) {
-      case 'hadir': color = AppTheme.primary; label = 'Hadir'; break;
-      case 'izin': color = AppTheme.orange; label = 'Izin'; break;
-      case 'sakit': color = AppTheme.blue; label = 'Sakit'; break;
-      case 'alpa': color = AppTheme.error; label = 'Alpa'; break;
-      default: color = AppTheme.grey400; label = status; break;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -328,7 +289,8 @@ class _TabSiswaState extends State<_TabSiswa> {
   Future<void> _loadKelas() async {
     try {
       final res = await KepalaSekolahService.getReferensi();
-      _kelas = res['kelas'] as List<dynamic>? ?? [];
+      if (!mounted) return;
+      setState(() => _kelas = res['kelas'] as List<dynamic>? ?? []);
     } catch (_) {}
   }
 
@@ -338,11 +300,12 @@ class _TabSiswaState extends State<_TabSiswa> {
       final data = await KepalaSekolahService.getAbsensiSiswa(
         page: _page, kelasId: _kelasId, tanggal: _tanggalCtl.text, status: _status,
       );
+      if (!mounted) return;
       _items = data['items'] as List<dynamic>? ?? [];
       final pag = data['pagination'] as Map<String, dynamic>? ?? {};
       _totalPages = pag['total_pages'] as int? ?? 1;
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -370,7 +333,16 @@ class _TabSiswaState extends State<_TabSiswa> {
         else ...[
           _buildDataTable(),
           const SizedBox(height: 12),
-          _buildPagination(),
+          _buildPaginationRow(
+            page: _page,
+            totalPages: _totalPages,
+            onPrev: () {
+              if (_page > 1) { _page--; _load(); }
+            },
+            onNext: () {
+              if (_page < _totalPages) { _page++; _load(); }
+            },
+          ),
         ],
       ],
     );
@@ -471,7 +443,7 @@ class _TabSiswaState extends State<_TabSiswa> {
               DataCell(Text(s['kelas_nama']?.toString() ?? '')),
               DataCell(Text(s['mapel_nama']?.toString() ?? '-')),
               DataCell(Text(s['tanggal']?.toString() ?? '')),
-              DataCell(_statusChip(s['status']?.toString() ?? '')),
+              DataCell(_statusChipWidget(s['status']?.toString() ?? '')),
               DataCell(Text(s['keterangan']?.toString() ?? '-')),
             ]);
           }).toList(),
@@ -479,53 +451,58 @@ class _TabSiswaState extends State<_TabSiswa> {
       ),
     );
   }
+}
 
-  Widget _buildPagination() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.chevron_left, size: 20),
-          onPressed: _page > 1 ? () { _page--; _load(); } : null,
-          color: AppTheme.grey600,
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppTheme.primaryLight,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '$_page / $_totalPages',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.primaryDark),
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.chevron_right, size: 20),
-          onPressed: _page < _totalPages ? () { _page++; _load(); } : null,
-          color: AppTheme.grey600,
-        ),
-      ],
-    );
+Widget _statusChipWidget(String status) {
+  Color color;
+  String label;
+  switch (status) {
+    case 'hadir': color = AppTheme.primary; label = 'Hadir'; break;
+    case 'izin': color = AppTheme.orange; label = 'Izin'; break;
+    case 'sakit': color = AppTheme.blue; label = 'Sakit'; break;
+    case 'alpa': color = AppTheme.error; label = 'Alpa'; break;
+    default: color = AppTheme.grey400; label = status; break;
   }
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+  );
+}
 
-  Widget _statusChip(String status) {
-    Color color;
-    String label;
-    switch (status) {
-      case 'hadir': color = AppTheme.primary; label = 'Hadir'; break;
-      case 'izin': color = AppTheme.orange; label = 'Izin'; break;
-      case 'sakit': color = AppTheme.blue; label = 'Sakit'; break;
-      case 'alpa': color = AppTheme.error; label = 'Alpa'; break;
-      default: color = AppTheme.grey400; label = status; break;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+Widget _buildPaginationRow({
+  required int page,
+  required int totalPages,
+  required VoidCallback onPrev,
+  required VoidCallback onNext,
+}) {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      IconButton(
+        icon: const Icon(Icons.chevron_left, size: 20),
+        onPressed: page > 1 ? onPrev : null,
+        color: AppTheme.grey600,
       ),
-      child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
-    );
-  }
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryLight,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          '$page / $totalPages',
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.primaryDark),
+        ),
+      ),
+      IconButton(
+        icon: const Icon(Icons.chevron_right, size: 20),
+        onPressed: page < totalPages ? onNext : null,
+        color: AppTheme.grey600,
+      ),
+    ],
+  );
 }

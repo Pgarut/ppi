@@ -22,9 +22,10 @@ class _JadwalPageKSState extends State<JadwalPageKS> {
     setState(() => _loading = true);
     try {
       final data = await KepalaSekolahService.getJadwal();
-      _jadwal = data['data'] as List<dynamic>? ?? [];
+      if (!mounted) return;
+      _jadwal = data;
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -39,7 +40,11 @@ class _JadwalPageKSState extends State<JadwalPageKS> {
         final j = _jadwal[i] as Map<String, dynamic>;
         return Card(
           child: ListTile(
-            leading: CircleAvatar(child: Text(j['hari']?.toString().substring(0, 3) ?? '-')),
+            leading: CircleAvatar(
+              child: Text(
+                ((j['hari']?.toString() ?? '').isNotEmpty ? j['hari'].toString() : '-').substring(0, 1),
+              ),
+            ),
             title: Text(j['mapel_nama'] ?? ''),
             subtitle: Text('${j['guru_nama']} - ${j['kelas_nama']}'),
             trailing: Text('${j['jam_mulai'] ?? ''}-${j['jam_selesai'] ?? ''}'),
