@@ -22,25 +22,32 @@ export async function handleMateriGuru(
     let assignments;
     if (semester) {
       assignments = await env.DB.prepare(`
-        SELECT DISTINCT gmp.mata_pelajaran_id, mp.nama as mapel_nama,
-                gmp.kelas_id, k.nama as kelas_nama
-        FROM guru_mata_pelajaran gmp
-        JOIN mata_pelajaran mp ON gmp.mata_pelajaran_id = mp.id
-        JOIN kelas k ON gmp.kelas_id = k.id
-        WHERE gmp.guru_id = ? AND gmp.semester_id = ?
+        SELECT DISTINCT src.mata_pelajaran_id, mp.nama as mapel_nama,
+                src.kelas_id, k.nama as kelas_nama
+        FROM (
+          SELECT mata_pelajaran_id, kelas_id FROM guru_mapel_kelas WHERE guru_id = ?
+          UNION
+          SELECT mata_pelajaran_id, kelas_id FROM guru_mata_pelajaran
+          WHERE guru_id = ? AND semester_id = ? AND mata_pelajaran_id IS NOT NULL AND kelas_id IS NOT NULL
+        ) src
+        JOIN mata_pelajaran mp ON src.mata_pelajaran_id = mp.id
+        JOIN kelas k ON src.kelas_id = k.id
         ORDER BY mp.nama, k.nama
-      `).bind(user.guru_id, semester.id).all();
+      `).bind(user.guru_id, user.guru_id, semester.id).all();
     } else {
       assignments = await env.DB.prepare(`
-        SELECT DISTINCT gm.mata_pelajaran_id, mp.nama as mapel_nama,
-                gk.kelas_id, k.nama as kelas_nama
-        FROM guru_mapel gm
-        JOIN guru_kelas gk ON gm.guru_id = gk.guru_id
-        JOIN mata_pelajaran mp ON gm.mata_pelajaran_id = mp.id
-        JOIN kelas k ON gk.kelas_id = k.id
-        WHERE gm.guru_id = ?
+        SELECT DISTINCT src.mata_pelajaran_id, mp.nama as mapel_nama,
+                src.kelas_id, k.nama as kelas_nama
+        FROM (
+          SELECT mata_pelajaran_id, kelas_id FROM guru_mapel_kelas WHERE guru_id = ?
+          UNION
+          SELECT mata_pelajaran_id, kelas_id FROM guru_mata_pelajaran
+          WHERE guru_id = ? AND mata_pelajaran_id IS NOT NULL AND kelas_id IS NOT NULL
+        ) src
+        JOIN mata_pelajaran mp ON src.mata_pelajaran_id = mp.id
+        JOIN kelas k ON src.kelas_id = k.id
         ORDER BY mp.nama, k.nama
-      `).bind(user.guru_id).all();
+      `).bind(user.guru_id, user.guru_id).all();
     }
 
     return success(assignments.results);
