@@ -1,6 +1,6 @@
 class GuruMapelKelas {
   final int? id;
-  final int guruId;
+  final int? guruId;
   final int mataPelajaranId;
   final int kelasId;
   final String? mapelNama;
@@ -8,7 +8,7 @@ class GuruMapelKelas {
 
   const GuruMapelKelas({
     this.id,
-    required this.guruId,
+    this.guruId,
     required this.mataPelajaranId,
     required this.kelasId,
     this.mapelNama,
@@ -18,7 +18,7 @@ class GuruMapelKelas {
   factory GuruMapelKelas.fromJson(Map<String, dynamic> json) {
     return GuruMapelKelas(
       id: json['id'] as int?,
-      guruId: json['guru_id'] as int,
+      guruId: json['guru_id'] as int?,
       mataPelajaranId: json['mata_pelajaran_id'] as int,
       kelasId: json['kelas_id'] as int,
       mapelNama: json['mapel_nama'] as String?,

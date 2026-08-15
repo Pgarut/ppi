@@ -3,6 +3,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../features/admin/services/admin_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/guru_mapel_kelas_model.dart';
+import '../../../../shared/widgets/app_utils.dart';
 import '../../../../shared/widgets/common_widgets.dart';
 import 'form_fields.dart';
 import 'mapel_kelas_picker.dart';
@@ -34,6 +35,7 @@ class _AsatidzFormState extends State<AsatidzForm> {
   List<Map<String, dynamic>> _mapelList = [];
   bool _isLoadingData = false;
   bool _passwordObscure = true;
+  bool _assignmentsLoadError = false;
 
   bool get isEditing => widget.editData != null;
 
@@ -100,8 +102,10 @@ class _AsatidzFormState extends State<AsatidzForm> {
     try {
       final data = await AdminService.getGuruMapelKelas(gid);
       _assignments = data.map((e) => GuruMapelKelas.fromJson(e as Map<String, dynamic>)).toList();
+      _assignmentsLoadError = false;
     } catch (_) {
       _assignments = [];
+      _assignmentsLoadError = true;
     }
     try {
       final r = await ApiClient.get('/admin/guru-wali-kelas/$gid');
@@ -304,6 +308,23 @@ class _AsatidzFormState extends State<AsatidzForm> {
       }
 
       if (savedId != null) {
+        // Jika data penugasan lama gagal dimuat, simpan sekarang akan
+        // menghapus penugasan yang sudah ada — minta konfirmasi dulu.
+        if (isEditing && _assignmentsLoadError) {
+          if (!mounted) return;
+          final proceed = await AppUtils.confirm(
+            context,
+            title: 'Perhatian',
+            message: 'Data penugasan mapel-kelas guru ini gagal dimuat.\n\n'
+                'Menyimpan sekarang akan MENGHAPUS penugasan yang sudah ada.\n'
+                'Batalkan lalu buka kembali form untuk memuat ulang data, '
+                'atau lanjutkan penyimpanan?',
+            confirmText: 'Tetap Simpan',
+            cancelText: 'Batal',
+          );
+          if (!proceed) return;
+        }
+
         // Simpan guru_mapel_kelas (gabungan spesifik)
         final assignmentsData = _assignments.map((a) => a.toJson()).toList();
         await AdminService.saveGuruMapelKelas(savedId, assignmentsData);

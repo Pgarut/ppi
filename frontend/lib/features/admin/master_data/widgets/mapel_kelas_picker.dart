@@ -24,6 +24,7 @@ class MapelKelasPicker extends StatefulWidget {
 class _MapelKelasPickerState extends State<MapelKelasPicker> {
   late List<_MapelKelasRow> _rows;
   bool _dirty = false;
+  bool _hydrated = false;
 
   @override
   void initState() {
@@ -34,12 +35,31 @@ class _MapelKelasPickerState extends State<MapelKelasPicker> {
   @override
   void didUpdateWidget(covariant MapelKelasPicker oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Hanya hydrate dari data awal ketika user belum mengubah apa pun.
-    // Jika user sedang mengedit, jangan timpa baris (fix: baris hilang
-    // saat memilih mapel pada baris baru yang belum punya kelas).
-    if (oldWidget.assignments != widget.assignments && !_dirty) {
-      _rows = _buildRowsFromAssignments();
+    // Hydrasi dari data server cukup SEKALI, dan tidak boleh menghapus
+    // baris yang sedang diedit user. Jika data server tiba setelah user
+    // mulai menambah baris, gabungkan (merge) agar tidak ada yang hilang.
+    if (!_hydrated && widget.assignments.isNotEmpty) {
+      if (!_dirty) {
+        _rows = _buildRowsFromAssignments();
+      } else {
+        _mergeServerAssignments(widget.assignments);
+      }
+      _hydrated = true;
     }
+  }
+
+  void _mergeServerAssignments(List<GuruMapelKelas> assignments) {
+    final byMapel = <int, Set<int>>{};
+    for (final row in _rows) {
+      if (row.mapelId <= 0) continue;
+      byMapel.putIfAbsent(row.mapelId, () => Set.from(row.kelasIds));
+    }
+    for (final a in assignments) {
+      byMapel.putIfAbsent(a.mataPelajaranId, () => <int>{}).add(a.kelasId);
+    }
+    _rows = byMapel.entries
+        .map((e) => _MapelKelasRow(mapelId: e.key, kelasIds: Set.from(e.value)))
+        .toList();
   }
 
   List<_MapelKelasRow> _buildRowsFromAssignments() {

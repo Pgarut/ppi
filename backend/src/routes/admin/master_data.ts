@@ -338,7 +338,7 @@ export async function handleGuruMapelKelas(request: Request, env: Env, user: Use
   // GET: Ambil semua kombinasi mapel+kelas untuk guru
   if (request.method === 'GET') {
     const rows = await env.DB.prepare(
-      `SELECT gmk.id, gmk.mata_pelajaran_id, mp.nama as mapel_nama,
+      `SELECT gmk.id, gmk.guru_id, gmk.mata_pelajaran_id, mp.nama as mapel_nama,
               gmk.kelas_id, k.nama as kelas_nama
        FROM guru_mapel_kelas gmk
        LEFT JOIN mata_pelajaran mp ON gmk.mata_pelajaran_id = mp.id
