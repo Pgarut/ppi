@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/common_widgets.dart';
@@ -71,15 +72,20 @@ class MasterDataTable extends StatelessWidget {
       ),
       child: Column(children: [
         Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: _totalMinWidth,
-              child: Column(children: [
-                _buildHeader(),
-                Expanded(child: _buildBody()),
-              ]),
-            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final contentWidth = math.max(_totalMinWidth, constraints.maxWidth);
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: contentWidth,
+                  child: Column(children: [
+                    _buildHeader(),
+                    Expanded(child: _buildBody()),
+                  ]),
+                ),
+              );
+            },
           ),
         ),
         if (totalPages > 1) _buildPagination(),
@@ -96,11 +102,12 @@ class MasterDataTable extends StatelessWidget {
       ),
       child: Row(children: [
         ...columns.map((col) {
-          return SizedBox(
-            width: _minColWidth,
+          return Expanded(
+            flex: col.flex,
             child: Text(
               col.label,
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.grey700),
+              overflow: TextOverflow.ellipsis,
             ),
           );
         }),
@@ -127,8 +134,8 @@ class MasterDataTable extends StatelessWidget {
               final val = col.displayFn != null
                   ? col.displayFn!(row[col.key], row)
                   : (row[col.key]?.toString() ?? '-');
-              return SizedBox(
-                width: _minColWidth,
+              return Expanded(
+                flex: col.flex,
                 child: Text(val, style: const TextStyle(fontSize: 13, overflow: TextOverflow.ellipsis)),
               );
             }),
