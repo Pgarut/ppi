@@ -189,17 +189,19 @@ describe('Guru Mapel / Wali Kelas Routes', () => {
       db.first
         .mockResolvedValueOnce({ id: 1, nama: '7A' })             // getWaliKelas
         .mockResolvedValueOnce({ id: 1, nis: '123', nisn: null, nama: 'Siswa A', kelas_id: 1 }) // siswa
-        .mockResolvedValueOnce({ id: 1, nama: 'Semester 1' })     // semester
+        .mockResolvedValueOnce({ id: 1, nama: 'Semester 1', tahun_ajaran_id: 1 }) // semester
         .mockResolvedValueOnce(null);                              // catatan wali (null)
-      db.all.mockResolvedValue({
-        results: [
-          { mata_pelajaran_id: 1, mapel_nama: 'Matematika', mapel_kode: 'MTK', jenis: 'harian', nilai: 80 },
-          { mata_pelajaran_id: 1, mapel_nama: 'Matematika', mapel_kode: 'MTK', jenis: 'harian', nilai: 90 },
-          { mata_pelajaran_id: 1, mapel_nama: 'Matematika', mapel_kode: 'MTK', jenis: 'pas', nilai: 85 },
-          { mata_pelajaran_id: 2, mapel_nama: 'IPA', mapel_kode: 'IPA', jenis: 'harian', nilai: 78 },
-          { mata_pelajaran_id: 2, mapel_nama: 'IPA', mapel_kode: 'IPA', jenis: 'pas', nilai: 82 },
-        ],
-      });
+      db.all
+        .mockResolvedValueOnce({ results: [] })                    // bobot_nilai (kosong → default 40/30/30)
+        .mockResolvedValueOnce({
+          results: [
+            { mata_pelajaran_id: 1, mapel_nama: 'Matematika', mapel_kode: 'MTK', jenis: 'harian', nilai: 80 },
+            { mata_pelajaran_id: 1, mapel_nama: 'Matematika', mapel_kode: 'MTK', jenis: 'harian', nilai: 90 },
+            { mata_pelajaran_id: 1, mapel_nama: 'Matematika', mapel_kode: 'MTK', jenis: 'pas', nilai: 85 },
+            { mata_pelajaran_id: 2, mapel_nama: 'IPA', mapel_kode: 'IPA', jenis: 'harian', nilai: 78 },
+            { mata_pelajaran_id: 2, mapel_nama: 'IPA', mapel_kode: 'IPA', jenis: 'pas', nilai: 82 },
+          ],
+        });
       const req = makeGet('/api/guru/rapor?siswa_id=1&semester_id=1');
       const res = await handleRaporGuru(req, db, guruUser, ['api', 'guru', 'rapor'], makeUrl('/api/guru/rapor', 'siswa_id=1&semester_id=1'));
       expect(res.status).toBe(200);
@@ -207,10 +209,11 @@ describe('Guru Mapel / Wali Kelas Routes', () => {
       expect(body.data.siswa).toBeDefined();
       expect(body.data.semester).toBeDefined();
       expect(body.data.mapel).toHaveLength(2);
-      // Matematika: harian [80,90] → rata 85, pas=85, akhir=85*0.6+85*0.4=85
+      // Bobot default: harian+tugas=40, uts=30, uas=30 (tidak ada PTS di data test)
+      // Matematika: harian [80,90] → rata 85, pas=85, akhir=(85*40+85*30)/70=85
       expect(body.data.mapel[0].nilai_akhir).toBe(85);
-      // IPA: harian [78] → rata 78, pas=82, akhir=82*0.6+78*0.4=80.4
-      expect(body.data.mapel[1].nilai_akhir).toBe(80.4);
+      // IPA: harian [78] → rata 78, pas=82, akhir=(78*40+82*30)/70=79.7
+      expect(body.data.mapel[1].nilai_akhir).toBe(79.7);
     });
 
     it('should reject rapor without siswa_id or semester_id', async () => {
