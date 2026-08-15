@@ -10,6 +10,7 @@ import 'widgets/bulk_upload_dialog.dart';
 import 'widgets/form_fields.dart';
 import 'widgets/mata_pelajaran_form.dart';
 import 'widgets/asatidz_form.dart';
+import 'widgets/guru_mapel_kelas_form.dart';
 import 'widgets/santri_form.dart';
 import 'services/master_data_service.dart';
 
@@ -91,6 +92,14 @@ enum MasterDataType {
     displayCols: ['NIP', 'Nama Asatidz', 'Kelas', 'Jml Santri', 'Jabatan'],
     isReadonly: true,
   ),
+  guruMapelKelas(
+    label: 'Guru Mapel Kelas',
+    resource: 'guru-mapel-kelas',
+    icon: Icons.school_outlined,
+    columns: ['guru_nama', 'mapel_nama', 'kelas_nama'],
+    displayCols: ['Guru Mapel', 'Mata Pelajaran', 'Kelas'],
+    canAdd: false,
+  ),
   asatidzBK(
     label: 'Asatidz BK',
     resource: 'guru-bk-list',
@@ -131,6 +140,7 @@ enum MasterDataType {
   final List<String> columns;
   final List<String> displayCols;
   final bool isReadonly;
+  final bool canAdd;
   final bool hasTemplate;
   final bool hasFilters;
   final String? templateFileName;
@@ -150,6 +160,7 @@ enum MasterDataType {
     required this.columns,
     required this.displayCols,
     this.isReadonly = false,
+    this.canAdd = true,
     this.hasTemplate = false,
     this.hasFilters = false,
     this.templateFileName,
@@ -316,6 +327,10 @@ class _MasterDataPageState extends State<MasterDataPage> {
 
   String _displayValue(MasterDataType type, String col, dynamic val, {Map<String, dynamic>? row}) {
     if (val == null) return '-';
+    if (col == 'guru_nama' && type == MasterDataType.guruMapelKelas) {
+      final nip = row?['guru_nip'];
+      return nip != null && nip.toString().isNotEmpty ? '$nip - $val' : val.toString();
+    }
     if (col == 'password') return '\u2022\u2022\u2022\u2022\u2022\u2022';
     if (col == 'is_aktif' || col == 'status_aktif') return val == 1 ? 'Ya' : 'Tidak';
     if (col == 'jenis_kelamin') return val == 'L' ? 'Laki-laki' : 'Perempuan';
@@ -350,6 +365,12 @@ class _MasterDataPageState extends State<MasterDataPage> {
         showDialog(
           context: context,
           builder: (_) => AsatidzForm(editData: edit, onSaved: () => _load(type, refresh: true)),
+        );
+        break;
+      case MasterDataType.guruMapelKelas:
+        showDialog(
+          context: context,
+          builder: (_) => GuruMapelKelasForm(editData: edit, onSaved: () => _load(type, refresh: true)),
         );
         break;
       case MasterDataType.santri:
@@ -889,7 +910,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
             Text(type.label, style: Theme.of(context).textTheme.titleLarge),
             if (totalData > 0) Text('$totalData data', style: const TextStyle(fontSize: 12, color: AppTheme.grey500)),
           ]),
-          if (!type.isReadonly)
+          if (!type.isReadonly && type.canAdd)
             FilledButton.icon(
               onPressed: () => _showForm(type),
               icon: const Icon(Icons.add, size: 18),

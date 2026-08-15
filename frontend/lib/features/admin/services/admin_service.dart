@@ -210,4 +210,23 @@ class AdminService {
       'assignments': assignments,
     });
   }
+
+  static Future<Map<String, dynamic>> getGuruMapelKelasAll({int page = 1, int perPage = 100, String? search}) async {
+    final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    final res = await ApiClient.get('/admin/guru-mapel-kelas', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<void> createGuruMapelKelas(Map<String, dynamic> body) async {
+    await ApiClient.post('/admin/guru-mapel-kelas', body: body);
+  }
+
+  static Future<void> updateGuruMapelKelas(int id, Map<String, dynamic> body) async {
+    await ApiClient.put('/admin/guru-mapel-kelas/$id', body: body);
+  }
+
+  static Future<void> deleteGuruMapelKelas(int id) async {
+    await ApiClient.delete('/admin/guru-mapel-kelas/$id');
+  }
 }
