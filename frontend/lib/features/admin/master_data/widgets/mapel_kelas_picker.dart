@@ -23,6 +23,7 @@ class MapelKelasPicker extends StatefulWidget {
 
 class _MapelKelasPickerState extends State<MapelKelasPicker> {
   late List<_MapelKelasRow> _rows;
+  bool _dirty = false;
 
   @override
   void initState() {
@@ -33,7 +34,10 @@ class _MapelKelasPickerState extends State<MapelKelasPicker> {
   @override
   void didUpdateWidget(covariant MapelKelasPicker oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.assignments != widget.assignments) {
+    // Hanya hydrate dari data awal ketika user belum mengubah apa pun.
+    // Jika user sedang mengedit, jangan timpa baris (fix: baris hilang
+    // saat memilih mapel pada baris baru yang belum punya kelas).
+    if (oldWidget.assignments != widget.assignments && !_dirty) {
       _rows = _buildRowsFromAssignments();
     }
   }
@@ -52,6 +56,7 @@ class _MapelKelasPickerState extends State<MapelKelasPicker> {
   void _notifyChange() {
     final result = <GuruMapelKelas>[];
     for (final row in _rows) {
+      if (row.mapelId <= 0) continue;
       for (final kelasId in row.kelasIds) {
         result.add(GuruMapelKelas(
           guruId: 0,
@@ -65,12 +70,14 @@ class _MapelKelasPickerState extends State<MapelKelasPicker> {
 
   void _addRow() {
     setState(() {
+      _dirty = true;
       _rows.add(_MapelKelasRow(mapelId: 0, kelasIds: {}));
     });
   }
 
   void _removeRow(int index) {
     setState(() {
+      _dirty = true;
       _rows.removeAt(index);
     });
     _notifyChange();
@@ -79,6 +86,7 @@ class _MapelKelasPickerState extends State<MapelKelasPicker> {
   void _updateRowMapel(int index, int? mapelId) {
     if (mapelId == null) return;
     setState(() {
+      _dirty = true;
       _rows[index].mapelId = mapelId;
     });
     _notifyChange();
@@ -86,6 +94,7 @@ class _MapelKelasPickerState extends State<MapelKelasPicker> {
 
   void _toggleKelas(int index, int kelasId) {
     setState(() {
+      _dirty = true;
       if (_rows[index].kelasIds.contains(kelasId)) {
         _rows[index].kelasIds.remove(kelasId);
       } else {
@@ -121,7 +130,28 @@ class _MapelKelasPickerState extends State<MapelKelasPicker> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_rows.isEmpty)
+          if (_rows.isEmpty && widget.mapelList.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: AppTheme.grey50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.grey200),
+              ),
+              child: const Column(
+                children: [
+                  SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.5, color: AppTheme.grey400),
+                  ),
+                  SizedBox(height: 8),
+                  Text('Memuat data mata pelajaran...', style: TextStyle(fontSize: 13, color: AppTheme.grey500)),
+                ],
+              ),
+            )
+          else if (_rows.isEmpty)
             InkWell(
               onTap: _addRow,
               borderRadius: BorderRadius.circular(12),
@@ -173,7 +203,8 @@ class _MapelKelasPickerState extends State<MapelKelasPicker> {
                     SizedBox(
                       width: 180,
                       child: DropdownButtonFormField<int>(
-                        value: row.mapelId > 0 ? row.mapelId : null,
+                        value: widget.mapelList.any((m) => m['id'] == row.mapelId) ? row.mapelId : null,
+                        isExpanded: true,
                         isDense: true,
                         decoration: InputDecoration(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
