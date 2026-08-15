@@ -452,7 +452,7 @@ class _LihatRaporState extends State<_LihatRapor> {
           const SizedBox(height: 14),
 
           // Catatan Wali
-          if ((_raporData!['catatan_wali'] as String?)?.isNotEmpty == true) _buildCatatanCard(),
+          _buildCatatanCard(),
         ] else if (_loadingRapor) ...[
           const SizedBox(height: 60), const Center(child: CircularProgressIndicator()),
         ] else ...[
@@ -563,6 +563,8 @@ class _LihatRaporState extends State<_LihatRapor> {
   }
 
   Widget _buildCatatanCard() {
+    final catatan = _raporData!['catatan_wali'] as String? ?? '';
+    final catatanCtl = TextEditingController(text: catatan);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFF9A825).withValues(alpha: 0.2)), boxShadow: [BoxShadow(color: const Color(0xFFF9A825).withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))]),
@@ -572,10 +574,64 @@ class _LihatRaporState extends State<_LihatRapor> {
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Catatan Wali Kelas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFFF9A825))),
           const SizedBox(height: 6),
-          Text(_raporData!['catatan_wali'] as String? ?? '', style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.5)),
+          Text(catatan.isNotEmpty ? catatan : 'Belum ada catatan. Klik edit untuk menambahkan.', style: TextStyle(fontSize: 13, color: catatan.isNotEmpty ? Colors.grey[700] : Colors.grey[400], height: 1.5, fontStyle: catatan.isNotEmpty ? FontStyle.normal : FontStyle.italic)),
         ])),
+        IconButton(
+          tooltip: 'Edit Catatan',
+          icon: const Icon(Icons.edit_rounded, size: 20, color: Color(0xFFF9A825)),
+          onPressed: () => _editCatatan(catatanCtl),
+        ),
       ]),
     );
+  }
+
+  Future<void> _editCatatan(TextEditingController ctl) async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Catatan Wali Kelas'),
+        content: TextField(
+          controller: ctl,
+          maxLines: 4,
+          maxLength: 1000,
+          decoration: const InputDecoration(
+            hintText: 'Tulis catatan wali kelas untuk santri ini...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, ctl.text.trim()),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+    if (result == null || !mounted || _siswaId == null || _semesterId == null) return;
+    try {
+      await GuruService.saveCatatanWali({
+        'siswa_id': _siswaId,
+        'semester_id': _semesterId,
+        'catatan': result,
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Row(children: [Icon(Icons.check_circle, color: Colors.white, size: 18), SizedBox(width: 8), Text('Catatan tersimpan')]),
+        backgroundColor: Color(0xFF2E7D32), behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))), margin: EdgeInsets.all(16),
+      ));
+      await _loadRapor();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Gagal menyimpan catatan'), backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating, margin: EdgeInsets.all(16),
+        ));
+      }
+    }
   }
 }
 

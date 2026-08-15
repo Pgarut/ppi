@@ -44,15 +44,20 @@ export async function handleWaliKelas(request: Request, env: Env, user: UserPayl
       JOIN kelas k ON s.kelas_id = k.id
       LEFT JOIN (
         SELECT
-          siswa_id,
+          d.siswa_id,
           COUNT(*) as total_kehadiran,
-          SUM(CASE WHEN status = 'hadir' THEN 1 ELSE 0 END) as hadir,
-          SUM(CASE WHEN status = 'izin' THEN 1 ELSE 0 END) as izin,
-          SUM(CASE WHEN status = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN status = 'alpa' THEN 1 ELSE 0 END) as alpa
-        FROM absensi_siswa
-        ${absensiWhere}
-        GROUP BY siswa_id
+          SUM(CASE WHEN d.st = 1 THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN d.st = 2 THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN d.st = 3 THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN d.st = 4 THEN 1 ELSE 0 END) as alpa
+        FROM (
+          SELECT siswa_id, tanggal,
+            MAX(CASE status WHEN 'hadir' THEN 1 WHEN 'izin' THEN 2 WHEN 'sakit' THEN 3 WHEN 'alpa' THEN 4 ELSE 0 END) as st
+          FROM absensi_siswa
+          ${absensiWhere}
+          GROUP BY siswa_id, tanggal
+        ) d
+        GROUP BY d.siswa_id
       ) a ON a.siswa_id = s.id
       LEFT JOIN (
         SELECT
@@ -148,7 +153,7 @@ export async function handleWaliKelas(request: Request, env: Env, user: UserPayl
     return success({ kelas: waliKelas, rekap: rows.results });
   }
 
-  // PUT catatan wali kelas (update nilai_rapor)
+  // PUT catatan wali kelas (UPSERT ke catatan_wali_kelas)
   if (subPath == 'catatan-wali' && request.method === 'PUT') {
     const body = await request.json() as { siswa_id: number; semester_id: number; catatan: string };
     const { siswa_id, semester_id, catatan } = body;
@@ -157,11 +162,14 @@ export async function handleWaliKelas(request: Request, env: Env, user: UserPayl
       return badRequest('siswa_id, semester_id, catatan wajib diisi');
     }
 
-    await env.DB.prepare(
-      'UPDATE nilai_rapor SET catatan_wali_kelas = ? WHERE siswa_id = ? AND semester_id = ?'
-    ).bind(catatan, siswa_id, semester_id).run();
+    await env.DB.prepare(`
+      INSERT INTO catatan_wali_kelas (siswa_id, semester_id, catatan, updated_at)
+      VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT(siswa_id, semester_id)
+      DO UPDATE SET catatan = excluded.catatan, updated_at = datetime('now')
+    `).bind(siswa_id, semester_id, catatan).run();
 
-    await env.DB.prepare("INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'nilai_rapor', ?, ?)")
+    await env.DB.prepare("INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'catatan_wali_kelas', ?, ?)")
       .bind(user.sub, `Update catatan wali: siswa=${siswa_id} semester=${semester_id}`, ip).run();
 
     return success({ message: 'Catatan tersimpan' });

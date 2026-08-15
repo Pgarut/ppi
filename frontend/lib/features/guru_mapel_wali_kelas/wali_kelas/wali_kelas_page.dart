@@ -703,7 +703,7 @@ class _WaliKelasPageGuruState extends State<WaliKelasPageGuru>
 
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: const PdfPageFormat(215.0, 330.0, marginAll: 15),
+        pageFormat: const PdfPageFormat(215 * PdfPageFormat.mm, 330 * PdfPageFormat.mm, marginAll: 15),
         margin: const pw.EdgeInsets.all(15),
         header: (context) => pw.Container(
           alignment: pw.Alignment.center,
