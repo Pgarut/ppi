@@ -58,7 +58,7 @@ export async function handleWaliKelas(request: Request, env: Env, user: UserPayl
         SELECT
           siswa_id,
           COUNT(*) as total_pengaduan,
-          SUM(CASE WHEN status IN ('ditindaklanjuti', 'selesai') THEN 1 ELSE 0 END) as pengaduan_disetujui
+          SUM(CASE WHEN status IN ('diproses', 'selesai') THEN 1 ELSE 0 END) as pengaduan_disetujui
         FROM pengaduan
         WHERE siswa_id IN (SELECT id FROM siswa WHERE kelas_id = ?)
         GROUP BY siswa_id

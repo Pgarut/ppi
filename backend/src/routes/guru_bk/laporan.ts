@@ -9,7 +9,7 @@ export async function handleLaporanBK(request: Request, env: Env, user: UserPayl
   if (subPath === 'statistik' && request.method === 'GET') {
     const [total, proses, selesai, perKategori, totalKonseling] = await Promise.all([
       env.DB.prepare('SELECT COUNT(*) as total FROM pengaduan').first<{ total: number }>(),
-      env.DB.prepare("SELECT COUNT(*) as total FROM pengaduan WHERE status = 'ditindaklanjuti'").first<{ total: number }>(),
+      env.DB.prepare("SELECT COUNT(*) as total FROM pengaduan WHERE status = 'diproses'").first<{ total: number }>(),
       env.DB.prepare("SELECT COUNT(*) as total FROM pengaduan WHERE status = 'selesai'").first<{ total: number }>(),
       env.DB.prepare(
         'SELECT kategori, COUNT(*) as jumlah FROM pengaduan GROUP BY kategori'
@@ -34,7 +34,7 @@ export async function handleLaporanBK(request: Request, env: Env, user: UserPayl
     let query = `SELECT strftime('%Y-%m', p.created_at) as periode,
                   COUNT(*) as total,
                   SUM(CASE WHEN p.status = 'baru' THEN 1 ELSE 0 END) as baru,
-                  SUM(CASE WHEN p.status = 'ditindaklanjuti' THEN 1 ELSE 0 END) as diproses,
+                  SUM(CASE WHEN p.status = 'diproses' THEN 1 ELSE 0 END) as diproses,
                   SUM(CASE WHEN p.status = 'selesai' THEN 1 ELSE 0 END) as selesai
                  FROM pengaduan p
                  WHERE strftime('%Y', p.created_at) = ?`;

@@ -325,7 +325,7 @@ CREATE TABLE pengaduan (
     bukti_url       TEXT,           -- link foto/video bukti
     dilaporkan_oleh INTEGER NOT NULL REFERENCES guru(id),
     status          TEXT NOT NULL DEFAULT 'baru'
-                        CHECK (status IN ('baru','ditindaklanjuti','selesai')),
+                        CHECK (status IN ('baru','diproses','selesai')),
     created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

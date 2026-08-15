@@ -289,7 +289,20 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
     try {
       final entries = _siswa.map((s) {
         final id = s['id'] as int;
-        return {'siswa_id': id, 'nilai': double.tryParse(_nilaiCtl[id]?.text ?? '') ?? 0};
+        final raw = _nilaiCtl[id]?.text.trim() ?? '';
+        final nilai = double.tryParse(raw);
+        return {'siswa_id': id, 'nilai': nilai, '_filled': nilai != null};
+      }).where((e) => e['_filled'] as bool).toList();
+
+      if (entries.isEmpty) {
+        if (mounted) _showNotif(context, 'Belum ada nilai yang diisi', isError: true);
+        setState(() => _saving = false);
+        return;
+      }
+
+      final payload = entries.map((e) {
+        e.remove('_filled');
+        return e;
       }).toList();
 
       await GuruService.inputNilaiMassal({
@@ -297,10 +310,13 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
         'mata_pelajaran_id': _mapelId,
         'semester_id': _semesterId,
         'jenis': _jenis,
-        'entries': entries,
+        'entries': payload,
       });
       if (mounted) {
-        _showNotif(context, '${entries.length} nilai $_jenisLabel($_jenis) tersimpan');
+        final skipped = _siswa.length - entries.length;
+        _showNotif(context, skipped > 0
+            ? '${entries.length} nilai tersimpan, $skipped sel kosong dilewati'
+            : '${entries.length} nilai $_jenisLabel($_jenis) tersimpan');
         _loadSiswa();
       }
     } catch (e) {
@@ -459,11 +475,15 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
   }
 
   List<dynamic> _getFilteredKelasAll() {
-    final seen = <int>{};
+    final seen = <String>{};
     final result = <dynamic>[];
     for (final a in _assignments) {
-      final id = a['kelas_id'] as int;
-      if (seen.add(id)) result.add({'id': id, 'nama': a['kelas_nama'], 'mapel_id': a['mata_pelajaran_id']});
+      final kelasId = a['kelas_id'] as int;
+      final mapelId = a['mata_pelajaran_id'] as int;
+      final key = '$kelasId-$mapelId';
+      if (seen.add(key)) {
+        result.add({'id': kelasId, 'nama': a['kelas_nama'], 'mapel_id': mapelId});
+      }
     }
     return result;
   }
@@ -516,27 +536,31 @@ class __InputNilaiPageState extends State<_InputNilaiPage> {
             children: [
               const _SectionTitle(icon: Icons.filter_list_rounded, title: 'Pilih Kelas & Mata Pelajaran'),
               const SizedBox(height: 16),
-              DropdownButtonFormField<int>(
+              DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
                   labelText: 'Kelas',
                   hintText: 'Pilih kelas...',
                   prefixIcon: Icon(Icons.school_rounded, size: 20),
                   border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
                 ),
-                value: _kelasId,
+                value: (_kelasId != null && _mapelId != null) ? '$_kelasId-$_mapelId' : null,
                 items: allKelas.map((k) {
                   final mapelNama = _assignmentsMapelNama(k['mapel_id'] as int);
+                  final comboKey = '${k['id']}-${k['mapel_id']}';
                   return DropdownMenuItem(
-                    value: k['id'] as int,
+                    value: comboKey,
                     child: Text('${k['nama']} — ${mapelNama ?? ''}'),
                   );
                 }).toList(),
                 onChanged: (v) {
-                  final k = allKelas.firstWhere((x) => x['id'] == v);
+                  final k = allKelas.firstWhere((x) => '${x['id']}-${x['mapel_id']}' == v);
+                  for (final c in _nilaiCtl.values) { c.dispose(); }
+                  for (final f in _focusNodes.values) { f.dispose(); }
                   setState(() {
-                    _kelasId = v;
+                    _kelasId = k['id'] as int;
                     _mapelId = k['mapel_id'] as int;
                     _kelasNama = k['nama'] as String;
+                    _siswa = [];
                   });
                 },
               ),

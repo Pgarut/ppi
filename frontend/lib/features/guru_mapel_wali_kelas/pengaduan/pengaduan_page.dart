@@ -279,7 +279,7 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
         const SizedBox(width: 8),
         _filterChip('Baru', 'baru'),
         const SizedBox(width: 8),
-        _filterChip('Diterima', 'diterima'),
+        _filterChip('Diproses', 'diproses'),
         const SizedBox(width: 8),
         _filterChip('Selesai', 'selesai'),
       ])),
@@ -347,9 +347,10 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
   Widget _buildRiwayatCard(Map<String, dynamic> p) {
     final status = p['status']?.toString() ?? 'baru';
     final isBaru = status == 'baru';
-    final statusColor = isBaru ? const Color(0xFFC62828) : const Color(0xFF2E7D32);
-    final statusIcon = isBaru ? Icons.fiber_new_rounded : Icons.check_circle_rounded;
-    final statusLabel = isBaru ? 'Belum Diterima' : (status == 'diterima' ? 'Diterima BK' : 'Selesai');
+    final isDiproses = status == 'diproses';
+    final statusColor = isBaru ? const Color(0xFFC62828) : (isDiproses ? const Color(0xFFEF6C00) : const Color(0xFF2E7D32));
+    final statusIcon = isBaru ? Icons.fiber_new_rounded : (isDiproses ? Icons.pending_actions_rounded : Icons.check_circle_rounded);
+    final statusLabel = isBaru ? 'Belum Diterima' : (isDiproses ? 'Diproses BK' : 'Selesai');
     final tgl = p['created_at']?.toString() ?? '';
     final tglLabel = tgl.length >= 16 ? tgl.substring(0, 16).replaceAll('T', ' ') : tgl;
     final kategori = p['kategori']?.toString() ?? '';
@@ -360,10 +361,10 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isBaru ? const Color(0xFFC62828).withValues(alpha: 0.12) : const Color(0xFF2E7D32).withValues(alpha: 0.12)),
+        border: Border.all(color: statusColor.withValues(alpha: 0.12)),
         boxShadow: [
           BoxShadow(
-            color: (isBaru ? const Color(0xFFC62828) : const Color(0xFF2E7D32)).withValues(alpha: 0.04),
+            color: statusColor.withValues(alpha: 0.04),
             blurRadius: 12, offset: const Offset(0, 4),
           ),
         ],
@@ -380,7 +381,7 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isBaru ? const Color(0xFFC62828).withValues(alpha: 0.08) : const Color(0xFF2E7D32).withValues(alpha: 0.08),
+                    color: statusColor.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(isKasus ? Icons.gavel_rounded : Icons.warning_rounded,
@@ -432,8 +433,9 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
   void _showDetailDialog(Map<String, dynamic> p) {
     final status = p['status']?.toString() ?? 'baru';
     final isBaru = status == 'baru';
-    final statusColor = isBaru ? const Color(0xFFC62828) : const Color(0xFF2E7D32);
-    final statusLabel = isBaru ? 'Belum Diterima BK' : (status == 'diterima' ? '✓ Diterima BK' : '✓ Selesai');
+    final isDiproses = status == 'diproses';
+    final statusColor = isBaru ? const Color(0xFFC62828) : (isDiproses ? const Color(0xFFEF6C00) : const Color(0xFF2E7D32));
+    final statusLabel = isBaru ? 'Belum Diterima BK' : (isDiproses ? '✓ Diproses BK' : '✓ Selesai');
     final tgl = p['created_at']?.toString() ?? '';
     final tglLabel = tgl.length >= 16 ? tgl.substring(0, 16).replaceAll('T', ' ') : tgl;
     final buktiUrl = p['bukti_url']?.toString() ?? '';
@@ -467,7 +469,7 @@ class _PengaduanPageGuruState extends State<PengaduanPageGuru> {
                 width: double.infinity, padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(14), border: Border.all(color: statusColor.withValues(alpha: 0.15))),
                 child: Row(children: [
-                  Icon(status == 'baru' ? Icons.fiber_new_rounded : Icons.check_circle_rounded, color: statusColor, size: 22),
+                  Icon(status == 'baru' ? Icons.fiber_new_rounded : (status == 'diproses' ? Icons.pending_actions_rounded : Icons.check_circle_rounded), color: statusColor, size: 22),
                   const SizedBox(width: 10),
                   Text(statusLabel, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: statusColor)),
                   const Spacer(),
