@@ -14,6 +14,13 @@ const JP_TIMES: Record<string, { mulai: string; selesai: string }> = {
 };
 const HARI = ['Sabtu', 'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis'];
 const JP_PER_HARI = 8;
+const KEGIATAN_TETAP = [
+  { nama: 'Istirahat RG', tipe: 'istirahat' },
+  { nama: 'Istirahat UG', tipe: 'istirahat' },
+  { nama: 'Tahfidz & Tahsin', tipe: 'kegiatan' },
+  { nama: 'Murojaah', tipe: 'kegiatan' },
+  { nama: "Ba'at", tipe: 'kegiatan' },
+];
 
 export async function handlePenjadwalan(request: Request, env: Env, user: UserPayload, pathParts: string[], url: URL): Promise<Response> {
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
@@ -27,6 +34,28 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       ? rows.results
       : JP_SLOTS.map(s => ({ kode: s, ...JP_TIMES[s] }));
     return success(slots);
+  }
+
+  // ── Tambah JP Slot (manual) ──
+  if (subPath === 'jp-slots' && request.method === 'POST') {
+    const body = await request.json() as { mulai?: string; selesai?: string };
+    const mulai = body.mulai?.trim() ?? '';
+    const selesai = body.selesai?.trim() ?? '';
+
+    if (!/^\d{2}:\d{2}$/.test(mulai) || !/^\d{2}:\d{2}$/.test(selesai)) {
+      return badRequest('Format waktu harus HH:MM (contoh: 07:00)');
+    }
+    if (mulai >= selesai) {
+      return badRequest('Jam mulai harus lebih awal dari jam selesai');
+    }
+
+    const maxRow = await env.DB.prepare('SELECT MAX(urutan) AS maxUrt FROM jp_slot').first<{ maxUrt: number }>();
+    const nextUrutan = (maxRow?.maxUrt ?? 0) + 1;
+    const kode = `JP${nextUrutan}`;
+
+    await env.DB.prepare('INSERT OR IGNORE INTO jp_slot (kode, mulai, selesai, urutan) VALUES (?, ?, ?, ?)')
+      .bind(kode, mulai, selesai, nextUrutan).run();
+    return created({ kode, mulai, selesai });
   }
 
   // ── Update Waktu JP Slot ──
@@ -43,9 +72,22 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       return badRequest('Jam mulai harus lebih awal dari jam selesai');
     }
 
+    const existing = await env.DB.prepare('SELECT mulai, selesai FROM jp_slot WHERE kode = ?').bind(kode).first<{ mulai: string; selesai: string }>();
+    if (!existing) return notFound('JP Slot');
+
     await env.DB.prepare('UPDATE jp_slot SET mulai = ?, selesai = ? WHERE kode = ?')
       .bind(mulai, selesai, kode).run();
-    return success({ kode, mulai, selesai });
+
+    // Sinkronkan waktu ke SEMUA entri jadwal yang memakai waktu lama (semua kelas & semester)
+    const sync = await env.DB.prepare(
+      'UPDATE jadwal_pelajaran SET jam_mulai = ?, jam_selesai = ? WHERE jam_mulai = ? AND jam_selesai = ?'
+    ).bind(mulai, selesai, existing.mulai, existing.selesai).run();
+
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'jp_slot', ?, ?)"
+    ).bind(user.sub, `Ubah waktu ${kode} dari ${existing.mulai}-${existing.selesai} ke ${mulai}-${selesai} (${sync.meta?.changes ?? 0} jadwal disinkronkan)`, ip).run();
+
+    return success({ kode, mulai, selesai, jadwal_synced: sync.meta?.changes ?? 0 });
   }
 
   // ── Referensi ──
@@ -82,7 +124,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       mapel_ids: kelasMapelMap.get(k.id) || [],
     }));
 
-    return success({ kelas: kelasWithMapel, guru: guru.results, mapel: mapel.results, ruangan: ruangan.results, semester: semester.results, tingkat: tingkat.results, hari: HARI, guru_mapel: guruMapel.results, tahun_ajaran: tahunAjaran.results });
+    return success({ kelas: kelasWithMapel, guru: guru.results, mapel: mapel.results, ruangan: ruangan.results, semester: semester.results, tingkat: tingkat.results, hari: HARI, guru_mapel: guruMapel.results, tahun_ajaran: tahunAjaran.results, kegiatan_tetap: KEGIATAN_TETAP });
   }
 
   // ── Guru by Kelas + Mapel ──

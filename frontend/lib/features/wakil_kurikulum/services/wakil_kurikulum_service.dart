@@ -51,6 +51,11 @@ class WakilKurikulumService {
     return res['data'] as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> createJpSlot(String mulai, String selesai) async {
+    final res = await ApiClient.post('/wakil-kurikulum/jp-slots', body: {'mulai': mulai, 'selesai': selesai});
+    return res['data'] as Map<String, dynamic>;
+  }
+
   static Future<Map<String, dynamic>> generateJadwal(int semesterId) async {
     final res = await ApiClient.post('/wakil-kurikulum/jadwal/generate', body: {'semester_id': semesterId});
     return res['data'] as Map<String, dynamic>;

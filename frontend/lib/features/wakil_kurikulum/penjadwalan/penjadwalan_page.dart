@@ -16,7 +16,9 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
 
   Map<String, dynamic>? _ref;
   bool _refLoading = true;
+  String? _refError;
   List<Map<String, dynamic>> _jadwal = [];
+  String? _jadwalError;
   List<Map<String, dynamic>> _jpSlots = [];
   bool _jadwalLoading = false;
 
@@ -39,7 +41,9 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
   static const _genreList = ['Pagi', 'Siang', 'Full Day'];
 
   // Kegiatan tetap
-  final List<Map<String, dynamic>> _kegiatanTetap = [
+  List<Map<String, dynamic>> _kegiatanTetap = [];
+
+  static const List<Map<String, dynamic>> _defaultKegiatanTetap = [
     {'nama': 'Istirahat RG', 'tipe': 'istirahat'},
     {'nama': 'Istirahat UG', 'tipe': 'istirahat'},
     {'nama': 'Tahfidz & Tahsin', 'tipe': 'kegiatan'},
@@ -68,34 +72,51 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
   }
 
   Future<void> _loadRef() async {
+    setState(() {
+      _refLoading = true;
+      _refError = null;
+    });
     try {
       _ref = await WakilKurikulumService.getReferensi();
       _jpSlots = (await WakilKurikulumService.getJpSlots()).cast<Map<String, dynamic>>();
-    } catch (_) {}
+      _kegiatanTetap = _refList('kegiatan_tetap');
+      if (_kegiatanTetap.isEmpty) _kegiatanTetap = _defaultKegiatanTetap;
+    } catch (e) {
+      _refError = 'Gagal memuat data referensi: $e';
+    }
     if (mounted) setState(() => _refLoading = false);
-    _loadJadwal();
+    if (_refError == null) _loadJadwal();
   }
 
   Future<void> _loadJadwal() async {
     if (_filterSemester == null) return;
-    setState(() => _jadwalLoading = true);
+    setState(() {
+      _jadwalLoading = true;
+      _jadwalError = null;
+    });
     try {
       final allKelas = _refList('kelas');
       final kelasLoop = _filterTingkat != null
           ? allKelas.where((k) => k['tingkat_id'].toString() == _filterTingkat).toList()
           : allKelas;
-      List<Map<String, dynamic>> allJadwal = [];
-      for (final k in kelasLoop) {
+
+      final results = await Future.wait(kelasLoop.map((k) async {
         final kelasId = k['id'].toString();
         try {
-          final res = await WakilKurikulumService.getJadwalPerKelas(kelasId, _filterSemester!);
-          final list = res.cast<Map<String, dynamic>>();
-          allJadwal.addAll(list);
-        } catch (_) {}
+          return await WakilKurikulumService.getJadwalPerKelas(kelasId, _filterSemester!);
+        } catch (_) {
+          return <dynamic>[];
+        }
+      }));
+
+      final allJadwal = <Map<String, dynamic>>[];
+      for (final r in results) {
+        allJadwal.addAll(r.cast<Map<String, dynamic>>());
       }
       _jadwal = allJadwal;
-    } catch (_) {
+    } catch (e) {
       _jadwal = [];
+      _jadwalError = 'Gagal memuat jadwal: $e';
     }
     if (mounted) setState(() => _jadwalLoading = false);
   }
@@ -161,11 +182,13 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         Expanded(
           child: _refLoading
               ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-              : TabBarView(controller: _tabCtrl, children: [
-                  _buildJadwalTab(),
-                  _buildKesiapanTab(),
-                  _buildWaliKelasTab(),
-                ]),
+              : _refError != null
+                  ? _buildErrorState(_refError!, _loadRef)
+                  : TabBarView(controller: _tabCtrl, children: [
+                      _buildJadwalTab(),
+                      _buildKesiapanTab(),
+                      _buildWaliKelasTab(),
+                    ]),
         ),
       ],
     );
@@ -182,7 +205,9 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
               ? const Center(child: CircularProgressIndicator())
               : _filterSemester == null
                   ? _buildEmptyState('Pilih semester terlebih dahulu')
-                  : _buildTwoColumnLayout(),
+                  : _jadwalError != null
+                      ? _buildErrorState(_jadwalError!, _loadJadwal)
+                      : _buildTwoColumnLayout(),
         ),
       ],
     );
@@ -230,6 +255,20 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
           ),
           // Hari
           _buildHariDropdown(),
+          // Generate
+          _buildActionBtn(
+            icon: Icons.auto_awesome,
+            label: 'Generate',
+            color: Colors.teal,
+            onPressed: _filterSemester != null ? _generateJadwal : null,
+          ),
+          // Publikasi
+          _buildActionBtn(
+            icon: Icons.publish,
+            label: 'Publikasi',
+            color: Colors.green,
+            onPressed: _filterSemester != null ? _publikasiJadwal : null,
+          ),
           // Reset
           _buildActionBtn(
             icon: Icons.undo,
@@ -324,12 +363,13 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     required IconData icon,
     required String label,
     required Color color,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
   }) {
     return TextButton.icon(
       onPressed: onPressed,
       style: TextButton.styleFrom(
         foregroundColor: color,
+        disabledForegroundColor: Colors.grey[400],
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -346,14 +386,15 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
   Widget _buildTwoColumnLayout() {
     return Row(
       children: [
-        // Panel Kiri
-        SizedBox(width: 280, child: _buildLeftPanel()),
+        // Panel Kiri: Daftar Mapel
+        SizedBox(width: 280, child: _buildMapelPanel()),
         // Divider
         VerticalDivider(width: 1, color: Colors.grey[200]),
-        // Panel Kanan + Panel Bawah
+        // Panel Kanan: Kegiatan Tetap + Tabel Jadwal + Bentrok
         Expanded(
           child: Column(
             children: [
+              _buildKegiatanPanel(),
               Expanded(child: _buildTimetable()),
               _buildBentrokPanel(),
             ],
@@ -363,9 +404,9 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     );
   }
 
-  // ── Panel Kiri ──
+  // ── Panel Kiri: Daftar Mapel ──
 
-  Widget _buildLeftPanel() {
+  Widget _buildMapelPanel() {
     final guruMapel = _refList('guru_mapel');
 
     return Container(
@@ -384,7 +425,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
                 Icon(Icons.menu_book_outlined, color: AppTheme.primary, size: 20),
                 SizedBox(width: 8),
                 Text(
-                  'Daftar Kegiatan & Mapel',
+                  'Daftar Mapel',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -394,19 +435,6 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
               ],
             ),
           ),
-
-          // Kegiatan Tetap
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: const Row(
-              children: [
-                Text('KEGIATAN TETAP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey)),
-              ],
-            ),
-          ),
-          ..._kegiatanTetap.map((k) => _buildKegiatanItem(k)),
-
-          Divider(height: 1, color: Colors.grey[200], indent: 16, endIndent: 16),
 
           // Daftar Mapel
           Container(
@@ -424,6 +452,36 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
               padding: const EdgeInsets.symmetric(horizontal: 12),
               itemCount: guruMapel.length,
               itemBuilder: (_, i) => _buildMapelItem(guruMapel[i]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Panel Kanan: Kegiatan Tetap ──
+
+  Widget _buildKegiatanPanel() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: Row(
+        children: [
+          const Icon(Icons.event_available, color: Colors.orange, size: 18),
+          const SizedBox(width: 6),
+          const Text('KEGIATAN TETAP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final k in _kegiatanTetap) ...[
+                    _buildKegiatanItem(k),
+                    const SizedBox(width: 6),
+                  ],
+                ],
+              ),
             ),
           ),
         ],
@@ -621,7 +679,8 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
                   ),
                 )),
               ],
-          rows: jpFiltered.map((jp) {
+          rows: [
+          ...jpFiltered.map((jp) {
             final jpKode = jp['kode'] as String;
             final jpWaktu = '${jp['mulai']}-${jp['selesai']}';
 
@@ -683,7 +742,26 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
                 );
               }),
             ]);
-          }).toList(),
+          }),
+          // Baris Tambah JP manual (di bawah kolom Waktu)
+          DataRow(cells: [
+            DataCell(
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _tambahJpSlot,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Tambah', style: TextStyle(fontSize: 11)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                ),
+              ),
+            ),
+            ...kelasFiltered.map((_) => const DataCell(SizedBox())),
+          ]),
+        ],
             ),
           ),
         );
@@ -700,8 +778,54 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         ? (j['is_istirahat'] == true || j['is_istirahat'] == 1 ? Colors.purple : Colors.teal)
         : (tervalidasi ? Colors.green : Colors.orange);
 
+    final content = Container(
+      height: 52,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(mapelNama, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color[800]), overflow: TextOverflow.ellipsis),
+          Text(guruNama, style: TextStyle(fontSize: 9, color: Colors.grey[600]), overflow: TextOverflow.ellipsis),
+        ],
+      ),
+    );
+
+    // Jadwal tervalidasi dikunci: tidak bisa di-drag maupun dihapus
+    if (tervalidasi) return content;
+
+    final cell = Stack(
+      children: [
+        Positioned.fill(child: content),
+        Positioned(
+          top: 0,
+          right: 0,
+          child: InkWell(
+            onTap: () => _hapusJadwal(j),
+            borderRadius: BorderRadius.circular(4),
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Icon(Icons.close, size: 11, color: Colors.red),
+            ),
+          ),
+        ),
+      ],
+    );
+
     return LongPressDraggable<Map<String, dynamic>>(
-      data: j,
+      data: {
+        ...j,
+        'tipe': isKegiatan ? 'kegiatan' : 'mapel',
+      },
       feedback: Material(
         elevation: 4,
         borderRadius: BorderRadius.circular(6),
@@ -715,59 +839,61 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         height: 52,
         decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), color: Colors.grey[100]),
       ),
-      child: Container(
-        height: 52,
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(mapelNama, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color[800]), overflow: TextOverflow.ellipsis),
-            Text(guruNama, style: TextStyle(fontSize: 9, color: Colors.grey[600]), overflow: TextOverflow.ellipsis),
-          ],
-        ),
+      child: cell,
+    );
+  }
+
+  Future<void> _tambahJpSlot() async {
+    final hasil = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (ctx) => const _WaktuDialog(
+        title: 'Tambah JP Slot',
+        confirmLabel: 'Tambah',
+        note: 'Slot baru ditambahkan ke semua kelas & tingkat.',
       ),
     );
+    if (hasil == null || !mounted) return;
+
+    try {
+      await WakilKurikulumService.createJpSlot(hasil['mulai']!, hasil['selesai']!);
+      final slots = await WakilKurikulumService.getJpSlots();
+      if (!mounted) return;
+      setState(() => _jpSlots = slots.cast<Map<String, dynamic>>());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('JP slot baru ditambahkan'), backgroundColor: Colors.green),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal tambah JP: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> _editWaktuSlot(Map<String, dynamic> jp) async {
     final kode = jp['kode'] as String;
-    final oldMulai = jp['mulai']?.toString() ?? '';
 
     final hasil = await showDialog<Map<String, String>>(
       context: context,
-      builder: (ctx) => _EditWaktuDialog(
-        kode: kode,
-        mulai: oldMulai,
+      builder: (ctx) => _WaktuDialog(
+        title: 'Ubah Waktu $kode',
+        confirmLabel: 'Simpan',
+        mulai: jp['mulai']?.toString() ?? '',
         selesai: jp['selesai']?.toString() ?? '',
+        note: 'Berlaku untuk semua kelas & tingkat. Seluruh jadwal dengan waktu ini ikut diperbarui.',
       ),
     );
     if (hasil == null || !mounted) return;
 
     try {
       await WakilKurikulumService.updateJpSlot(kode, hasil['mulai']!, hasil['selesai']!);
-
-      setState(() {
-        for (final s in _jpSlots) {
-          if (s['kode'] == kode) {
-            s['mulai'] = hasil['mulai'];
-            s['selesai'] = hasil['selesai'];
-          }
-        }
-        for (final j in _jadwal) {
-          if (j['jam_mulai']?.toString() == oldMulai) {
-            j['jam_mulai'] = hasil['mulai'];
-            j['jam_selesai'] = hasil['selesai'];
-          }
-        }
-      });
-
-      await _simpanJadwal();
+      await _loadJadwal();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Waktu JP diperbarui dan jadwal tersinkron'), backgroundColor: Colors.green),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -855,44 +981,75 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
   List<String> _detectBentrok() {
     if (_jadwal.isEmpty || _selectedHari == null) return [];
 
-    final Map<String, List<Map<String, dynamic>>> guruSchedule = {};
-
+    final List<Map<String, dynamic>> hariJadwal = [];
     for (final j in _jadwal) {
       if (j['hari'] != _selectedHari) continue;
       if (j['is_istirahat'] == true || j['is_istirahat'] == 1) continue;
 
-      final guruId = j['guru_id']?.toString();
-      if (guruId == null) continue;
+      final mulai = j['jam_mulai']?.toString();
+      final selesai = j['jam_selesai']?.toString();
+      if (mulai == null || selesai == null || mulai.isEmpty || selesai.isEmpty) continue;
 
-      final jpKey = '${j['jam_mulai']}-${j['jam_selesai']}';
-      final kelasNama = j['kelas_nama']?.toString() ?? j['kelas_id']?.toString() ?? '?';
-      final mapelNama = j['mapel_nama']?.toString() ?? '-';
-
-      guruSchedule.putIfAbsent(guruId, () => []).add({
-        'jp': jpKey,
-        'kelas': kelasNama,
-        'mapel': mapelNama,
+      hariJadwal.add({
+        'guru_id': j['guru_id']?.toString(),
+        'kelas_id': j['kelas_id']?.toString(),
+        'kelas_nama': j['kelas_nama']?.toString() ?? j['kelas_id']?.toString() ?? '?',
+        'mapel': j['mapel_nama']?.toString() ?? j['nama_kegiatan']?.toString() ?? '-',
         'guru_nama': j['guru_nama']?.toString() ?? '-',
+        'mulai': _timeToMin(mulai),
+        'selesai': _timeToMin(selesai),
       });
     }
 
     final List<String> bentrok = [];
-    for (final entry in guruSchedule.entries) {
-      final Map<String, List<String>> jpGroups = {};
-      for (final s in entry.value) {
-        jpGroups.putIfAbsent(s['jp']!, () => []).add('${s['mapel']} (${s['kelas']})');
-      }
+    final seen = <String>{};
 
-      for (final jpEntry in jpGroups.entries) {
-        if (jpEntry.value.length > 1) {
-          final guruNama = entry.value.first['guru_nama'];
-          final mapelKelas = jpEntry.value.join(', ');
-          bentrok.add('${jpEntry.key}: $guruNama mengajar di $mapelKelas pada jam yang sama');
-        }
+    void addIssue(String key, String msg) {
+      if (seen.add(key)) bentrok.add(msg);
+    }
+
+    // Bentrok guru: guru sama, jam overlap
+    for (var i = 0; i < hariJadwal.length; i++) {
+      for (var j = i + 1; j < hariJadwal.length; j++) {
+        final a = hariJadwal[i];
+        final b = hariJadwal[j];
+        if (a['guru_id'] == null || a['guru_id'] != b['guru_id']) continue;
+        if (!_overlap(a, b)) continue;
+        addIssue(
+          'guru:${a['guru_id']}:${a['mulai']}-${a['selesai']}',
+          '${a['guru_nama']} mengajar di ${a['kelas_nama']} dan ${b['kelas_nama']} pada jam yang sama',
+        );
+      }
+    }
+
+    // Bentrok kelas: kelas sama, jam overlap (non-istirahat)
+    for (var i = 0; i < hariJadwal.length; i++) {
+      for (var j = i + 1; j < hariJadwal.length; j++) {
+        final a = hariJadwal[i];
+        final b = hariJadwal[j];
+        if (a['kelas_id'] == null || a['kelas_id'] != b['kelas_id']) continue;
+        if (!_overlap(a, b)) continue;
+        addIssue(
+          'kelas:${a['kelas_id']}:${a['mulai']}-${a['selesai']}',
+          '${a['kelas_nama']} memiliki 2 jadwal pada jam yang sama: ${a['mapel']} & ${b['mapel']}',
+        );
       }
     }
 
     return bentrok;
+  }
+
+  int _timeToMin(String t) {
+    final parts = t.split(':');
+    return (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
+  }
+
+  bool _overlap(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final aMulai = a['mulai'] as int;
+    final aSelesai = a['selesai'] as int;
+    final bMulai = b['mulai'] as int;
+    final bSelesai = b['selesai'] as int;
+    return (aMulai < bSelesai) && (bMulai < aSelesai);
   }
 
   Widget _buildEmptyState(String message) {
@@ -908,17 +1065,49 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     );
   }
 
+  Widget _buildErrorState(String message, VoidCallback onRetry) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+            const SizedBox(height: 16),
+            Text(message, style: TextStyle(color: Colors.red[700]), textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Muat Ulang'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── Drag & Drop ──
 
   Future<void> _moveToSlot(Map<String, dynamic> data, String kelasId, Map<String, dynamic> jp) async {
     if (_filterSemester == null) return;
 
     final tipe = data['tipe'] ?? 'mapel';
-    final isIstirahat = data['is_istirahat'] ?? false;
+    final isKegiatan = tipe == 'kegiatan';
+    final isIstirahat = data['is_istirahat'] == true || data['is_istirahat'] == 1;
+    final existingId = data['id'];
+
+    // No-op: drop di slot yang sama (kelas + hari + jam sama)
+    if (existingId != null &&
+        data['kelas_id']?.toString() == kelasId &&
+        data['jam_mulai']?.toString() == jp['mulai'] &&
+        data['hari']?.toString() == _selectedHari) {
+      return;
+    }
 
     Map<String, dynamic> body;
 
-    if (tipe == 'kegiatan') {
+    if (isKegiatan) {
       body = {
         'kelas_id': int.tryParse(kelasId),
         'mata_pelajaran_id': null,
@@ -928,7 +1117,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         'jam_selesai': jp['selesai'],
         'semester_id': int.tryParse(_filterSemester!),
         'is_istirahat': isIstirahat,
-        'nama_kegiatan': data['nama'],
+        'nama_kegiatan': data['nama_kegiatan']?.toString() ?? data['nama']?.toString(),
       };
     } else {
       body = {
@@ -953,18 +1142,59 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         return;
       }
 
-      await WakilKurikulumService.createJadwal(body);
-      _loadJadwal();
+      // Sudah ada di jadwal → pindah (update), bukan duplikat
+      if (existingId != null && existingId is int) {
+        await WakilKurikulumService.updateJadwal(existingId, body);
+      } else {
+        await WakilKurikulumService.createJadwal(body);
+      }
+      await _loadJadwal();
       if (mounted) {
-        final nama = tipe == 'kegiatan' ? data['nama'] : data['mapel_nama'];
+        final nama = isKegiatan
+            ? (data['nama_kegiatan'] ?? data['nama'] ?? 'Kegiatan')
+            : (data['mapel_nama'] ?? 'Mapel');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$nama ditambahkan ke $kelasId'), backgroundColor: Colors.green, duration: const Duration(seconds: 1)),
+          SnackBar(content: Text('$nama dipindah ke ${_kelasNama(kelasId)}'), backgroundColor: Colors.green, duration: const Duration(seconds: 1)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  String _kelasNama(String kelasId) {
+    for (final k in _refList('kelas')) {
+      if (k['id'].toString() == kelasId) return k['nama']?.toString() ?? kelasId;
+    }
+    return kelasId;
+  }
+
+  Future<void> _hapusJadwal(Map<String, dynamic> j) async {
+    final id = j['id'];
+    if (id == null) return;
+    final jadwalId = id is int ? id : int.tryParse('$id');
+    if (jadwalId == null) return;
+
+    final nama = j['mapel_nama']?.toString() ?? j['nama_kegiatan']?.toString() ?? 'Jadwal';
+    final ok = await AppUtils.confirm(context, title: 'Hapus Jadwal', message: 'Hapus $nama dari jadwal ini?');
+    if (!ok) return;
+
+    try {
+      await WakilKurikulumService.deleteJadwal(jadwalId);
+      await _loadJadwal();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Jadwal dihapus'), backgroundColor: Colors.orange),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal hapus: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -1026,6 +1256,52 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('$e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _generateJadwal() async {
+    if (_filterSemester == null) return;
+    final ok = await AppUtils.confirm(context, title: 'Generate Jadwal',
+        message: 'Hapus jadwal draft semester ini lalu buat ulang otomatis berdasarkan Kesiapan Mengajar guru?');
+    if (!ok) return;
+
+    try {
+      final res = await WakilKurikulumService.generateJadwal(int.parse(_filterSemester!));
+      await _loadJadwal();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${res['message'] ?? 'Generate selesai'}'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal generate: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _publikasiJadwal() async {
+    if (_filterSemester == null) return;
+    final ok = await AppUtils.confirm(context, title: 'Publikasi Jadwal',
+        message: 'Validasi SEMUA jadwal draft semester ini? Setelah dipublikasi, jadwal tampil untuk guru & santri.');
+    if (!ok) return;
+
+    try {
+      final res = await WakilKurikulumService.publikasiJadwal(int.parse(_filterSemester!));
+      await _loadJadwal();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${res['message'] ?? 'Jadwal dipublikasikan'}'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal publikasi: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -1342,22 +1618,26 @@ class _KesiapanRowData {
 
 // ══════════════════════════════ SHARED WIDGETS ══════════════════════════════
 
-class _EditWaktuDialog extends StatefulWidget {
-  final String kode;
-  final String mulai;
-  final String selesai;
+class _WaktuDialog extends StatefulWidget {
+  final String title;
+  final String confirmLabel;
+  final String? mulai;
+  final String? selesai;
+  final String note;
 
-  const _EditWaktuDialog({
-    required this.kode,
-    required this.mulai,
-    required this.selesai,
+  const _WaktuDialog({
+    required this.title,
+    required this.confirmLabel,
+    this.mulai,
+    this.selesai,
+    required this.note,
   });
 
   @override
-  State<_EditWaktuDialog> createState() => _EditWaktuDialogState();
+  State<_WaktuDialog> createState() => _WaktuDialogState();
 }
 
-class _EditWaktuDialogState extends State<_EditWaktuDialog> {
+class _WaktuDialogState extends State<_WaktuDialog> {
   late final TextEditingController _mulaiCtrl;
   late final TextEditingController _selesaiCtrl;
   String? _error;
@@ -1365,8 +1645,8 @@ class _EditWaktuDialogState extends State<_EditWaktuDialog> {
   @override
   void initState() {
     super.initState();
-    _mulaiCtrl = TextEditingController(text: widget.mulai);
-    _selesaiCtrl = TextEditingController(text: widget.selesai);
+    _mulaiCtrl = TextEditingController(text: widget.mulai ?? '');
+    _selesaiCtrl = TextEditingController(text: widget.selesai ?? '');
   }
 
   @override
@@ -1400,7 +1680,7 @@ class _EditWaktuDialogState extends State<_EditWaktuDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Ubah Waktu ${widget.kode}', style: const TextStyle(fontSize: 16)),
+      title: Text(widget.title, style: const TextStyle(fontSize: 16)),
       content: SizedBox(
         width: 280,
         child: Column(
@@ -1429,7 +1709,7 @@ class _EditWaktuDialogState extends State<_EditWaktuDialog> {
               ],
             ),
             const SizedBox(height: 8),
-            Text('Berlaku untuk semua kelas & tingkat.', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+            Text(widget.note, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
             if (_error != null) ...[
               const SizedBox(height: 8),
               Text(_error!, style: const TextStyle(fontSize: 12, color: Colors.red)),
@@ -1444,7 +1724,7 @@ class _EditWaktuDialogState extends State<_EditWaktuDialog> {
         ),
         FilledButton(
           onPressed: _simpan,
-          child: const Text('Simpan'),
+          child: Text(widget.confirmLabel),
         ),
       ],
     );
