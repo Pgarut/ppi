@@ -589,46 +589,67 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
       return _buildEmptyState('Tidak ada slot jam untuk genre ini');
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        child: DataTable(
-          columnSpacing: 8,
-          headingRowHeight: 44,
-          dataRowMinHeight: 60,
-          dataRowMaxHeight: 60,
-          columns: [
-            const DataColumn(label: Text('Waktu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-            ...kelasFiltered.map((k) => DataColumn(
-              label: Text('${k['nama']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-            )),
-          ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final kelasCount = kelasFiltered.length;
+        const waktuW = 110.0;
+        final spacingTotal = 8.0 * (kelasCount + 1);
+        const marginTotal = 24.0;
+        final sisa = kelasCount > 0
+            ? (constraints.maxWidth - waktuW - spacingTotal - marginTotal) / kelasCount
+            : 0.0;
+        final kelasW = sisa < 120.0 ? 120.0 : sisa;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SingleChildScrollView(
+            child: DataTable(
+              columnSpacing: 8,
+              horizontalMargin: 12,
+              headingRowHeight: 44,
+              dataRowMinHeight: 60,
+              dataRowMaxHeight: 60,
+              columns: [
+                const DataColumn(label: SizedBox(
+                  width: waktuW,
+                  child: Text('Waktu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                )),
+                ...kelasFiltered.map((k) => DataColumn(
+                  label: SizedBox(
+                    width: kelasW,
+                    child: Text('${k['nama']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  ),
+                )),
+              ],
           rows: jpFiltered.map((jp) {
             final jpKode = jp['kode'] as String;
             final jpWaktu = '${jp['mulai']}-${jp['selesai']}';
 
             return DataRow(cells: [
-              DataCell(Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: InkWell(
-                  onTap: () => _editWaktuSlot(jp),
-                  borderRadius: BorderRadius.circular(6),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('JP $jpKode', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                            const SizedBox(width: 4),
-                            Icon(Icons.edit_outlined, size: 10, color: Colors.grey[400]),
-                          ],
-                        ),
-                        Text(jpWaktu, style: TextStyle(fontSize: 9, color: Colors.grey[600])),
-                      ],
+              DataCell(SizedBox(
+                width: waktuW,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: InkWell(
+                    onTap: () => _editWaktuSlot(jp),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('JP $jpKode', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              const SizedBox(width: 4),
+                              Icon(Icons.edit_outlined, size: 10, color: Colors.grey[400]),
+                            ],
+                          ),
+                          Text(jpWaktu, style: TextStyle(fontSize: 9, color: Colors.grey[600])),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -644,24 +665,29 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
                 );
 
                 return DataCell(
-                  entry.isNotEmpty
-                      ? _buildScheduleCell(entry)
-                      : DragTarget<Map<String, dynamic>>(
-                          onAcceptWithDetails: (details) => _moveToSlot(details.data, kelasId, jp),
-                          builder: (ctx, candidates, rejected) => Container(
-                            height: 52,
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey[200]!, width: 0.5),
-                              color: candidates.isNotEmpty ? Colors.blue[50] : null,
+                  SizedBox(
+                    width: kelasW,
+                    child: entry.isNotEmpty
+                        ? _buildScheduleCell(entry)
+                        : DragTarget<Map<String, dynamic>>(
+                            onAcceptWithDetails: (details) => _moveToSlot(details.data, kelasId, jp),
+                            builder: (ctx, candidates, rejected) => Container(
+                              height: 52,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[200]!, width: 0.5),
+                                color: candidates.isNotEmpty ? Colors.blue[50] : null,
+                              ),
                             ),
                           ),
-                        ),
+                  ),
                 );
               }),
             ]);
           }).toList(),
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 

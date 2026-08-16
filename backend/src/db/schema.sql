@@ -201,7 +201,7 @@ CREATE TABLE jadwal_pelajaran (
     nama_kegiatan       TEXT,
     is_istirahat        INTEGER NOT NULL DEFAULT 0,
     hari                TEXT NOT NULL CHECK (hari IN (
-                            'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'
+                            'Sabtu','Minggu','Senin','Selasa','Rabu','Kamis'
                         )),
     jam_mulai           TEXT NOT NULL,   -- format 'HH:MM'
     jam_selesai         TEXT NOT NULL,
