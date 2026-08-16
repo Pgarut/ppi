@@ -21,7 +21,31 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
 
   // ── JP Slots ──
   if (subPath === 'jp-slots' && request.method === 'GET') {
-    return success(JP_SLOTS.map(s => ({ kode: s, ...JP_TIMES[s] })));
+    const rows = await env.DB.prepare('SELECT kode, mulai, selesai FROM jp_slot ORDER BY urutan')
+      .all<{ kode: string; mulai: string; selesai: string }>();
+    const slots = rows.results.length > 0
+      ? rows.results
+      : JP_SLOTS.map(s => ({ kode: s, ...JP_TIMES[s] }));
+    return success(slots);
+  }
+
+  // ── Update Waktu JP Slot ──
+  if (subPath.startsWith('jp-slots/') && request.method === 'PUT') {
+    const kode = subPath.split('/')[1];
+    const body = await request.json() as { mulai?: string; selesai?: string };
+    const mulai = body.mulai?.trim() ?? '';
+    const selesai = body.selesai?.trim() ?? '';
+
+    if (!/^\d{2}:\d{2}$/.test(mulai) || !/^\d{2}:\d{2}$/.test(selesai)) {
+      return badRequest('Format waktu harus HH:MM (contoh: 07:00)');
+    }
+    if (mulai >= selesai) {
+      return badRequest('Jam mulai harus lebih awal dari jam selesai');
+    }
+
+    await env.DB.prepare('UPDATE jp_slot SET mulai = ?, selesai = ? WHERE kode = ?')
+      .bind(mulai, selesai, kode).run();
+    return success({ kode, mulai, selesai });
   }
 
   // ── Referensi ──

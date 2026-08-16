@@ -39,6 +39,7 @@ describe('Wakil Kurikulum Routes', () => {
   describe('Penjadwalan', () => {
     it('should return JP slots', async () => {
       const db = makeDb();
+      db.all.mockResolvedValue({ results: [] });
       const req = makeGet('/api/wakil-kurikulum/jp-slots');
       const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'jp-slots'], makeUrl(''));
       expect(res.status).toBe(200);

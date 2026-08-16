@@ -464,7 +464,9 @@ class _TabSiswaState extends State<_TabSiswa> {
           columns: const [
             DataColumn(label: Text('NIS', style: TextStyle(fontWeight: FontWeight.w600))),
             DataColumn(label: Text('Nama', style: TextStyle(fontWeight: FontWeight.w600))),
+            DataColumn(label: Text('Jenis Kelamin', style: TextStyle(fontWeight: FontWeight.w600))),
             DataColumn(label: Text('Kelas', style: TextStyle(fontWeight: FontWeight.w600))),
+            DataColumn(label: Text('Wali Kelas', style: TextStyle(fontWeight: FontWeight.w600))),
             DataColumn(label: Text('Mapel', style: TextStyle(fontWeight: FontWeight.w600))),
             DataColumn(label: Text('Tanggal', style: TextStyle(fontWeight: FontWeight.w600))),
             DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
@@ -475,7 +477,9 @@ class _TabSiswaState extends State<_TabSiswa> {
             return DataRow(cells: [
               DataCell(Text(s['siswa_nis']?.toString() ?? '')),
               DataCell(Text(s['siswa_nama']?.toString() ?? '')),
+              DataCell(Text(_jkLabel(s['siswa_jk']?.toString()))),
               DataCell(Text(s['kelas_nama']?.toString() ?? '')),
+              DataCell(Text(s['wali_kelas_nama']?.toString() ?? '-')),
               DataCell(Text(s['mapel_nama']?.toString() ?? '-')),
               DataCell(Text(s['tanggal']?.toString() ?? '')),
               DataCell(_statusChip(s['status']?.toString() ?? '')),
@@ -534,6 +538,14 @@ class _TabSiswaState extends State<_TabSiswa> {
       ),
       child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
     );
+  }
+
+  String _jkLabel(String? v) {
+    switch (v) {
+      case 'L': return 'Laki-laki';
+      case 'P': return 'Perempuan';
+      default: return '-';
+    }
   }
 }
 

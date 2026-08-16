@@ -52,10 +52,12 @@ export async function handleAbsensiWK(request: Request, env: Env, url: URL): Pro
 
     bindings.push(perPage, offset);
     const rows = await env.DB.prepare(
-      `SELECT a.*, s.nama as siswa_nama, s.nis as siswa_nis, k.nama as kelas_nama, mp.nama as mapel_nama
+      `SELECT a.*, s.nama as siswa_nama, s.nis as siswa_nis, s.jenis_kelamin as siswa_jk,
+              k.nama as kelas_nama, mp.nama as mapel_nama, wk.nama as wali_kelas_nama
        FROM absensi_siswa a
        LEFT JOIN siswa s ON a.siswa_id = s.id
        LEFT JOIN kelas k ON a.kelas_id = k.id
+       LEFT JOIN guru wk ON k.wali_kelas_id = wk.id
        LEFT JOIN mata_pelajaran mp ON a.mata_pelajaran_id = mp.id
        ${where} ORDER BY s.nis ASC, a.tanggal DESC LIMIT ? OFFSET ?`
     ).bind(...bindings).all();

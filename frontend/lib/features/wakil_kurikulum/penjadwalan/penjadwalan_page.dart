@@ -610,13 +610,27 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
             return DataRow(cells: [
               DataCell(Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('JP $jpKode', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                    Text(jpWaktu, style: TextStyle(fontSize: 9, color: Colors.grey[500])),
-                  ],
+                child: InkWell(
+                  onTap: () => _editWaktuSlot(jp),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('JP $jpKode', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 4),
+                            Icon(Icons.edit_outlined, size: 10, color: Colors.grey[400]),
+                          ],
+                        ),
+                        Text(jpWaktu, style: TextStyle(fontSize: 9, color: Colors.grey[600])),
+                      ],
+                    ),
+                  ),
                 ),
               )),
               ...kelasFiltered.map((kelas) {
@@ -695,16 +709,61 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     );
   }
 
+  Future<void> _editWaktuSlot(Map<String, dynamic> jp) async {
+    final kode = jp['kode'] as String;
+    final oldMulai = jp['mulai']?.toString() ?? '';
+
+    final hasil = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (ctx) => _EditWaktuDialog(
+        kode: kode,
+        mulai: oldMulai,
+        selesai: jp['selesai']?.toString() ?? '',
+      ),
+    );
+    if (hasil == null || !mounted) return;
+
+    try {
+      await WakilKurikulumService.updateJpSlot(kode, hasil['mulai']!, hasil['selesai']!);
+
+      setState(() {
+        for (final s in _jpSlots) {
+          if (s['kode'] == kode) {
+            s['mulai'] = hasil['mulai'];
+            s['selesai'] = hasil['selesai'];
+          }
+        }
+        for (final j in _jadwal) {
+          if (j['jam_mulai']?.toString() == oldMulai) {
+            j['jam_mulai'] = hasil['mulai'];
+            j['jam_selesai'] = hasil['selesai'];
+          }
+        }
+      });
+
+      await _simpanJadwal();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal ubah waktu: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   // ── Panel Bawah: Keterangan Jam Bentrok ──
 
   Widget _buildBentrokPanel() {
     final bentrok = _detectBentrok();
+    final unmatched = _jadwalUnmatched();
+    final issues = <String>[...unmatched, ...bentrok];
+    final hasIssue = issues.isNotEmpty;
 
     return Container(
-      height: bentrok.isEmpty ? 60 : 100,
+      height: hasIssue ? 100 : 60,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: bentrok.isEmpty ? Colors.grey[50] : Colors.red[50],
+        color: hasIssue ? Colors.red[50] : Colors.grey[50],
         border: Border(top: BorderSide(color: Colors.grey[200]!)),
       ),
       child: Column(
@@ -713,30 +772,30 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
           Row(
             children: [
               Icon(
-                bentrok.isEmpty ? Icons.check_circle_outline : Icons.warning_amber_rounded,
+                hasIssue ? Icons.warning_amber_rounded : Icons.check_circle_outline,
                 size: 16,
-                color: bentrok.isEmpty ? Colors.green : Colors.red,
+                color: hasIssue ? Colors.red : Colors.green,
               ),
               const SizedBox(width: 6),
               Text(
-                bentrok.isEmpty ? 'Tidak ada jam bentrok' : 'Keterangan Jam Bentrok (${bentrok.length})',
+                hasIssue ? 'Keterangan (${issues.length})' : 'Tidak ada masalah jam',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: bentrok.isEmpty ? Colors.green[700] : Colors.red[700],
+                  color: hasIssue ? Colors.red[700] : Colors.green[700],
                 ),
               ),
             ],
           ),
-          if (bentrok.isNotEmpty) ...[
+          if (issues.isNotEmpty) ...[
             const SizedBox(height: 6),
             Expanded(
               child: ListView.builder(
-                itemCount: bentrok.length,
+                itemCount: issues.length,
                 itemBuilder: (_, i) => Padding(
                   padding: const EdgeInsets.only(bottom: 2),
                   child: Text(
-                    '• ${bentrok[i]}',
+                    '• ${issues[i]}',
                     style: TextStyle(fontSize: 11, color: Colors.red[800]),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -748,6 +807,23 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         ],
       ),
     );
+  }
+
+  // Entri jadwal yang jam_mulai-nya tidak cocok dengan slot waktu manapun
+  List<String> _jadwalUnmatched() {
+    if (_jadwal.isEmpty || _selectedHari == null) return [];
+    final slotMulai = _jpSlots.map((s) => s['mulai']?.toString()).toSet();
+    final result = <String>[];
+    for (final j in _jadwal) {
+      if (j['hari'] != _selectedHari) continue;
+      final mulai = j['jam_mulai']?.toString();
+      if (mulai == null || mulai.isEmpty || !slotMulai.contains(mulai)) {
+        final mapel = j['mapel_nama']?.toString() ?? j['nama_kegiatan']?.toString() ?? '-';
+        final kelas = j['kelas_nama']?.toString() ?? j['kelas_id']?.toString() ?? '?';
+        result.add('$mapel ($kelas) ${j['jam_mulai']}-${j['jam_selesai']} tidak cocok slot waktu');
+      }
+    }
+    return result;
   }
 
   List<String> _detectBentrok() {
@@ -1239,6 +1315,115 @@ class _KesiapanRowData {
 }
 
 // ══════════════════════════════ SHARED WIDGETS ══════════════════════════════
+
+class _EditWaktuDialog extends StatefulWidget {
+  final String kode;
+  final String mulai;
+  final String selesai;
+
+  const _EditWaktuDialog({
+    required this.kode,
+    required this.mulai,
+    required this.selesai,
+  });
+
+  @override
+  State<_EditWaktuDialog> createState() => _EditWaktuDialogState();
+}
+
+class _EditWaktuDialogState extends State<_EditWaktuDialog> {
+  late final TextEditingController _mulaiCtrl;
+  late final TextEditingController _selesaiCtrl;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _mulaiCtrl = TextEditingController(text: widget.mulai);
+    _selesaiCtrl = TextEditingController(text: widget.selesai);
+  }
+
+  @override
+  void dispose() {
+    _mulaiCtrl.dispose();
+    _selesaiCtrl.dispose();
+    super.dispose();
+  }
+
+  static bool _valid(String t) => RegExp(r'^\d{2}:\d{2}$').hasMatch(t);
+
+  static int _toMin(String t) {
+    final parts = t.split(':');
+    return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+  }
+
+  void _simpan() {
+    final mulai = _mulaiCtrl.text.trim();
+    final selesai = _selesaiCtrl.text.trim();
+    if (!_valid(mulai) || !_valid(selesai)) {
+      setState(() => _error = 'Format waktu harus HH:MM (contoh: 07:00)');
+      return;
+    }
+    if (_toMin(mulai) >= _toMin(selesai)) {
+      setState(() => _error = 'Jam mulai harus lebih awal dari jam selesai');
+      return;
+    }
+    Navigator.pop(context, {'mulai': mulai, 'selesai': selesai});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Ubah Waktu ${widget.kode}', style: const TextStyle(fontSize: 16)),
+      content: SizedBox(
+        width: 280,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _mulaiCtrl,
+                    keyboardType: TextInputType.datetime,
+                    decoration: const InputDecoration(labelText: 'Mulai', hintText: '07:00', isDense: true),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Text('–', style: TextStyle(fontSize: 16)),
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _selesaiCtrl,
+                    keyboardType: TextInputType.datetime,
+                    decoration: const InputDecoration(labelText: 'Selesai', hintText: '07:45', isDense: true),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Berlaku untuk semua kelas & tingkat.', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(_error!, style: const TextStyle(fontSize: 12, color: Colors.red)),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: _simpan,
+          child: const Text('Simpan'),
+        ),
+      ],
+    );
+  }
+}
 
 class _HariCheckboxRow extends StatelessWidget {
   final List<String> nilai;
