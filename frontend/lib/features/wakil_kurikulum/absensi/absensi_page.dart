@@ -125,7 +125,7 @@ class _TabGuruState extends State<_TabGuru> {
       final pag = data['pagination'] as Map<String, dynamic>? ?? {};
       _totalPages = pag['total_pages'] as int? ?? 1;
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -206,7 +206,10 @@ class _TabGuruState extends State<_TabGuru> {
             ),
           ),
           FilledButton.icon(
-            onPressed: _load,
+            onPressed: () {
+              setState(() => _page = 1);
+              _load();
+            },
             icon: const Icon(Icons.search, size: 18),
             label: const Text('Cari'),
           ),
@@ -329,6 +332,7 @@ class _TabSiswaState extends State<_TabSiswa> {
       final res = await ApiClient.get('/referensi');
       final data = res['data'] as Map<String, dynamic>;
       _kelas = data['kelas'] as List<dynamic>? ?? [];
+      if (mounted) setState(() {});
     } catch (_) {}
   }
 
@@ -342,7 +346,7 @@ class _TabSiswaState extends State<_TabSiswa> {
       final pag = data['pagination'] as Map<String, dynamic>? ?? {};
       _totalPages = pag['total_pages'] as int? ?? 1;
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -435,7 +439,10 @@ class _TabSiswaState extends State<_TabSiswa> {
             ),
           ),
           FilledButton.icon(
-            onPressed: _load,
+            onPressed: () {
+              setState(() => _page = 1);
+              _load();
+            },
             icon: const Icon(Icons.search, size: 18),
             label: const Text('Cari'),
           ),
@@ -563,6 +570,7 @@ class _TabRekapState extends State<_TabRekap> {
       final res = await ApiClient.get('/referensi');
       final data = res['data'] as Map<String, dynamic>;
       _kelas = data['kelas'] as List<dynamic>? ?? [];
+      if (mounted) setState(() {});
     } catch (_) {}
   }
 
@@ -575,7 +583,7 @@ class _TabRekapState extends State<_TabRekap> {
         kelasId: _kelasId,
       );
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
   }
 
   @override

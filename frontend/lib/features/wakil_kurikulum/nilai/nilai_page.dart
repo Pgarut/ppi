@@ -25,6 +25,7 @@ class _NilaiPageWKState extends State<NilaiPageWK> with SingleTickerProviderStat
   Map<String, dynamic>? _monitoringPagination;
   bool _loadingMonitoring = true;
   int _monitoringPage = 1;
+  List<Map<String, dynamic>> _kelasList = [];
   String? _filterKelasId;
   String? _filterMapelId;
   String? _filterStatus;
@@ -83,6 +84,7 @@ class _NilaiPageWKState extends State<NilaiPageWK> with SingleTickerProviderStat
   Future<void> _loadReferensi() async {
     try {
       final ref = await WakilKurikulumService.getReferensi();
+      _kelasList = (ref['kelas'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
       _mapelList = (ref['mapel'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
       _tahunAjaranList = (ref['semester'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
     } catch (_) {}
@@ -578,8 +580,63 @@ class _NilaiPageWKState extends State<NilaiPageWK> with SingleTickerProviderStat
         // Search & Filter Bar
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Row(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
+              SizedBox(
+                width: 180,
+                child: DropdownButtonFormField<String>(
+                  isDense: true,
+                  decoration: const InputDecoration(
+                    hintText: 'Semua Kelas',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+                  ),
+                  value: _filterKelasId,
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Semua Kelas')),
+                    ..._kelasList.map((k) => DropdownMenuItem(
+                      value: k['id'].toString(),
+                      child: Text('${k['nama']}', overflow: TextOverflow.ellipsis),
+                    )),
+                  ],
+                  onChanged: (v) {
+                    setState(() {
+                      _filterKelasId = v;
+                      _monitoringPage = 1;
+                    });
+                    _loadMonitoring();
+                  },
+                ),
+              ),
+              SizedBox(
+                width: 180,
+                child: DropdownButtonFormField<String>(
+                  isDense: true,
+                  decoration: const InputDecoration(
+                    hintText: 'Semua Mapel',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+                  ),
+                  value: _filterMapelId,
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Semua Mapel')),
+                    ..._mapelList.map((m) => DropdownMenuItem(
+                      value: m['id'].toString(),
+                      child: Text('${m['nama']}', overflow: TextOverflow.ellipsis),
+                    )),
+                  ],
+                  onChanged: (v) {
+                    setState(() {
+                      _filterMapelId = v;
+                      _monitoringPage = 1;
+                    });
+                    _loadMonitoring();
+                  },
+                ),
+              ),
               Expanded(
                 child: TextField(
                   controller: _searchCtrl,
@@ -591,7 +648,10 @@ class _NilaiPageWKState extends State<NilaiPageWK> with SingleTickerProviderStat
                             icon: const Icon(Icons.clear, size: 18),
                             onPressed: () {
                               _searchCtrl.clear();
-                              setState(() => _searchQuery = '');
+                              setState(() {
+                                _searchQuery = '';
+                                _monitoringPage = 1;
+                              });
                               _loadMonitoring();
                             },
                           )
@@ -601,19 +661,24 @@ class _NilaiPageWKState extends State<NilaiPageWK> with SingleTickerProviderStat
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   onSubmitted: (v) {
-                    setState(() => _searchQuery = v);
+                    setState(() {
+                      _searchQuery = v;
+                      _monitoringPage = 1;
+                    });
                     _loadMonitoring();
                   },
                 ),
               ),
-              const SizedBox(width: 8),
               PopupMenuButton<String>(
                 icon: Badge(
                   isLabelVisible: _filterStatus != null,
                   child: const Icon(Icons.filter_list),
                 ),
                 onSelected: (v) {
-                  setState(() => _filterStatus = v == 'all' ? null : v);
+                  setState(() {
+                    _filterStatus = v == 'all' ? null : v;
+                    _monitoringPage = 1;
+                  });
                   _loadMonitoring();
                 },
                 itemBuilder: (_) => [

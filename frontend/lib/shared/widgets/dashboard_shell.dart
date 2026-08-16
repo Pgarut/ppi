@@ -40,7 +40,7 @@ class _DashboardShellState extends State<DashboardShell> {
 
   static const Map<String, String> _featureLabels = {
     'jadwal': 'Jadwal Pelajaran',
-    'absensi': 'Riwayat Kehadiran',
+    'absensi': 'Absensi',
     'nilai': 'Nilai Akademik',
     'rapor': 'Rapor Santri',
     'materi': 'Materi Pembelajaran',
@@ -52,6 +52,15 @@ class _DashboardShellState extends State<DashboardShell> {
     'semester': 'Semester',
     'program': 'Program',
     'pengaturan': 'Pengaturan',
+    'penjadwalan': 'Penjadwalan Pelajaran',
+    'kenaikan-kelas': 'Kenaikan Kelas',
+    'laporan': 'Laporan',
+    'wali-kelas': 'Wali Kelas',
+    'pengaduan': 'Pengaduan',
+    'konseling': 'Konseling',
+    'bakat-minat': 'Bakat & Minat',
+    'monitoring': 'Monitoring',
+    'bantuan': 'Bantuan',
   };
 
   void _openFeature(String feature) {

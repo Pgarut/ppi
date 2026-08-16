@@ -750,6 +750,13 @@ async function handleScanAbsensi(request: Request, env: Env, user: UserPayload):
     return error('Role Anda tidak memiliki akses absensi', 403);
   }
 
+  // Validasi token QR absensi (wajib dikirim dari client)
+  const body = await request.json().catch(() => null) as { token?: string } | null;
+  const expectedToken = env.QR_ABSENSI_TOKEN || 'PPI_ABSENSI_QR_2026';
+  if (!body?.token || body.token !== expectedToken) {
+    return error('QR Code tidak valid', 400);
+  }
+
   // Guru harus punya guru_id
   if (!user.guru_id) {
     return error('Data guru tidak ditemukan untuk akun ini', 400);

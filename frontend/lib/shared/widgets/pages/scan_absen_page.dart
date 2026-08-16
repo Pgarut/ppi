@@ -72,7 +72,7 @@ class _ScanAbsenPageState extends State<ScanAbsenPage> {
     _lastScanTime = DateTime.now();
 
     try {
-      final response = await ApiClient.post('/absensi/scan');
+      final response = await ApiClient.post('/absensi/scan', body: {'token': Env.qrAbsensiToken});
       final data = response['data'] as Map<String, dynamic>;
       final action = data['action'] as String;
       final time = data['time'] as String;

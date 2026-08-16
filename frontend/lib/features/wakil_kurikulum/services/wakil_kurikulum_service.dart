@@ -24,10 +24,6 @@ class WakilKurikulumService {
     await ApiClient.delete('/wakil-kurikulum/jadwal/$id');
   }
 
-  static Future<void> validasiJadwal(int id) async {
-    await ApiClient.put('/wakil-kurikulum/jadwal/$id/validasi');
-  }
-
   static Future<Map<String, dynamic>> getReferensi() async {
     final res = await ApiClient.get('/wakil-kurikulum/referensi');
     return res['data'] as Map<String, dynamic>;

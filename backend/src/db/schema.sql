@@ -195,9 +195,11 @@ WHERE mata_pelajaran_id IS NULL AND kelas_id IS NULL;
 CREATE TABLE jadwal_pelajaran (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     kelas_id            INTEGER NOT NULL REFERENCES kelas(id),
-    mata_pelajaran_id   INTEGER NOT NULL REFERENCES mata_pelajaran(id),
-    guru_id             INTEGER NOT NULL REFERENCES guru(id),
+    mata_pelajaran_id   INTEGER REFERENCES mata_pelajaran(id),
+    guru_id             INTEGER REFERENCES guru(id),
     ruangan_id          INTEGER REFERENCES ruangan(id),
+    nama_kegiatan       TEXT,
+    is_istirahat        INTEGER NOT NULL DEFAULT 0,
     hari                TEXT NOT NULL CHECK (hari IN (
                             'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'
                         )),

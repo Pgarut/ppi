@@ -28,6 +28,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
 
   // Kesiapan
   List<Map<String, dynamic>> _kesiapan = [];
+  List<_KesiapanRowData> _kesiapanRows = [];
   bool _kesiapanLoading = false;
 
   // Wali Kelas
@@ -71,7 +72,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
       _ref = await WakilKurikulumService.getReferensi();
       _jpSlots = (await WakilKurikulumService.getJpSlots()).cast<Map<String, dynamic>>();
     } catch (_) {}
-    setState(() => _refLoading = false);
+    if (mounted) setState(() => _refLoading = false);
     _loadJadwal();
   }
 
@@ -80,8 +81,11 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     setState(() => _jadwalLoading = true);
     try {
       final allKelas = _refList('kelas');
+      final kelasLoop = _filterTingkat != null
+          ? allKelas.where((k) => k['tingkat_id'].toString() == _filterTingkat).toList()
+          : allKelas;
       List<Map<String, dynamic>> allJadwal = [];
-      for (final k in allKelas) {
+      for (final k in kelasLoop) {
         final kelasId = k['id'].toString();
         try {
           final res = await WakilKurikulumService.getJadwalPerKelas(kelasId, _filterSemester!);
@@ -102,8 +106,10 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     try {
       _kesiapan = (await WakilKurikulumService.getKesiapan(int.parse(_filterSemester!)))
           .cast<Map<String, dynamic>>();
+      _kesiapanRows = _kesiapan.map((k) => _KesiapanRowData.fromJson(k)).toList();
     } catch (_) {
       _kesiapan = [];
+      _kesiapanRows = [];
     }
     if (mounted) setState(() => _kesiapanLoading = false);
   }
@@ -190,7 +196,10 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Row(
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // Pilih Tingkat
           _buildDropdown(
@@ -206,10 +215,8 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
               _loadJadwal();
             },
           ),
-          const SizedBox(width: 12),
           // Genre Jadwal
           _buildGenreDropdown(),
-          const SizedBox(width: 12),
           // Semester
           _buildDropdown(
             items: sem,
@@ -221,10 +228,8 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
               _loadJadwal();
             },
           ),
-          const SizedBox(width: 12),
           // Hari
           _buildHariDropdown(),
-          const Spacer(),
           // Reset
           _buildActionBtn(
             icon: Icons.undo,
@@ -232,7 +237,6 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
             color: Colors.red,
             onPressed: _resetJadwal,
           ),
-          const SizedBox(width: 8),
           // Simpan
           _buildActionBtn(
             icon: Icons.save_outlined,
@@ -568,8 +572,21 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
       return _buildEmptyState('Tidak ada kelas untuk tingkat ini');
     }
 
-    if (_jadwal.isEmpty) {
-      return _buildEmptyState('Belum ada jadwal. Drag mapel dari panel kiri ke tabel.');
+    final jpFiltered = _filterGenre == null
+        ? _jpSlots
+        : _jpSlots.where((jp) {
+            final mulai = jp['mulai']?.toString() ?? '';
+            final hour = int.tryParse(mulai.split(':').first) ?? 0;
+            switch (_filterGenre) {
+              case 'Pagi': return hour < 12;
+              case 'Siang': return hour >= 12 && hour < 17;
+              case 'Full Day': return true;
+              default: return true;
+            }
+          }).toList();
+
+    if (jpFiltered.isEmpty) {
+      return _buildEmptyState('Tidak ada slot jam untuk genre ini');
     }
 
     return SingleChildScrollView(
@@ -586,7 +603,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
               label: Text('${k['nama']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
             )),
           ],
-          rows: _jpSlots.map((jp) {
+          rows: jpFiltered.map((jp) {
             final jpKode = jp['kode'] as String;
             final jpWaktu = '${jp['mulai']}-${jp['selesai']}';
 
@@ -636,9 +653,12 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
 
   Widget _buildScheduleCell(Map<String, dynamic> j) {
     final tervalidasi = j['status_validasi'] == 'tervalidasi';
-    final mapelNama = j['mapel_nama']?.toString() ?? '-';
+    final isKegiatan = j['nama_kegiatan'] != null && j['nama_kegiatan'].toString().isNotEmpty;
+    final mapelNama = j['mapel_nama']?.toString() ?? (isKegiatan ? j['nama_kegiatan'].toString() : '-');
     final guruNama = j['guru_nama']?.toString() ?? '-';
-    final color = tervalidasi ? Colors.green : Colors.orange;
+    final color = isKegiatan
+        ? (j['is_istirahat'] == true || j['is_istirahat'] == 1 ? Colors.purple : Colors.teal)
+        : (tervalidasi ? Colors.green : Colors.orange);
 
     return LongPressDraggable<Map<String, dynamic>>(
       data: j,
@@ -737,7 +757,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
 
     for (final j in _jadwal) {
       if (j['hari'] != _selectedHari) continue;
-      if (j['is_istirahat'] == true) continue;
+      if (j['is_istirahat'] == true || j['is_istirahat'] == 1) continue;
 
       final guruId = j['guru_id']?.toString();
       if (guruId == null) continue;
@@ -863,6 +883,8 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         'jam_selesai': j['jam_selesai'] as String,
         'semester_id': j['semester_id'] as int,
         if (j['ruangan_id'] != null) 'ruangan_id': j['ruangan_id'] as int,
+        if (j['nama_kegiatan'] != null) 'nama_kegiatan': j['nama_kegiatan'] as String,
+        'is_istirahat': j['is_istirahat'] == true || j['is_istirahat'] == 1,
       }).toList();
 
       final res = await WakilKurikulumService.simpanJadwal(data);
@@ -947,7 +969,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
   }
 
   Widget _buildKesiapanTable() {
-    final guruList = _kesiapan.map((k) => _KesiapanRowData.fromJson(k)).toList();
+    final guruList = _kesiapanRows;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -1042,8 +1064,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     if (_filterSemester == null) return;
     setState(() => _kesiapanLoading = true);
     try {
-      final data = _kesiapan.map((k) {
-        final row = _KesiapanRowData.fromJson(k);
+      final data = _kesiapanRows.map((row) {
         return {
           'guru_id': row.guruId,
           'hari_aktif': row.hariAktif,

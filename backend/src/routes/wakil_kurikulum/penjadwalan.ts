@@ -26,13 +26,22 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
 
   // ── Referensi ──
   if (subPath === 'referensi' && request.method === 'GET') {
-    const [kelas, guru, mapel, ruangan, semester, tingkat] = await Promise.all([
-      env.DB.prepare('SELECT id, nama, ruangan_id FROM kelas ORDER BY nama').all(),
+    const [kelas, guru, mapel, ruangan, semester, tingkat, guruMapel, tahunAjaran] = await Promise.all([
+      env.DB.prepare('SELECT id, nama, ruangan_id, tingkat_id FROM kelas ORDER BY nama').all(),
       env.DB.prepare("SELECT DISTINCT g.id, g.nama, g.nip FROM guru g INNER JOIN guru_mapel gm ON g.id = gm.guru_id WHERE g.status_aktif = 1 ORDER BY g.nama").all(),
       env.DB.prepare('SELECT id, nama, kode FROM mata_pelajaran ORDER BY nama').all(),
       env.DB.prepare('SELECT id, nama FROM ruangan ORDER BY nama').all(),
       env.DB.prepare('SELECT id, nama, tahun_ajaran_id FROM semester ORDER BY tahun_ajaran_id DESC, id').all(),
       env.DB.prepare('SELECT id, nama FROM tingkat ORDER BY nama').all(),
+      env.DB.prepare(
+        `SELECT gm.guru_id, gm.mata_pelajaran_id, g.nama AS guru_nama, g.nip, mp.nama AS mapel_nama, mp.kode AS mapel_kode
+         FROM guru_mapel gm
+         INNER JOIN guru g ON g.id = gm.guru_id
+         INNER JOIN mata_pelajaran mp ON mp.id = gm.mata_pelajaran_id
+         WHERE g.status_aktif = 1
+         ORDER BY mp.nama, g.nama`
+      ).all(),
+      env.DB.prepare('SELECT id, nama FROM tahun_ajaran ORDER BY id DESC').all(),
     ]);
 
     // Ambil mapel per kelas dari mapel_kelas
@@ -49,7 +58,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       mapel_ids: kelasMapelMap.get(k.id) || [],
     }));
 
-    return success({ kelas: kelasWithMapel, guru: guru.results, mapel: mapel.results, ruangan: ruangan.results, semester: semester.results, tingkat: tingkat.results, hari: HARI });
+    return success({ kelas: kelasWithMapel, guru: guru.results, mapel: mapel.results, ruangan: ruangan.results, semester: semester.results, tingkat: tingkat.results, hari: HARI, guru_mapel: guruMapel.results, tahun_ajaran: tahunAjaran.results });
   }
 
   // ── Guru by Kelas + Mapel ──
@@ -210,7 +219,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
     if (!kelasId || !semesterId) return badRequest('kelas_id dan semester_id diperlukan');
 
     const rows = await env.DB.prepare(
-      `SELECT jp.*, mp.nama as mapel_nama, mp.kode as mapel_kode, g.nama as guru_nama, r.nama as ruangan_nama, k.nama as kelas_nama
+      `SELECT jp.*, COALESCE(mp.nama, jp.nama_kegiatan) as mapel_nama, mp.kode as mapel_kode, g.nama as guru_nama, r.nama as ruangan_nama, k.nama as kelas_nama
        FROM jadwal_pelajaran jp
        LEFT JOIN mata_pelajaran mp ON jp.mata_pelajaran_id = mp.id
        LEFT JOIN guru g ON jp.guru_id = g.id
@@ -232,7 +241,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
     if (request.method === 'GET') {
       if (id) {
         const row = await env.DB.prepare(
-          `SELECT jp.*, mp.nama as mapel_nama, g.nama as guru_nama, k.nama as kelas_nama, r.nama as ruangan_nama
+          `SELECT jp.*, COALESCE(mp.nama, jp.nama_kegiatan) as mapel_nama, g.nama as guru_nama, k.nama as kelas_nama, r.nama as ruangan_nama
            FROM jadwal_pelajaran jp
            LEFT JOIN mata_pelajaran mp ON jp.mata_pelajaran_id = mp.id
            LEFT JOIN guru g ON jp.guru_id = g.id
@@ -250,7 +259,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       const total = (await env.DB.prepare('SELECT COUNT(*) as total FROM jadwal_pelajaran').first<{ total: number }>())?.total || 0;
 
       const rows = await env.DB.prepare(
-        `SELECT jp.*, mp.nama as mapel_nama, g.nama as guru_nama, k.nama as kelas_nama, r.nama as ruangan_nama
+        `SELECT jp.*, COALESCE(mp.nama, jp.nama_kegiatan) as mapel_nama, g.nama as guru_nama, k.nama as kelas_nama, r.nama as ruangan_nama
          FROM jadwal_pelajaran jp
          LEFT JOIN mata_pelajaran mp ON jp.mata_pelajaran_id = mp.id
          LEFT JOIN guru g ON jp.guru_id = g.id
@@ -267,31 +276,39 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
 
     if (request.method === 'POST') {
       const body = await request.json() as Record<string, unknown>;
-      const { kelas_id, mata_pelajaran_id, guru_id, ruangan_id, hari, jam_mulai, jam_selesai, semester_id } = body;
+      const { kelas_id, mata_pelajaran_id, guru_id, ruangan_id, hari, jam_mulai, jam_selesai, semester_id, nama_kegiatan, is_istirahat } = body;
 
-      if (!kelas_id || !mata_pelajaran_id || !guru_id || !hari || !jam_mulai || !jam_selesai || !semester_id) {
+      if (!kelas_id || !hari || !jam_mulai || !jam_selesai || !semester_id) {
         return badRequest('Semua field wajib diisi');
+      }
+
+      // Kegiatan tetap (istirahat/tahfidz/dll) boleh tanpa mapel & guru
+      const isKegiatan = Boolean(nama_kegiatan || is_istirahat);
+      if (!isKegiatan && (!mata_pelajaran_id || !guru_id)) {
+        return badRequest('mata_pelajaran_id dan guru_id wajib diisi untuk jadwal mapel');
       }
 
       if (!HARI.includes(hari as string)) {
         return badRequest('Hari tidak valid. Hari yang tersedia: ' + HARI.join(', '));
       }
 
-      // Validasi guru mengajar mapel di kelas ini
-      const validasiGuru = await validasiGuruMapelKelas(env, guru_id as number, mata_pelajaran_id as number, kelas_id as number);
-      if (validasiGuru) {
-        return badRequest(validasiGuru);
+      // Validasi guru mengajar mapel di kelas ini (hanya untuk jadwal mapel)
+      if (!isKegiatan) {
+        const validasiGuru = await validasiGuruMapelKelas(env, guru_id as number, mata_pelajaran_id as number, kelas_id as number);
+        if (validasiGuru) {
+          return badRequest(validasiGuru);
+        }
       }
 
-      const bentrok = await cekBentrok(env, guru_id as number, kelas_id as number, hari as string, jam_mulai as string, jam_selesai as string, semester_id as number, undefined);
+      const bentrok = await cekBentrok(env, guru_id as number || 0, kelas_id as number, hari as string, jam_mulai as string, jam_selesai as string, semester_id as number, undefined);
       if (bentrok) {
         return badRequest(bentrok);
       }
 
       const result = await env.DB.prepare(
-        `INSERT INTO jadwal_pelajaran (kelas_id, mata_pelajaran_id, guru_id, ruangan_id, hari, jam_mulai, jam_selesai, semester_id, status_validasi)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
-      ).bind(kelas_id, mata_pelajaran_id, guru_id, ruangan_id || null, hari, jam_mulai, jam_selesai, semester_id).run();
+        `INSERT INTO jadwal_pelajaran (kelas_id, mata_pelajaran_id, guru_id, ruangan_id, nama_kegiatan, is_istirahat, hari, jam_mulai, jam_selesai, semester_id, status_validasi)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
+      ).bind(kelas_id, mata_pelajaran_id || null, guru_id || null, ruangan_id || null, nama_kegiatan || null, is_istirahat ? 1 : 0, hari, jam_mulai, jam_selesai, semester_id).run();
 
       await env.DB.prepare(
         "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'create', 'penjadwalan', ?, ?)"
@@ -308,9 +325,10 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       const setClauses: string[] = [];
       const vals: unknown[] = [];
 
-      for (const f of ['kelas_id', 'mata_pelajaran_id', 'guru_id', 'ruangan_id', 'hari', 'jam_mulai', 'jam_selesai', 'semester_id']) {
+      for (const f of ['kelas_id', 'mata_pelajaran_id', 'guru_id', 'ruangan_id', 'hari', 'jam_mulai', 'jam_selesai', 'semester_id', 'nama_kegiatan']) {
         if (body[f] !== undefined) { setClauses.push(`${f} = ?`); vals.push(body[f]); }
       }
+      if (body['is_istirahat'] !== undefined) { setClauses.push('is_istirahat = ?'); vals.push(body['is_istirahat'] ? 1 : 0); }
 
       if (setClauses.length === 0) return badRequest('Tidak ada field diupdate');
 
@@ -322,11 +340,14 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       const kelasIdFinal = body['kelas_id'] as number || existing['kelas_id'] as number;
       const semesterIdFinal = body['semester_id'] as number || existing['semester_id'] as number;
       const mapelIdFinal = body['mata_pelajaran_id'] as number || existing['mata_pelajaran_id'] as number;
+      const isKegiatanFinal = Boolean(body['nama_kegiatan'] || body['is_istirahat'] || existing['nama_kegiatan'] || existing['is_istirahat']);
 
-      // Validasi guru mengajar mapel di kelas ini
-      const validasiGuru = await validasiGuruMapelKelas(env, guruIdFinal, mapelIdFinal, kelasIdFinal);
-      if (validasiGuru) {
-        return badRequest(validasiGuru);
+      // Validasi guru mengajar mapel di kelas ini (hanya untuk jadwal mapel)
+      if (!isKegiatanFinal && mapelIdFinal && guruIdFinal) {
+        const validasiGuru = await validasiGuruMapelKelas(env, guruIdFinal, mapelIdFinal, kelasIdFinal);
+        if (validasiGuru) {
+          return badRequest(validasiGuru);
+        }
       }
 
       const bentrok = await cekBentrok(env, guruIdFinal, kelasIdFinal, hariFinal, jamMulaiFinal, jamSelesaiFinal, semesterIdFinal, id);
@@ -358,21 +379,23 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
     };
 
     // Validasi guru mengajar mapel di kelas ini (jika mapel_id disediakan)
-    if (body.mata_pelajaran_id) {
+    if (body.mata_pelajaran_id && body.guru_id) {
       const validasiGuru = await validasiGuruMapelKelas(env, body.guru_id, body.mata_pelajaran_id, body.kelas_id);
       if (validasiGuru) {
         return success({ bentrok: true, message: validasiGuru });
       }
     }
 
-    const msg = await cekBentrok(env, body.guru_id, body.kelas_id, body.hari, body.jam_mulai, body.jam_selesai, body.semester_id, body.exclude_id);
+    const msg = body.guru_id
+      ? await cekBentrok(env, body.guru_id, body.kelas_id, body.hari, body.jam_mulai, body.jam_selesai, body.semester_id, body.exclude_id)
+      : null;
     return success({ bentrok: !!msg, message: msg });
   }
 
   // ── Simpan jadwal (dengan conflict check) ──
   if (subPath === 'jadwal/simpan' && request.method === 'POST') {
     const body = await request.json() as {
-      jadwal: { id?: number; kelas_id: number; mata_pelajaran_id: number; guru_id: number; ruangan_id?: number; hari: string; jam_mulai: string; jam_selesai: string; semester_id: number }[];
+      jadwal: { id?: number; kelas_id: number; mata_pelajaran_id?: number | null; guru_id?: number | null; ruangan_id?: number; hari: string; jam_mulai: string; jam_selesai: string; semester_id: number; nama_kegiatan?: string | null; is_istirahat?: boolean }[];
     };
 
     if (!Array.isArray(body.jadwal) || body.jadwal.length === 0) {
@@ -383,29 +406,35 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
     let saved = 0;
 
     for (const item of body.jadwal) {
-      // Validasi guru mengajar mapel di kelas ini
-      const validasiGuru = await validasiGuruMapelKelas(env, item.guru_id, item.mata_pelajaran_id, item.kelas_id);
-      if (validasiGuru) {
-        errors.push(`Baris ${saved + 1}: ${validasiGuru}`);
-        continue;
+      const isKegiatan = Boolean(item.nama_kegiatan || item.is_istirahat);
+
+      // Validasi guru mengajar mapel di kelas ini (hanya untuk jadwal mapel)
+      if (!isKegiatan && item.guru_id && item.mata_pelajaran_id) {
+        const validasiGuru = await validasiGuruMapelKelas(env, item.guru_id, item.mata_pelajaran_id, item.kelas_id);
+        if (validasiGuru) {
+          errors.push(`Baris ${saved + 1}: ${validasiGuru}`);
+          continue;
+        }
       }
 
-      const bentrok = await cekBentrok(env, item.guru_id, item.kelas_id, item.hari, item.jam_mulai, item.jam_selesai, item.semester_id, item.id);
-      if (bentrok) {
-        errors.push(`Baris ${saved + 1}: ${bentrok}`);
-        continue;
+      if (item.guru_id) {
+        const bentrok = await cekBentrok(env, item.guru_id, item.kelas_id, item.hari, item.jam_mulai, item.jam_selesai, item.semester_id, item.id);
+        if (bentrok) {
+          errors.push(`Baris ${saved + 1}: ${bentrok}`);
+          continue;
+        }
       }
 
       if (item.id) {
         await env.DB.prepare(
-          `UPDATE jadwal_pelajaran SET kelas_id=?, mata_pelajaran_id=?, guru_id=?, ruangan_id=?, hari=?, jam_mulai=?, jam_selesai=?, semester_id=?
+          `UPDATE jadwal_pelajaran SET kelas_id=?, mata_pelajaran_id=?, guru_id=?, ruangan_id=?, nama_kegiatan=?, is_istirahat=?, hari=?, jam_mulai=?, jam_selesai=?, semester_id=?
            WHERE id=?`
-        ).bind(item.kelas_id, item.mata_pelajaran_id, item.guru_id, item.ruangan_id || null, item.hari, item.jam_mulai, item.jam_selesai, item.semester_id, item.id).run();
+        ).bind(item.kelas_id, item.mata_pelajaran_id || null, item.guru_id || null, item.ruangan_id || null, item.nama_kegiatan || null, item.is_istirahat ? 1 : 0, item.hari, item.jam_mulai, item.jam_selesai, item.semester_id, item.id).run();
       } else {
         await env.DB.prepare(
-          `INSERT INTO jadwal_pelajaran (kelas_id, mata_pelajaran_id, guru_id, ruangan_id, hari, jam_mulai, jam_selesai, semester_id, status_validasi)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
-        ).bind(item.kelas_id, item.mata_pelajaran_id, item.guru_id, item.ruangan_id || null, item.hari, item.jam_mulai, item.jam_selesai, item.semester_id).run();
+          `INSERT INTO jadwal_pelajaran (kelas_id, mata_pelajaran_id, guru_id, ruangan_id, nama_kegiatan, is_istirahat, hari, jam_mulai, jam_selesai, semester_id, status_validasi)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
+        ).bind(item.kelas_id, item.mata_pelajaran_id || null, item.guru_id || null, item.ruangan_id || null, item.nama_kegiatan || null, item.is_istirahat ? 1 : 0, item.hari, item.jam_mulai, item.jam_selesai, item.semester_id).run();
       }
       saved++;
     }
