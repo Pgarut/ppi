@@ -133,9 +133,56 @@ describe('Wakil Kurikulum Routes', () => {
 
     it('should delete jadwal', async () => {
       const db = makeDb();
+      db.first.mockResolvedValueOnce({ gabungan_id: null, hari: 'Senin', jam_mulai: '07:00', jam_selesai: '07:45', guru_id: 1 });
       const req = makeDelete('/api/wakil-kurikulum/jadwal/1');
       const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'jadwal', '1'], makeUrl(''));
       expect(res.status).toBe(200);
+    });
+
+    it('should create kelas gabungan', async () => {
+      const db = makeDb();
+      db.all.mockResolvedValue({ results: [{ id: 1 }, { id: 2 }] });
+      db.run.mockResolvedValue({ meta: { last_row_id: 1 } });
+      const req = makePost('/api/wakil-kurikulum/kelas-gabungan', { nama: 'Gabungan X A+B', semester_id: 1, kelas_ids: [1, 2] });
+      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'kelas-gabungan'], makeUrl(''));
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.data.kelas_ids).toHaveLength(2);
+    });
+
+    it('should reject kelas gabungan dengan <2 kelas', async () => {
+      const db = makeDb();
+      const req = makePost('/api/wakil-kurikulum/kelas-gabungan', { nama: 'Gabungan X A', semester_id: 1, kelas_ids: [1] });
+      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'kelas-gabungan'], makeUrl(''));
+      expect(res.status).toBe(400);
+    });
+
+    it('should create jadwal gabungan untuk semua anggota kelas', async () => {
+      const db = makeDb();
+      db.all.mockResolvedValue({ results: [{ kelas_id: 1 }, { kelas_id: 2 }] });
+      db.first
+        .mockResolvedValueOnce({ id: 1 }) // gabungan exists
+        .mockResolvedValueOnce(null)      // belum ada sesi gabungan yang sama
+        .mockResolvedValueOnce({ guru_id: 1, mata_pelajaran_id: 1, kelas_id: 1 }) // validasi guru lolos
+        .mockResolvedValueOnce(null)      // cekBentrok guru
+        .mockResolvedValueOnce(null)      // cekBentrok kelas 1
+        .mockResolvedValueOnce(null);     // cekBentrok kelas 2
+      db.run.mockResolvedValue({ meta: { last_row_id: 3 } });
+      const req = makePost('/api/wakil-kurikulum/jadwal', { kelas_id: 1, mata_pelajaran_id: 1, guru_id: 1, hari: 'Senin', jam_mulai: '07:00', jam_selesai: '07:45', semester_id: 1, gabungan_id: 1 });
+      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'jadwal'], makeUrl(''));
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.data.gabungan_id).toBe(1);
+      expect(body.data.kelas_ids).toHaveLength(2);
+    });
+
+    it('should delete seluruh anggota sesi gabungan', async () => {
+      const db = makeDb();
+      db.first.mockResolvedValueOnce({ gabungan_id: 1, hari: 'Senin', jam_mulai: '07:00', jam_selesai: '07:45', guru_id: 1 });
+      const req = makeDelete('/api/wakil-kurikulum/jadwal/5');
+      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'jadwal', '5'], makeUrl(''));
+      expect(res.status).toBe(200);
+      expect(db.run).toHaveBeenCalled();
     });
 
     it('should list kesiapan guru', async () => {

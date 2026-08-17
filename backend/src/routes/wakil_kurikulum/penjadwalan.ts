@@ -162,9 +162,122 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
     return success({ id });
   }
 
+  // ── Kelas Gabungan ──
+  if (subPath === 'kelas-gabungan' && request.method === 'GET') {
+    const rows = await env.DB.prepare(
+      `SELECT kg.id, kg.nama, kg.semester_id, kg.tingkat_id,
+              COALESCE((SELECT GROUP_CONCAT(k.nama, ', ') FROM kelas_gabungan_anggota kga
+                         JOIN kelas k ON k.id = kga.kelas_id
+                        WHERE kga.gabungan_id = kg.id ORDER BY kga.id), '') as kelas_nama
+       FROM kelas_gabungan kg
+       ORDER BY kg.id`
+    ).all();
+
+    const anggotaRows = await env.DB.prepare(
+      'SELECT gabungan_id, kelas_id FROM kelas_gabungan_anggota ORDER BY id'
+    ).all<{ gabungan_id: number; kelas_id: number }>();
+    const kelasMap = new Map<number, number[]>();
+    for (const a of anggotaRows.results) {
+      if (!kelasMap.has(a.gabungan_id)) kelasMap.set(a.gabungan_id, []);
+      kelasMap.get(a.gabungan_id)!.push(a.kelas_id);
+    }
+
+    return success(rows.results.map((g: any) => ({ ...g, kelas_ids: kelasMap.get(g.id) || [] })));
+  }
+
+  // ── Tambah Kelas Gabungan ──
+  if (subPath === 'kelas-gabungan' && request.method === 'POST') {
+    const body = await request.json() as { nama?: string; semester_id?: number; tingkat_id?: number; kelas_ids?: number[] };
+    const nama = body.nama?.trim() ?? '';
+    const semesterId = body.semester_id;
+    const kelasIds = Array.isArray(body.kelas_ids)
+      ? body.kelas_ids.filter((x) => Number.isInteger(x) && x > 0)
+      : [];
+
+    if (!nama) return badRequest('Nama gabungan tidak boleh kosong');
+    if (nama.length > 100) return badRequest('Nama gabungan maksimal 100 karakter');
+    if (!semesterId) return badRequest('semester_id diperlukan');
+    if (kelasIds.length < 2) return badRequest('Pilih minimal 2 kelas untuk digabung');
+
+    const placeholders = kelasIds.map(() => '?').join(',');
+    const kelasRows = await env.DB.prepare(`SELECT id FROM kelas WHERE id IN (${placeholders})`).bind(...kelasIds).all<{ id: number }>();
+    if (kelasRows.results.length !== kelasIds.length) return badRequest('Ada kelas yang tidak ditemukan');
+
+    const res = await env.DB.prepare('INSERT INTO kelas_gabungan (nama, semester_id, tingkat_id) VALUES (?, ?, ?)')
+      .bind(nama, semesterId, body.tingkat_id ?? null).run();
+    const gabId = Number(res.meta?.last_row_id);
+
+    for (const kid of kelasIds) {
+      await env.DB.prepare('INSERT INTO kelas_gabungan_anggota (gabungan_id, kelas_id) VALUES (?, ?)').bind(gabId, kid).run();
+    }
+
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'create', 'kelas_gabungan', ?, ?)"
+    ).bind(user.sub, `Tambah gabungan: ${nama} (${kelasIds.length} kelas)`, ip).run();
+
+    return created({ id: gabId, nama, semester_id: semesterId, kelas_ids: kelasIds });
+  }
+
+  // ── Update Kelas Gabungan ──
+  if (subPath.startsWith('kelas-gabungan/') && request.method === 'PUT') {
+    const id = parseInt(subPath.split('/')[1], 10);
+    if (!Number.isInteger(id)) return badRequest('ID gabungan tidak valid');
+
+    const existing = await env.DB.prepare('SELECT nama FROM kelas_gabungan WHERE id = ?').bind(id).first<{ nama: string }>();
+    if (!existing) return notFound('Kelas Gabungan');
+
+    const body = await request.json() as { nama?: string; kelas_ids?: number[] };
+    if (body.nama !== undefined) {
+      const nama = body.nama.trim();
+      if (!nama) return badRequest('Nama gabungan tidak boleh kosong');
+      if (nama.length > 100) return badRequest('Nama gabungan maksimal 100 karakter');
+      await env.DB.prepare('UPDATE kelas_gabungan SET nama = ? WHERE id = ?').bind(nama, id).run();
+    }
+
+    if (Array.isArray(body.kelas_ids)) {
+      const kelasIds = body.kelas_ids.filter((x) => Number.isInteger(x) && x > 0);
+      if (kelasIds.length < 2) return badRequest('Pilih minimal 2 kelas untuk digabung');
+
+      const placeholders = kelasIds.map(() => '?').join(',');
+      const kelasRows = await env.DB.prepare(`SELECT id FROM kelas WHERE id IN (${placeholders})`).bind(...kelasIds).all<{ id: number }>();
+      if (kelasRows.results.length !== kelasIds.length) return badRequest('Ada kelas yang tidak ditemukan');
+
+      await env.DB.prepare('DELETE FROM kelas_gabungan_anggota WHERE gabungan_id = ?').bind(id).run();
+      for (const kid of kelasIds) {
+        await env.DB.prepare('INSERT INTO kelas_gabungan_anggota (gabungan_id, kelas_id) VALUES (?, ?)').bind(id, kid).run();
+      }
+    }
+
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'kelas_gabungan', ?, ?)"
+    ).bind(user.sub, `Ubah gabungan id=${id}`, ip).run();
+
+    return success({ id });
+  }
+
+  // ── Hapus Kelas Gabungan ──
+  if (subPath.startsWith('kelas-gabungan/') && request.method === 'DELETE') {
+    const id = parseInt(subPath.split('/')[1], 10);
+    if (!Number.isInteger(id)) return badRequest('ID gabungan tidak valid');
+
+    const existing = await env.DB.prepare('SELECT nama FROM kelas_gabungan WHERE id = ?').bind(id).first<{ nama: string }>();
+    if (!existing) return notFound('Kelas Gabungan');
+
+    // Jadwal milik gabungan dilepas (gabungan_id = NULL), data tidak dihapus
+    await env.DB.prepare('UPDATE jadwal_pelajaran SET gabungan_id = NULL WHERE gabungan_id = ?').bind(id).run();
+    await env.DB.prepare('DELETE FROM kelas_gabungan_anggota WHERE gabungan_id = ?').bind(id).run();
+    await env.DB.prepare('DELETE FROM kelas_gabungan WHERE id = ?').bind(id).run();
+
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'delete', 'kelas_gabungan', ?, ?)"
+    ).bind(user.sub, `Hapus gabungan: ${existing.nama}`, ip).run();
+
+    return success({ id });
+  }
+
   // ── Referensi ──
   if (subPath === 'referensi' && request.method === 'GET') {
-    const [kelas, guru, mapel, ruangan, semester, tingkat, guruMapel, tahunAjaran, kegiatanTetap] = await Promise.all([
+    const [kelas, guru, mapel, ruangan, semester, tingkat, guruMapel, tahunAjaran, kegiatanTetap, kelasGabungan] = await Promise.all([
       env.DB.prepare('SELECT id, nama, ruangan_id, tingkat_id FROM kelas ORDER BY nama').all(),
       env.DB.prepare("SELECT DISTINCT g.id, g.nama, g.nip FROM guru g INNER JOIN guru_mapel gm ON g.id = gm.guru_id WHERE g.status_aktif = 1 ORDER BY g.nama").all(),
       env.DB.prepare('SELECT id, nama, kode FROM mata_pelajaran ORDER BY nama').all(),
@@ -181,6 +294,14 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       ).all(),
       env.DB.prepare('SELECT id, nama FROM tahun_ajaran ORDER BY id DESC').all(),
       env.DB.prepare('SELECT id, nama, tipe FROM kegiatan_tetap ORDER BY urutan, id').all(),
+      env.DB.prepare(
+        `SELECT kg.id, kg.nama, kg.semester_id, kg.tingkat_id,
+                COALESCE((SELECT GROUP_CONCAT(k.nama, ', ') FROM kelas_gabungan_anggota kga
+                           JOIN kelas k ON k.id = kga.kelas_id
+                          WHERE kga.gabungan_id = kg.id ORDER BY kga.id), '') as kelas_nama
+         FROM kelas_gabungan kg
+         ORDER BY kg.id`
+      ).all(),
     ]);
 
     // Ambil mapel per kelas dari mapel_kelas
@@ -197,7 +318,21 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       mapel_ids: kelasMapelMap.get(k.id) || [],
     }));
 
-    return success({ kelas: kelasWithMapel, guru: guru.results, mapel: mapel.results, ruangan: ruangan.results, semester: semester.results, tingkat: tingkat.results, hari: HARI, guru_mapel: guruMapel.results, tahun_ajaran: tahunAjaran.results, kegiatan_tetap: kegiatanTetap.results.length > 0 ? kegiatanTetap.results : KEGIATAN_TETAP });
+    // Kelas id per gabungan
+    const gabAnggotaRows = await env.DB.prepare(
+      'SELECT gabungan_id, kelas_id FROM kelas_gabungan_anggota ORDER BY id'
+    ).all<{ gabungan_id: number; kelas_id: number }>();
+    const gabKelasMap = new Map<number, number[]>();
+    for (const a of gabAnggotaRows.results) {
+      if (!gabKelasMap.has(a.gabungan_id)) gabKelasMap.set(a.gabungan_id, []);
+      gabKelasMap.get(a.gabungan_id)!.push(a.kelas_id);
+    }
+    const kelasGabunganWithAnggota = kelasGabungan.results.map((g: any) => ({
+      ...g,
+      kelas_ids: gabKelasMap.get(g.id) || [],
+    }));
+
+    return success({ kelas: kelasWithMapel, guru: guru.results, mapel: mapel.results, ruangan: ruangan.results, semester: semester.results, tingkat: tingkat.results, hari: HARI, guru_mapel: guruMapel.results, tahun_ajaran: tahunAjaran.results, kegiatan_tetap: kegiatanTetap.results.length > 0 ? kegiatanTetap.results : KEGIATAN_TETAP, kelas_gabungan: kelasGabunganWithAnggota });
   }
 
   // ── Guru by Kelas + Mapel ──
@@ -415,7 +550,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
 
     if (request.method === 'POST') {
       const body = await request.json() as Record<string, unknown>;
-      const { kelas_id, mata_pelajaran_id, guru_id, ruangan_id, hari, jam_mulai, jam_selesai, semester_id, nama_kegiatan, is_istirahat } = body;
+      const { kelas_id, mata_pelajaran_id, guru_id, ruangan_id, hari, jam_mulai, jam_selesai, semester_id, nama_kegiatan, is_istirahat, gabungan_id } = body;
 
       if (!kelas_id || !hari || !jam_mulai || !jam_selesai || !semester_id) {
         return badRequest('Semua field wajib diisi');
@@ -431,29 +566,64 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
         return badRequest('Hari tidak valid. Hari yang tersedia: ' + HARI.join(', '));
       }
 
-      // Validasi guru mengajar mapel di kelas ini (hanya untuk jadwal mapel)
-      if (!isKegiatan) {
-        const validasiGuru = await validasiGuruMapelKelas(env, guru_id as number, mata_pelajaran_id as number, kelas_id as number);
-        if (validasiGuru) {
-          return badRequest(validasiGuru);
+      // Kumpulan kelas yang dijadwalkan: semua anggota gabungan, atau satu kelas biasa
+      let targetKelas: number[] = [kelas_id as number];
+      const gabunganId = gabungan_id ? Number(gabungan_id) : null;
+
+      if (gabunganId) {
+        const gab = await env.DB.prepare(
+          'SELECT id FROM kelas_gabungan WHERE id = ? AND semester_id = ?'
+        ).bind(gabunganId, semester_id).first();
+        if (!gab) return badRequest('Kelas gabungan tidak ditemukan untuk semester ini');
+
+        const anggota = await env.DB.prepare(
+          'SELECT kelas_id FROM kelas_gabungan_anggota WHERE gabungan_id = ? ORDER BY id'
+        ).bind(gabunganId).all<{ kelas_id: number }>();
+        targetKelas = anggota.results.map((a) => a.kelas_id);
+        if (targetKelas.length === 0) return badRequest('Kelas gabungan tidak memiliki anggota');
+
+        // Jika sesi gabungan yang sama (gabungan, hari, jam, guru) sudah ada → no-op, hindari duplikat
+        const existingSession = await env.DB.prepare(
+          `SELECT id FROM jadwal_pelajaran WHERE gabungan_id = ? AND hari = ? AND jam_mulai = ? AND jam_selesai = ? AND guru_id = ? AND semester_id = ? LIMIT 1`
+        ).bind(gabunganId, hari, jam_mulai, jam_selesai, guru_id ?? null, semester_id).first<{ id: number }>();
+        if (existingSession) {
+          return created({ id: existingSession.id, gabungan_id: gabunganId, no_op: true });
         }
       }
 
-      const bentrok = await cekBentrok(env, guru_id as number || 0, kelas_id as number, hari as string, jam_mulai as string, jam_selesai as string, semester_id as number, undefined);
+      // Validasi guru mengajar mapel (lolos minimal satu kelas dari sesi)
+      if (!isKegiatan) {
+        let lolos = false;
+        for (const kid of targetKelas) {
+          if (await validasiGuruMapelKelas(env, guru_id as number, mata_pelajaran_id as number, kid) === null) {
+            lolos = true;
+            break;
+          }
+        }
+        if (!lolos) {
+          return badRequest('Guru tidak terdaftar untuk mengajar mata pelajaran ini di kelas yang dituju');
+        }
+      }
+
+      const bentrok = await cekBentrok(env, guru_id as number || 0, kelas_id as number, hari as string, jam_mulai as string, jam_selesai as string, semester_id as number, undefined, gabunganId);
       if (bentrok) {
         return badRequest(bentrok);
       }
 
-      const result = await env.DB.prepare(
-        `INSERT INTO jadwal_pelajaran (kelas_id, mata_pelajaran_id, guru_id, ruangan_id, nama_kegiatan, is_istirahat, hari, jam_mulai, jam_selesai, semester_id, status_validasi)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
-      ).bind(kelas_id, mata_pelajaran_id || null, guru_id || null, ruangan_id || null, nama_kegiatan || null, is_istirahat ? 1 : 0, hari, jam_mulai, jam_selesai, semester_id).run();
+      let lastId: number | undefined;
+      for (const kid of targetKelas) {
+        const result = await env.DB.prepare(
+          `INSERT INTO jadwal_pelajaran (kelas_id, mata_pelajaran_id, guru_id, ruangan_id, nama_kegiatan, is_istirahat, hari, jam_mulai, jam_selesai, semester_id, gabungan_id, status_validasi)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
+        ).bind(kid, mata_pelajaran_id || null, guru_id || null, ruangan_id || null, nama_kegiatan || null, is_istirahat ? 1 : 0, hari, jam_mulai, jam_selesai, semester_id, gabunganId).run();
+        lastId = Number(result.meta?.last_row_id);
+      }
 
       await env.DB.prepare(
         "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'create', 'penjadwalan', ?, ?)"
-      ).bind(user.sub, `Tambah jadwal kelas ${kelas_id}`, ip).run();
+      ).bind(user.sub, `Tambah jadwal kelas ${kelas_id}${gabunganId ? ` (gabungan ${gabunganId})` : ''}`, ip).run();
 
-      return created({ id: result.meta?.last_row_id });
+      return created({ id: lastId, gabungan_id: gabunganId, kelas_ids: targetKelas });
     }
 
     if (request.method === 'PUT' && id) {
@@ -464,12 +634,17 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       const setClauses: string[] = [];
       const vals: unknown[] = [];
 
-      for (const f of ['kelas_id', 'mata_pelajaran_id', 'guru_id', 'ruangan_id', 'hari', 'jam_mulai', 'jam_selesai', 'semester_id', 'nama_kegiatan']) {
+      for (const f of ['kelas_id', 'mata_pelajaran_id', 'guru_id', 'ruangan_id', 'hari', 'jam_mulai', 'jam_selesai', 'semester_id', 'nama_kegiatan', 'gabungan_id']) {
         if (body[f] !== undefined) { setClauses.push(`${f} = ?`); vals.push(body[f]); }
       }
       if (body['is_istirahat'] !== undefined) { setClauses.push('is_istirahat = ?'); vals.push(body['is_istirahat'] ? 1 : 0); }
 
       if (setClauses.length === 0) return badRequest('Tidak ada field diupdate');
+
+      // Sesi gabungan dari body atau entri lama
+      const gabunganSesi = body['gabungan_id'] !== undefined
+        ? (body['gabungan_id'] as number | null)
+        : (existing['gabungan_id'] as number | null);
 
       // Cek bentrok jika field terkait berubah
       const hariFinal = body['hari'] as string || existing['hari'] as string;
@@ -481,28 +656,61 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       const mapelIdFinal = body['mata_pelajaran_id'] as number || existing['mata_pelajaran_id'] as number;
       const isKegiatanFinal = Boolean(body['nama_kegiatan'] || body['is_istirahat'] || existing['nama_kegiatan'] || existing['is_istirahat']);
 
-      // Validasi guru mengajar mapel di kelas ini (hanya untuk jadwal mapel)
+      // Validasi guru mengajar mapel (lolos minimal satu kelas dari sesi)
       if (!isKegiatanFinal && mapelIdFinal && guruIdFinal) {
-        const validasiGuru = await validasiGuruMapelKelas(env, guruIdFinal, mapelIdFinal, kelasIdFinal);
-        if (validasiGuru) {
-          return badRequest(validasiGuru);
+        let targetKelas: number[] = [kelasIdFinal];
+        if (gabunganSesi) {
+          const anggota = await env.DB.prepare('SELECT kelas_id FROM kelas_gabungan_anggota WHERE gabungan_id = ?')
+            .bind(gabunganSesi).all<{ kelas_id: number }>();
+          if (anggota.results.length > 0) targetKelas = anggota.results.map((a) => a.kelas_id);
+        }
+        let lolos = false;
+        for (const kid of targetKelas) {
+          if (await validasiGuruMapelKelas(env, guruIdFinal, mapelIdFinal, kid) === null) { lolos = true; break; }
+        }
+        if (!lolos) {
+          return badRequest('Guru tidak terdaftar untuk mengajar mata pelajaran ini di kelas yang dituju');
         }
       }
 
-      const bentrok = await cekBentrok(env, guruIdFinal, kelasIdFinal, hariFinal, jamMulaiFinal, jamSelesaiFinal, semesterIdFinal, id);
+      const bentrok = await cekBentrok(env, guruIdFinal, kelasIdFinal, hariFinal, jamMulaiFinal, jamSelesaiFinal, semesterIdFinal, id, gabunganSesi);
       if (bentrok) {
         return badRequest(bentrok);
       }
 
-      vals.push(id);
-      await env.DB.prepare(`UPDATE jadwal_pelajaran SET ${setClauses.join(', ')} WHERE id = ?`).bind(...vals).run();
+      if (gabunganSesi) {
+        // Propagasi update ke seluruh anggota sesi (berdasar identitas sesi LAMA)
+        const sessionIds = await env.DB.prepare(
+          `SELECT id FROM jadwal_pelajaran WHERE gabungan_id = ? AND hari = ? AND jam_mulai = ? AND jam_selesai = ? AND guru_id = ?`
+        ).bind(existing['gabungan_id'], existing['hari'], existing['jam_mulai'], existing['jam_selesai'], existing['guru_id']).all<{ id: number }>();
+        for (const s of sessionIds.results) {
+          await env.DB.prepare(`UPDATE jadwal_pelajaran SET ${setClauses.join(', ')} WHERE id = ?`).bind(...vals, s.id).run();
+        }
+      } else {
+        vals.push(id);
+        await env.DB.prepare(`UPDATE jadwal_pelajaran SET ${setClauses.join(', ')} WHERE id = ?`).bind(...vals).run();
+      }
+
       await env.DB.prepare("INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'penjadwalan', ?, ?)")
-        .bind(user.sub, `Update jadwal id=${id}`, ip).run();
+        .bind(user.sub, `Update jadwal id=${id}${gabunganSesi ? ` (gabungan ${gabunganSesi})` : ''}`, ip).run();
       return success({ id });
     }
 
     if (request.method === 'DELETE' && id) {
-      await env.DB.prepare('DELETE FROM jadwal_pelajaran WHERE id = ?').bind(id).run();
+      const existing = await env.DB.prepare(
+        'SELECT gabungan_id, hari, jam_mulai, jam_selesai, guru_id FROM jadwal_pelajaran WHERE id = ?'
+      ).bind(id).first<{ gabungan_id: number | null; hari: string; jam_mulai: string; jam_selesai: string; guru_id: number | null }>();
+      if (!existing) return notFound('Jadwal');
+
+      if (existing.gabungan_id) {
+        // Hapus seluruh anggota sesi gabungan
+        await env.DB.prepare(
+          `DELETE FROM jadwal_pelajaran WHERE gabungan_id = ? AND hari = ? AND jam_mulai = ? AND jam_selesai = ? AND guru_id = ?`
+        ).bind(existing.gabungan_id, existing.hari, existing.jam_mulai, existing.jam_selesai, existing.guru_id).run();
+      } else {
+        await env.DB.prepare('DELETE FROM jadwal_pelajaran WHERE id = ?').bind(id).run();
+      }
+
       await env.DB.prepare("INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'delete', 'penjadwalan', ?, ?)")
         .bind(user.sub, `Hapus jadwal id=${id}`, ip).run();
       return success({ id });
@@ -514,19 +722,29 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
     const body = await request.json() as {
       guru_id: number; kelas_id: number; mata_pelajaran_id?: number; hari: string;
       jam_mulai: string; jam_selesai: string; semester_id: number;
-      exclude_id?: number; exclude_kelas_id?: number;
+      exclude_id?: number; exclude_kelas_id?: number; gabungan_id?: number | null;
     };
+    const gabunganId = body.gabungan_id ? Number(body.gabungan_id) : null;
 
-    // Validasi guru mengajar mapel di kelas ini (jika mapel_id disediakan)
+    // Validasi guru mengajar mapel (lolos minimal satu kelas dari sesi)
     if (body.mata_pelajaran_id && body.guru_id) {
-      const validasiGuru = await validasiGuruMapelKelas(env, body.guru_id, body.mata_pelajaran_id, body.kelas_id);
-      if (validasiGuru) {
-        return success({ bentrok: true, message: validasiGuru });
+      let lolos = false;
+      if (gabunganId) {
+        const anggota = await env.DB.prepare('SELECT kelas_id FROM kelas_gabungan_anggota WHERE gabungan_id = ?')
+          .bind(gabunganId).all<{ kelas_id: number }>();
+        for (const a of anggota.results) {
+          if (await validasiGuruMapelKelas(env, body.guru_id, body.mata_pelajaran_id, a.kelas_id) === null) { lolos = true; break; }
+        }
+      } else {
+        lolos = await validasiGuruMapelKelas(env, body.guru_id, body.mata_pelajaran_id, body.kelas_id) === null;
+      }
+      if (!lolos) {
+        return success({ bentrok: true, message: 'Guru tidak terdaftar untuk mengajar mata pelajaran ini di kelas yang dituju' });
       }
     }
 
     const msg = body.guru_id
-      ? await cekBentrok(env, body.guru_id, body.kelas_id, body.hari, body.jam_mulai, body.jam_selesai, body.semester_id, body.exclude_id)
+      ? await cekBentrok(env, body.guru_id, body.kelas_id, body.hari, body.jam_mulai, body.jam_selesai, body.semester_id, body.exclude_id, gabunganId)
       : null;
     return success({ bentrok: !!msg, message: msg });
   }
@@ -534,7 +752,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
   // ── Simpan jadwal (dengan conflict check) ──
   if (subPath === 'jadwal/simpan' && request.method === 'POST') {
     const body = await request.json() as {
-      jadwal: { id?: number; kelas_id: number; mata_pelajaran_id?: number | null; guru_id?: number | null; ruangan_id?: number; hari: string; jam_mulai: string; jam_selesai: string; semester_id: number; nama_kegiatan?: string | null; is_istirahat?: boolean }[];
+      jadwal: { id?: number; kelas_id: number; mata_pelajaran_id?: number | null; guru_id?: number | null; ruangan_id?: number; hari: string; jam_mulai: string; jam_selesai: string; semester_id: number; nama_kegiatan?: string | null; is_istirahat?: boolean; gabungan_id?: number | null }[];
     };
 
     if (!Array.isArray(body.jadwal) || body.jadwal.length === 0) {
@@ -543,12 +761,18 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
 
     const errors: string[] = [];
     let saved = 0;
+    // Sesi gabungan yang sudah diproses pada batch ini → hindari false-positive bentrok antar anggota
+    const processedSession = new Set<string>();
 
     for (const item of body.jadwal) {
       const isKegiatan = Boolean(item.nama_kegiatan || item.is_istirahat);
+      const sessionKey = item.gabungan_id && item.guru_id
+        ? `g${item.gabungan_id}|${item.hari}|${item.jam_mulai}|${item.jam_selesai}|${item.guru_id}`
+        : null;
+      const isDupSession = sessionKey !== null && processedSession.has(sessionKey);
 
-      // Validasi guru mengajar mapel di kelas ini (hanya untuk jadwal mapel)
-      if (!isKegiatan && item.guru_id && item.mata_pelajaran_id) {
+      // Validasi guru mengajar mapel di kelas ini (hanya untuk jadwal mapel, sekali per sesi)
+      if (!isDupSession && !isKegiatan && item.guru_id && item.mata_pelajaran_id) {
         const validasiGuru = await validasiGuruMapelKelas(env, item.guru_id, item.mata_pelajaran_id, item.kelas_id);
         if (validasiGuru) {
           errors.push(`Baris ${saved + 1}: ${validasiGuru}`);
@@ -556,24 +780,25 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
         }
       }
 
-      if (item.guru_id) {
-        const bentrok = await cekBentrok(env, item.guru_id, item.kelas_id, item.hari, item.jam_mulai, item.jam_selesai, item.semester_id, item.id);
+      if (!isDupSession && item.guru_id) {
+        const bentrok = await cekBentrok(env, item.guru_id, item.kelas_id, item.hari, item.jam_mulai, item.jam_selesai, item.semester_id, item.id, item.gabungan_id ?? null);
         if (bentrok) {
           errors.push(`Baris ${saved + 1}: ${bentrok}`);
           continue;
         }
       }
+      if (sessionKey !== null) processedSession.add(sessionKey);
 
       if (item.id) {
         await env.DB.prepare(
-          `UPDATE jadwal_pelajaran SET kelas_id=?, mata_pelajaran_id=?, guru_id=?, ruangan_id=?, nama_kegiatan=?, is_istirahat=?, hari=?, jam_mulai=?, jam_selesai=?, semester_id=?
+          `UPDATE jadwal_pelajaran SET kelas_id=?, mata_pelajaran_id=?, guru_id=?, ruangan_id=?, nama_kegiatan=?, is_istirahat=?, hari=?, jam_mulai=?, jam_selesai=?, semester_id=?, gabungan_id=?
            WHERE id=?`
-        ).bind(item.kelas_id, item.mata_pelajaran_id || null, item.guru_id || null, item.ruangan_id || null, item.nama_kegiatan || null, item.is_istirahat ? 1 : 0, item.hari, item.jam_mulai, item.jam_selesai, item.semester_id, item.id).run();
+        ).bind(item.kelas_id, item.mata_pelajaran_id || null, item.guru_id || null, item.ruangan_id || null, item.nama_kegiatan || null, item.is_istirahat ? 1 : 0, item.hari, item.jam_mulai, item.jam_selesai, item.semester_id, item.gabungan_id ?? null, item.id).run();
       } else {
         await env.DB.prepare(
-          `INSERT INTO jadwal_pelajaran (kelas_id, mata_pelajaran_id, guru_id, ruangan_id, nama_kegiatan, is_istirahat, hari, jam_mulai, jam_selesai, semester_id, status_validasi)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
-        ).bind(item.kelas_id, item.mata_pelajaran_id || null, item.guru_id || null, item.ruangan_id || null, item.nama_kegiatan || null, item.is_istirahat ? 1 : 0, item.hari, item.jam_mulai, item.jam_selesai, item.semester_id).run();
+          `INSERT INTO jadwal_pelajaran (kelas_id, mata_pelajaran_id, guru_id, ruangan_id, nama_kegiatan, is_istirahat, hari, jam_mulai, jam_selesai, semester_id, gabungan_id, status_validasi)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
+        ).bind(item.kelas_id, item.mata_pelajaran_id || null, item.guru_id || null, item.ruangan_id || null, item.nama_kegiatan || null, item.is_istirahat ? 1 : 0, item.hari, item.jam_mulai, item.jam_selesai, item.semester_id, item.gabungan_id ?? null).run();
       }
       saved++;
     }
@@ -715,15 +940,36 @@ async function validasiGuruMapelKelas(
 async function cekBentrok(
   env: Env, guruId: number, kelasId: number,
   hari: string, jamMulai: string, jamSelesai: string,
-  semesterId: number, excludeId?: number
+  semesterId: number, excludeId?: number, gabunganId?: number | null
 ): Promise<string | null> {
-  // Bentrok guru (guru yang sama, hari sama, jam overlap)
+  // Kumpulan kelas yang dicakup sesi (semua anggota gabungan, atau satu kelas biasa)
+  let sessionKelas: number[] = [kelasId];
+  if (gabunganId) {
+    const anggota = await env.DB.prepare(
+      'SELECT kelas_id FROM kelas_gabungan_anggota WHERE gabungan_id = ? ORDER BY id'
+    ).bind(gabunganId).all<{ kelas_id: number }>();
+    sessionKelas = anggota.results.map((a) => a.kelas_id);
+    if (sessionKelas.length === 0) sessionKelas = [kelasId];
+  }
+
+  // Klausa pengecualian: entri yang merupakan bagian dari SESI GABUNGAN yang sama.
+  // Dua entri dianggap satu sesi bila (gabungan_id, hari, jam, guru) sama.
+  let excludeSession = '';
+  const excludeSessionParams: unknown[] = [];
+  if (gabunganId) {
+    excludeSession = ` AND NOT (jp.gabungan_id = ? AND jp.hari = ? AND jp.jam_mulai = ? AND jp.jam_selesai = ? AND jp.guru_id = ?)`;
+    excludeSessionParams.push(gabunganId, hari, jamMulai, jamSelesai, guruId);
+  }
+
+  // Bentrok guru (guru sama, hari sama, jam overlap) — sesi gabungan yang sama dikecualikan
   let queryGuru = `SELECT jp.kelas_id, k.nama as kelas_nama
     FROM jadwal_pelajaran jp
     LEFT JOIN kelas k ON jp.kelas_id = k.id
     WHERE jp.guru_id = ? AND jp.hari = ? AND jp.semester_id = ?
     AND ((jp.jam_mulai <= ? AND jp.jam_selesai > ?) OR (jp.jam_mulai < ? AND jp.jam_selesai >= ?))`;
   const paramsGuru: unknown[] = [guruId, hari, semesterId, jamMulai, jamMulai, jamSelesai, jamSelesai];
+  queryGuru += excludeSession;
+  paramsGuru.push(...excludeSessionParams);
 
   if (excludeId) {
     queryGuru += ' AND jp.id != ?';
@@ -735,22 +981,26 @@ async function cekBentrok(
     return `BENTROK: Guru ini sudah mengajar di kelas ${bentrokGuru.kelas_nama || '#' + bentrokGuru.kelas_id} di hari dan jam yang sama`;
   }
 
-  // Bentrok kelas (kelas yang sama, hari sama, jam overlap)
-  let queryKelas = `SELECT mp.nama as mapel_nama
-    FROM jadwal_pelajaran jp
-    LEFT JOIN mata_pelajaran mp ON jp.mata_pelajaran_id = mp.id
-    WHERE jp.kelas_id = ? AND jp.hari = ? AND jp.semester_id = ?
-    AND ((jp.jam_mulai <= ? AND jp.jam_selesai > ?) OR (jp.jam_mulai < ? AND jp.jam_selesai >= ?))`;
-  const paramsKelas: unknown[] = [kelasId, hari, semesterId, jamMulai, jamMulai, jamSelesai, jamSelesai];
+  // Bentrok kelas — cek tiap kelas dalam sesi (anggota gabungan atau satu kelas)
+  for (const kid of sessionKelas) {
+    let queryKelas = `SELECT mp.nama as mapel_nama
+      FROM jadwal_pelajaran jp
+      LEFT JOIN mata_pelajaran mp ON jp.mata_pelajaran_id = mp.id
+      WHERE jp.kelas_id = ? AND jp.hari = ? AND jp.semester_id = ?
+      AND ((jp.jam_mulai <= ? AND jp.jam_selesai > ?) OR (jp.jam_mulai < ? AND jp.jam_selesai >= ?))`;
+    const paramsKelas: unknown[] = [kid, hari, semesterId, jamMulai, jamMulai, jamSelesai, jamSelesai];
+    queryKelas += excludeSession;
+    paramsKelas.push(...excludeSessionParams);
 
-  if (excludeId) {
-    queryKelas += ' AND jp.id != ?';
-    paramsKelas.push(excludeId);
-  }
+    if (excludeId) {
+      queryKelas += ' AND jp.id != ?';
+      paramsKelas.push(excludeId);
+    }
 
-  const bentrokKelas = await env.DB.prepare(queryKelas).bind(...paramsKelas).first<{ mapel_nama: string }>();
-  if (bentrokKelas) {
-    return `BENTROK: Kelas ini sudah memiliki jadwal ${bentrokKelas.mapel_nama || ''} di jam yang sama`;
+    const bentrokKelas = await env.DB.prepare(queryKelas).bind(...paramsKelas).first<{ mapel_nama: string }>();
+    if (bentrokKelas) {
+      return `BENTROK: Kelas ini sudah memiliki jadwal ${bentrokKelas.mapel_nama || ''} di jam yang sama`;
+    }
   }
 
   return null;

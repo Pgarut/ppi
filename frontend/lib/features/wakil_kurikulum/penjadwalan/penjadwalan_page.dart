@@ -43,6 +43,9 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
   // Kegiatan tetap
   List<Map<String, dynamic>> _kegiatanTetap = [];
 
+  // Kelas gabungan
+  List<Map<String, dynamic>> _kelasGabungan = [];
+
   static const List<Map<String, dynamic>> _defaultKegiatanTetap = [
     {'nama': 'Istirahat RG', 'tipe': 'istirahat'},
     {'nama': 'Istirahat UG', 'tipe': 'istirahat'},
@@ -81,6 +84,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
       _jpSlots = (await WakilKurikulumService.getJpSlots()).cast<Map<String, dynamic>>();
       _kegiatanTetap = _refList('kegiatan_tetap');
       if (_kegiatanTetap.isEmpty) _kegiatanTetap = _defaultKegiatanTetap;
+      _kelasGabungan = _refList('kelas_gabungan');
     } catch (e) {
       _refError = 'Gagal memuat data referensi: $e';
     }
@@ -275,6 +279,13 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
             label: 'Reset',
             color: Colors.red,
             onPressed: _resetJadwal,
+          ),
+          // Kelas Gabungan
+          _buildActionBtn(
+            icon: Icons.group_work_outlined,
+            label: 'Gabungan',
+            color: Colors.indigo,
+            onPressed: _kelolaGabungan,
           ),
           // Simpan
           _buildActionBtn(
@@ -785,6 +796,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     final isKegiatan = j['nama_kegiatan'] != null && j['nama_kegiatan'].toString().isNotEmpty;
     final mapelNama = j['mapel_nama']?.toString() ?? (isKegiatan ? j['nama_kegiatan'].toString() : '-');
     final guruNama = j['guru_nama']?.toString() ?? '-';
+    final isGabungan = j['gabungan_id'] != null && j['gabungan_id'].toString().isNotEmpty && j['gabungan_id'].toString() != 'null';
     final color = isKegiatan
         ? (j['is_istirahat'] == true || j['is_istirahat'] == 1 ? Colors.purple : Colors.teal)
         : (tervalidasi ? Colors.green : Colors.orange);
@@ -795,14 +807,27 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: isGabungan ? color : color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(mapelNama, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color[800]), overflow: TextOverflow.ellipsis),
-          Text(guruNama, style: TextStyle(fontSize: 9, color: Colors.grey[600]), overflow: TextOverflow.ellipsis),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isGabungan) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
+                  child: const Text('GAB', style: TextStyle(fontSize: 7, color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(width: 3),
+              ],
+              Flexible(child: Text(guruNama, style: TextStyle(fontSize: 9, color: Colors.grey[600]), overflow: TextOverflow.ellipsis)),
+            ],
+          ),
         ],
       ),
     );
@@ -901,6 +926,22 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
       builder: (_) => _KelolaKegiatanDialog(awal: _kegiatanTetap),
     );
     await _loadKegiatanTetap();
+  }
+
+  Future<void> _kelolaGabungan() async {
+    if (_filterSemester == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pilih semester dulu untuk mengelola kelas gabungan'), backgroundColor: Colors.orange),
+        );
+      }
+      return;
+    }
+    await showDialog(
+      context: context,
+      builder: (_) => _KelolaGabunganDialog(semesterId: int.parse(_filterSemester!)),
+    );
+    await _loadRef();
   }
 
   Future<void> _editWaktuSlot(Map<String, dynamic> jp) async {
@@ -1028,6 +1069,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         'kelas_nama': j['kelas_nama']?.toString() ?? j['kelas_id']?.toString() ?? '?',
         'mapel': j['mapel_nama']?.toString() ?? j['nama_kegiatan']?.toString() ?? '-',
         'guru_nama': j['guru_nama']?.toString() ?? '-',
+        'gabungan_id': j['gabungan_id']?.toString(),
         'mulai': _timeToMin(mulai),
         'selesai': _timeToMin(selesai),
       });
@@ -1047,6 +1089,9 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         final b = hariJadwal[j];
         if (a['guru_id'] == null || a['guru_id'] != b['guru_id']) continue;
         if (!_overlap(a, b)) continue;
+        final aKey = _sessionKey(a);
+        final bKey = _sessionKey(b);
+        if (aKey != null && aKey == bKey) continue; // sesi gabungan yang sama = bukan bentrok
         addIssue(
           'guru:${a['guru_id']}:${a['mulai']}-${a['selesai']}',
           '${a['guru_nama']} mengajar di ${a['kelas_nama']} dan ${b['kelas_nama']} pada jam yang sama',
@@ -1152,6 +1197,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         'nama_kegiatan': data['nama_kegiatan']?.toString() ?? data['nama']?.toString(),
       };
     } else {
+      final targetGabungan = _gabunganForKelas(kelasId);
       body = {
         'kelas_id': int.tryParse(kelasId),
         'mata_pelajaran_id': data['mata_pelajaran_id'],
@@ -1160,6 +1206,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         'jam_mulai': jp['mulai'],
         'jam_selesai': jp['selesai'],
         'semester_id': int.tryParse(_filterSemester!),
+        if (targetGabungan != null) 'gabungan_id': int.tryParse('${targetGabungan['id']}'),
       };
     }
 
@@ -1205,6 +1252,22 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     return kelasId;
   }
 
+  Map<String, dynamic>? _gabunganForKelas(String kelasId) {
+    if (_filterSemester == null) return null;
+    for (final g in _kelasGabungan) {
+      if (g['semester_id'].toString() != _filterSemester) continue;
+      final ids = (g['kelas_ids'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+      if (ids.contains(kelasId)) return g;
+    }
+    return null;
+  }
+
+  String? _sessionKey(Map<String, dynamic> e) {
+    final gid = e['gabungan_id']?.toString();
+    if (gid == null || gid.isEmpty || gid == 'null') return null;
+    return 'g:$gid|${e['mulai']}-${e['selesai']}|guru:${e['guru_id']}';
+  }
+
   Future<void> _hapusJadwal(Map<String, dynamic> j) async {
     final id = j['id'];
     if (id == null) return;
@@ -1212,7 +1275,14 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
     if (jadwalId == null) return;
 
     final nama = j['mapel_nama']?.toString() ?? j['nama_kegiatan']?.toString() ?? 'Jadwal';
-    final ok = await AppUtils.confirm(context, title: 'Hapus Jadwal', message: 'Hapus $nama dari jadwal ini?');
+    final isGabungan = j['gabungan_id'] != null && j['gabungan_id'].toString().isNotEmpty && j['gabungan_id'].toString() != 'null';
+    final ok = await AppUtils.confirm(
+      context,
+      title: 'Hapus Jadwal',
+      message: isGabungan
+          ? 'Hapus sesi gabungan $nama dari semua kelas anggotanya?'
+          : 'Hapus $nama dari jadwal ini?',
+    );
     if (!ok) return;
 
     try {
@@ -1248,6 +1318,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
         'semester_id': j['semester_id'] as int,
         if (j['ruangan_id'] != null) 'ruangan_id': j['ruangan_id'] as int,
         if (j['nama_kegiatan'] != null) 'nama_kegiatan': j['nama_kegiatan'] as String,
+        if (j['gabungan_id'] != null) 'gabungan_id': j['gabungan_id'] as int,
         'is_istirahat': j['is_istirahat'] == true || j['is_istirahat'] == 1,
       }).toList();
 
@@ -1924,6 +1995,348 @@ class _FormKegiatanDialogState extends State<_FormKegiatanDialog> {
                 DropdownMenuItem(value: 'istirahat', child: Text('Istirahat')),
               ],
               onChanged: (v) => setState(() => _tipe = v!),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(_error!, style: const TextStyle(fontSize: 12, color: Colors.red)),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: _simpan,
+          child: const Text('Simpan'),
+        ),
+      ],
+    );
+  }
+}
+
+class _KelolaGabunganDialog extends StatefulWidget {
+  final int semesterId;
+
+  const _KelolaGabunganDialog({required this.semesterId});
+
+  @override
+  State<_KelolaGabunganDialog> createState() => _KelolaGabunganDialogState();
+}
+
+class _KelolaGabunganDialogState extends State<_KelolaGabunganDialog> {
+  List<Map<String, dynamic>> _items = [];
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final list = await WakilKurikulumService.getKelasGabungan();
+      if (mounted) {
+        setState(() {
+          _items = list.cast<Map<String, dynamic>>().where((g) => g['semester_id'].toString() == widget.semesterId.toString()).toList();
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Gagal memuat: $e';
+        });
+      }
+    }
+  }
+
+  Future<void> _tambah() async {
+    final hasil = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => _FormGabunganDialog(semesterId: widget.semesterId),
+    );
+    if (hasil == null) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await WakilKurikulumService.createKelasGabungan(hasil);
+      await _refresh();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Gagal tambah: $e';
+        });
+      }
+    }
+  }
+
+  Future<void> _ubah(Map<String, dynamic> item) async {
+    final id = int.tryParse('${item['id']}');
+    if (id == null) return;
+    final hasil = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => _FormGabunganDialog(
+        semesterId: widget.semesterId,
+        nama: item['nama']?.toString() ?? '',
+        kelasAwal: (item['kelas_ids'] as List?)?.map((e) => int.tryParse('$e') ?? 0).toSet() ?? <int>{},
+      ),
+    );
+    if (hasil == null) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await WakilKurikulumService.updateKelasGabungan(id, hasil);
+      await _refresh();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Gagal ubah: $e';
+        });
+      }
+    }
+  }
+
+  Future<void> _hapus(Map<String, dynamic> item) async {
+    final id = int.tryParse('${item['id']}');
+    if (id == null) return;
+    final ok = await AppUtils.confirm(
+      context,
+      title: 'Hapus Gabungan',
+      message: 'Hapus gabungan "${item['nama']}"? Jadwal yang sudah dibuat akan dilepas dari gabungan (tidak dihapus).',
+    );
+    if (!ok) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await WakilKurikulumService.deleteKelasGabungan(id);
+      await _refresh();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Gagal hapus: $e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Kelola Kelas Gabungan', style: TextStyle(fontSize: 16)),
+      content: SizedBox(
+        width: 460,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_error != null) ...[
+              Text(_error!, style: const TextStyle(fontSize: 12, color: Colors.red)),
+              const SizedBox(height: 8),
+            ],
+            Text(
+              'Kelas yang digabung dianggap satu sesi: jika dijadwalkan ke salah satu kelas anggotanya, semua kelas terisi sekaligus tanpa bentrok.',
+              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: Container(
+                constraints: const BoxConstraints(maxHeight: 260),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[200]!),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: _loading && _items.isEmpty
+                    ? const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 2)))
+                    : _items.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text('Belum ada kelas gabungan untuk semester ini.', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _items.length,
+                            itemBuilder: (_, i) {
+                              final g = _items[i];
+                              final ids = (g['kelas_ids'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+                              return ListTile(
+                                dense: true,
+                                leading: const Icon(Icons.group_work, size: 18, color: Colors.indigo),
+                                title: Text(g['nama']?.toString() ?? '-', style: const TextStyle(fontSize: 12.5)),
+                                subtitle: Text(ids.join(', '), style: const TextStyle(fontSize: 11)),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_outlined, size: 16),
+                                      tooltip: 'Ubah',
+                                      onPressed: _loading ? null : () => _ubah(g),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                                      tooltip: 'Hapus',
+                                      onPressed: _loading ? null : () => _hapus(g),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+              ),
+            ),
+            const Divider(height: 16),
+            FilledButton.icon(
+              onPressed: _loading ? null : _tambah,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Buat Gabungan Baru'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Tutup'),
+        ),
+      ],
+    );
+  }
+}
+
+class _FormGabunganDialog extends StatefulWidget {
+  final int semesterId;
+  final String nama;
+  final Set<int> kelasAwal;
+
+  const _FormGabunganDialog({required this.semesterId, this.nama = '', this.kelasAwal = const {}});
+
+  @override
+  State<_FormGabunganDialog> createState() => _FormGabunganDialogState();
+}
+
+class _FormGabunganDialogState extends State<_FormGabunganDialog> {
+  late final TextEditingController _namaCtrl;
+  late Set<int> _selected;
+  List<Map<String, dynamic>> _kelas = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _namaCtrl = TextEditingController(text: widget.nama);
+    _selected = Set<int>.from(widget.kelasAwal);
+    _loadKelas();
+  }
+
+  Future<void> _loadKelas() async {
+    try {
+      final ref = await WakilKurikulumService.getReferensi();
+      if (mounted) {
+        setState(() {
+          _kelas = (ref['kelas'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Gagal memuat daftar kelas: $e';
+        });
+      }
+    }
+  }
+
+  void _simpan() {
+    final nama = _namaCtrl.text.trim();
+    if (nama.isEmpty) {
+      setState(() => _error = 'Nama gabungan tidak boleh kosong');
+      return;
+    }
+    if (_selected.length < 2) {
+      setState(() => _error = 'Pilih minimal 2 kelas');
+      return;
+    }
+    Navigator.pop(context, {
+      'nama': nama,
+      'semester_id': widget.semesterId,
+      'kelas_ids': _selected.toList()..sort(),
+    });
+  }
+
+  @override
+  void dispose() {
+    _namaCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Buat Gabungan Kelas', style: TextStyle(fontSize: 16)),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _namaCtrl,
+              decoration: const InputDecoration(labelText: 'Nama gabungan', hintText: 'cth: Gabungan X A+B', isDense: true),
+            ),
+            const SizedBox(height: 8),
+            Text('Pilih kelas anggota (minimal 2):', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+            const SizedBox(height: 4),
+            Flexible(
+              child: Container(
+                constraints: const BoxConstraints(maxHeight: 240),
+                decoration: BoxDecoration(border: Border.all(color: Colors.grey[200]!), borderRadius: BorderRadius.circular(8)),
+                child: _loading
+                    ? const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(strokeWidth: 2)))
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _kelas.length,
+                        itemBuilder: (_, i) {
+                          final k = _kelas[i];
+                          final id = int.tryParse('${k['id']}');
+                          if (id == null) return const SizedBox.shrink();
+                          final namaKelas = k['nama']?.toString() ?? 'Kelas';
+                          return CheckboxListTile(
+                            dense: true,
+                            value: _selected.contains(id),
+                            title: Text(namaKelas, style: const TextStyle(fontSize: 12.5)),
+                            onChanged: (v) {
+                              setState(() {
+                                if (v == true) {
+                                  _selected.add(id);
+                                } else {
+                                  _selected.remove(id);
+                                }
+                              });
+                            },
+                          );
+                        },
+                      ),
+              ),
             ),
             if (_error != null) ...[
               const SizedBox(height: 8),
