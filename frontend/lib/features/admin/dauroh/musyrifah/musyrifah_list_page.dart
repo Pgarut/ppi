@@ -176,6 +176,7 @@ class _MusyrifahListPageState extends State<MusyrifahListPage> {
                       _load();
                     }
                   : null,
+              onRetry: () => _load(refresh: true),
               onEdit: (row) => _showForm(edit: row),
               onDelete: (row) => _delete(row['id'] as int, row['nama']?.toString() ?? ''),
               displayFn: (key, value, row) {

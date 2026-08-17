@@ -22,6 +22,7 @@ class DaurohTable extends StatelessWidget {
   final int totalPages;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
+  final VoidCallback? onRetry;
   final void Function(Map<String, dynamic> row)? onEdit;
   final void Function(Map<String, dynamic> row)? onDelete;
   final String Function(String key, dynamic value, Map<String, dynamic> row)? displayFn;
@@ -36,6 +37,7 @@ class DaurohTable extends StatelessWidget {
     this.totalPages = 1,
     this.onPrevious,
     this.onNext,
+    this.onRetry,
     this.onEdit,
     this.onDelete,
     this.displayFn,
@@ -56,7 +58,7 @@ class DaurohTable extends StatelessWidget {
             Text(error!, style: const TextStyle(color: AppTheme.error, fontSize: 14)),
             const SizedBox(height: 12),
             FilledButton.icon(
-              onPressed: onPrevious,
+              onPressed: onRetry ?? onPrevious,
               icon: const Icon(Icons.refresh, size: 18),
               label: const Text('Coba Lagi'),
             ),

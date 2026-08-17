@@ -14,6 +14,7 @@ class ProfilMusyrifahPage extends StatefulWidget {
 class _ProfilMusyrifahPageState extends State<ProfilMusyrifahPage> {
   Map<String, dynamic>? _profil;
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -22,11 +23,25 @@ class _ProfilMusyrifahPageState extends State<ProfilMusyrifahPage> {
   }
 
   Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final data = await MusyrifahService.getProfil();
-      if (mounted) setState(() { _profil = data; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _profil = data;
+          _loading = false;
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() { _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -61,7 +76,29 @@ class _ProfilMusyrifahPageState extends State<ProfilMusyrifahPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _profil == null
-              ? const Center(child: Text('Gagal memuat profil'))
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline, size: 48, color: AppTheme.error),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          _error ?? 'Gagal memuat profil',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: AppTheme.error),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: _load,
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Coba Lagi'),
+                      ),
+                    ],
+                  ),
+                )
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(24),
                   child: Column(

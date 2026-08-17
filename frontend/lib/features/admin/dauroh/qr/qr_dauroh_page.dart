@@ -23,6 +23,12 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
   int? _selectedJadwalId;
   bool _loading = true;
   bool _generating = false;
+  String? _error;
+
+  String get _qrToken =>
+      _generatedQR?['qr_data']?.toString() ??
+      _qrInfo?['token']?.toString() ??
+      'PPI_DAUROH_QR_2026';
 
   @override
   void initState() {
@@ -31,7 +37,10 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final results = await Future.wait([
         DaurohService.getQRInfo(),
@@ -47,6 +56,7 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
+          _error = e.toString();
           _loading = false;
         });
       }
@@ -80,7 +90,7 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
   }
 
   Future<void> _printQR() async {
-    final token = _qrInfo?['token'] ?? 'PPI_DAUROH_QR_2026';
+    final token = _qrToken;
     final jadwal = _generatedQR?['jadwal'];
 
     final pdf = pw.Document();
@@ -201,6 +211,24 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
     if (_loading) {
       return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
     }
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: AppTheme.error),
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: AppTheme.error)),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _load,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -215,6 +243,28 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
           const Text(
             'Generate QR Code untuk absensi musyrifah',
             style: TextStyle(fontSize: 13, color: AppTheme.grey500),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withAlpha(12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.primary.withAlpha(60)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline, size: 18, color: AppTheme.primary),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Token QR bersifat statis dan berlaku untuk semua jadwal. '
+                    'Jadwal dipilih hanya untuk informasi pada QR yang dicetak.',
+                    style: TextStyle(fontSize: 12, color: AppTheme.grey700),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 24),
           Expanded(
@@ -404,7 +454,7 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
   }
 
   Widget _buildQRContent() {
-    final token = _qrInfo?['token'] ?? 'PPI_DAUROH_QR_2026';
+    final token = _qrToken;
     final jadwal = _generatedQR?['jadwal'];
 
     return Center(

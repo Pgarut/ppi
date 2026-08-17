@@ -12,15 +12,4 @@ class DaurohSantriService {
     final response = await ApiClient.get('/siswa/dauroh/nilai', queryParams: queryParams);
     return (response['data'] as List).cast<Map<String, dynamic>>();
   }
-
-  Future<List<Map<String, dynamic>>> getAbsensi({
-    String? bulan,
-    String? tahun,
-  }) async {
-    final queryParams = <String, String>{};
-    if (bulan != null) queryParams['bulan'] = bulan;
-    if (tahun != null) queryParams['tahun'] = tahun;
-    final response = await ApiClient.get('/siswa/dauroh/absensi', queryParams: queryParams);
-    return (response['data'] as List).cast<Map<String, dynamic>>();
-  }
 }

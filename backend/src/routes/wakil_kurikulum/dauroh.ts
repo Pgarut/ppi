@@ -83,7 +83,13 @@ async function handleMonitoringNilai(env: Env, url: URL): Promise<Response> {
        s.id as santri_id, s.nama as nama_santri, s.nis,
        k.nama as kelas_nama, t.nama as jenjang_nama,
        dp.nama_program, dp.jenis_dauroh,
-       dn.nilai_hafalan, dn.nilai_bacaan, dn.catatan,
+       dp.max_bidang1, dp.max_bidang2, dp.max_bidang3,
+       dp.label_bidang1, dp.label_bidang2, dp.label_bidang3,
+       (CASE WHEN dn.kelancaran IS NOT NULL THEN dn.nilai_bidang1 END) as nilai_bidang1,
+       (CASE WHEN dn.makhorijul_huruf IS NOT NULL THEN dn.nilai_bidang2 END) as nilai_bidang2,
+       (CASE WHEN dn.ahkamul_waqfi IS NOT NULL THEN dn.nilai_bidang3 END) as nilai_bidang3,
+       (CASE WHEN dn.kelancaran IS NOT NULL THEN dn.total_nilai END) as total_nilai,
+       dn.catatan_umum,
        dn.updated_at
      FROM dauroh_nilai dn
      JOIN siswa s ON dn.santri_id = s.id
@@ -97,11 +103,10 @@ async function handleMonitoringNilai(env: Env, url: URL): Promise<Response> {
 
   const statsResult = await env.DB.prepare(
     `SELECT
-       COUNT(*) as total_santri,
-       ROUND(AVG(dn.nilai_hafalan), 1) as rata_hafalan,
-       ROUND(AVG(dn.nilai_bacaan), 1) as rata_bacaan,
-       COUNT(CASE WHEN dn.nilai_hafalan IS NOT NULL OR dn.nilai_bacaan IS NOT NULL THEN 1 END) as sudah_dinilai,
-       COUNT(CASE WHEN dn.nilai_hafalan IS NULL AND dn.nilai_bacaan IS NULL THEN 1 END) as belum_dinilai
+       COUNT(DISTINCT dn.santri_id) as total_santri,
+       ROUND(AVG(dn.total_nilai), 1) as rata_total,
+       COUNT(DISTINCT CASE WHEN dn.kelancaran IS NOT NULL OR dn.makhorijul_huruf IS NOT NULL OR dn.ahkamul_waqfi IS NOT NULL THEN dn.santri_id END) as sudah_dinilai,
+       COUNT(DISTINCT CASE WHEN dn.kelancaran IS NULL AND dn.makhorijul_huruf IS NULL AND dn.ahkamul_waqfi IS NULL THEN dn.santri_id END) as belum_dinilai
      FROM dauroh_nilai dn
      JOIN siswa s ON dn.santri_id = s.id
      JOIN kelas k ON s.kelas_id = k.id
@@ -112,7 +117,7 @@ async function handleMonitoringNilai(env: Env, url: URL): Promise<Response> {
 
   return success({
     items: rows.results,
-    summary: statsResult || { total_santri: 0, rata_hafalan: 0, rata_bacaan: 0, sudah_dinilai: 0, belum_dinilai: 0 },
+    summary: statsResult || { total_santri: 0, rata_total: 0, sudah_dinilai: 0, belum_dinilai: 0 },
     pagination: { page, per_page: perPage, total, total_pages: totalPages },
   });
 }

@@ -43,8 +43,12 @@ class _NilaiDaurohPageState extends State<NilaiDaurohPage> {
         search: _searchCtrl.text.isEmpty ? null : _searchCtrl.text,
         status: _filterStatus,
       );
-      // Build unique program list from data
+      // Build unique program list: gabungkan dengan daftar lama agar
+      // tidak hilang saat filter aktif
       final Map<String, Map<String, dynamic>> progMap = {};
+      for (final p in _programs) {
+        progMap[p['id']?.toString() ?? ''] = p;
+      }
       for (final item in data) {
         final pid = item['program_id']?.toString() ?? '';
         if (pid.isNotEmpty && !progMap.containsKey(pid)) {
@@ -352,11 +356,11 @@ class _NilaiDaurohPageState extends State<NilaiDaurohPage> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  _scoreCircle('B1', b1, 40, theme),
+                  _scoreCircle('B1', b1, _maxOf(item, 'max_bidang1', 40), theme),
                   const SizedBox(width: 8),
-                  _scoreCircle('B2', b2, 30, theme),
+                  _scoreCircle('B2', b2, _maxOf(item, 'max_bidang2', 30), theme),
                   const SizedBox(width: 8),
-                  _scoreCircle('B3', b3, 30, theme),
+                  _scoreCircle('B3', b3, _maxOf(item, 'max_bidang3', 30), theme),
                   const Spacer(),
                   _totalBadge(totalNilai, theme),
                   const SizedBox(width: 8),
@@ -442,6 +446,13 @@ class _NilaiDaurohPageState extends State<NilaiDaurohPage> {
     );
   }
 
+  double _maxOf(Map<String, dynamic> item, String key, double fallback) {
+    final v = item[key];
+    if (v == null) return fallback;
+    final n = double.tryParse(v.toString());
+    return (n == null || n <= 0) ? fallback : n;
+  }
+
   Widget _totalBadge(double total, ThemeData theme) {
     final color = total >= 80
         ? Colors.green
@@ -494,6 +505,7 @@ class _InputNilaiDialog extends StatefulWidget {
 class _InputNilaiDialogState extends State<_InputNilaiDialog> {
   bool _saving = false;
   bool _loadingDetail = false;
+  String? _detailError;
 
   // Surat
   List<Map<String, dynamic>> _suratList = [];
@@ -542,6 +554,14 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
   // General
   String _catatanUmum = '';
   String _rencanaTindakLanjut = '';
+
+  // Konfigurasi program (label & max per bidang)
+  int _maxBidang1 = 40;
+  int _maxBidang2 = 30;
+  int _maxBidang3 = 30;
+  String _labelBidang1 = 'Kelancaran Hafalan';
+  String _labelBidang2 = 'Tajwid';
+  String _labelBidang3 = 'Fashohah dan Adab';
 
   // Controllers
   final _dariAyatCtrl = TextEditingController(text: '1');
@@ -596,6 +616,12 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
             progMap[pid] = {
               'id': pid,
               'nama': item['nama_program'] ?? 'Program',
+              'max_bidang1': item['max_bidang1'],
+              'max_bidang2': item['max_bidang2'],
+              'max_bidang3': item['max_bidang3'],
+              'label_bidang1': item['label_bidang1'],
+              'label_bidang2': item['label_bidang2'],
+              'label_bidang3': item['label_bidang3'],
             };
           }
         }
@@ -608,14 +634,35 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
 
     // If editing, load detail
     if (widget.existing != null) {
+      _applyProgramConfig(widget.existing!);
       await _loadDetail();
     }
+  }
+
+  int _configMax(dynamic v, int fallback) {
+    if (v == null) return fallback;
+    final n = int.tryParse(v.toString());
+    return (n == null || n <= 0) ? fallback : n;
+  }
+
+  void _applyProgramConfig(Map<String, dynamic> p) {
+    setState(() {
+      _maxBidang1 = _configMax(p['max_bidang1'], 40);
+      _maxBidang2 = _configMax(p['max_bidang2'], 30);
+      _maxBidang3 = _configMax(p['max_bidang3'], 30);
+      _labelBidang1 = p['label_bidang1']?.toString() ?? 'Kelancaran Hafalan';
+      _labelBidang2 = p['label_bidang2']?.toString() ?? 'Tajwid';
+      _labelBidang3 = p['label_bidang3']?.toString() ?? 'Fashohah dan Adab';
+    });
   }
 
   Future<void> _loadDetail() async {
     final id = widget.existing!['id'];
     if (id == null) return;
-    setState(() => _loadingDetail = true);
+    setState(() {
+      _loadingDetail = true;
+      _detailError = null;
+    });
     try {
       final detail = await MusyrifahService.getNilaiDetail(id);
       setState(() {
@@ -656,7 +703,9 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
 
         _selectedJadwalId = detail['jadwal_id']?.toString();
       });
-    } catch (_) {}
+    } catch (e) {
+      setState(() => _detailError = e.toString());
+    }
     setState(() => _loadingDetail = false);
   }
 
@@ -910,7 +959,31 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
             Expanded(
               child: _loadingDetail
                   ? const Center(child: CircularProgressIndicator())
-                  : ListView(
+                  : _detailError != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.error_outline,
+                                    color: Colors.red, size: 40),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _detailError!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                                const SizedBox(height: 12),
+                                ElevatedButton(
+                                  onPressed: _loadDetail,
+                                  child: const Text('Coba Lagi'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 12),
                       children: [
@@ -933,6 +1006,14 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
                                 _selectedSantriId = null;
                                 _santriList = [];
                               });
+                              if (v != null) {
+                                final matches = _programList
+                                    .where((e) => e['id']?.toString() == v)
+                                    .toList();
+                                if (matches.isNotEmpty) {
+                                  _applyProgramConfig(matches.first);
+                                }
+                              }
                             },
                           ),
                           const SizedBox(height: 14),
@@ -1047,9 +1128,9 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
 
                         // --- Bidang 1 ---
                         _buildExpansionBidang(
-                          title: 'Bidang 1: Kelancaran Hafalan',
+                          title: 'Bidang 1: $_labelBidang1',
                           subtitle:
-                              'Nilai: ${_nilaiBidang1.toStringAsFixed(1)} / 40',
+                              'Nilai: ${_nilaiBidang1.toStringAsFixed(1)} / $_maxBidang1',
                           icon: Icons.auto_stories,
                           color: Colors.blue,
                           children: [
@@ -1081,9 +1162,9 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
 
                         // --- Bidang 2 ---
                         _buildExpansionBidang(
-                          title: 'Bidang 2: Tajwid',
+                          title: 'Bidang 2: $_labelBidang2',
                           subtitle:
-                              'Nilai: ${_nilaiBidang2.toStringAsFixed(1)} / 30',
+                              'Nilai: ${_nilaiBidang2.toStringAsFixed(1)} / $_maxBidang2',
                           icon: Icons.record_voice_over,
                           color: Colors.teal,
                           children: [
@@ -1117,9 +1198,9 @@ class _InputNilaiDialogState extends State<_InputNilaiDialog> {
 
                         // --- Bidang 3 ---
                         _buildExpansionBidang(
-                          title: 'Bidang 3: Fashohah dan Adab',
+                          title: 'Bidang 3: $_labelBidang3',
                           subtitle:
-                              'Nilai: ${_nilaiBidang3.toStringAsFixed(1)} / 30',
+                              'Nilai: ${_nilaiBidang3.toStringAsFixed(1)} / $_maxBidang3',
                           icon: Icons.menu_book,
                           color: Colors.deepPurple,
                           children: [

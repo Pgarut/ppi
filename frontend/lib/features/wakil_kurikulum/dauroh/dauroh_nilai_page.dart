@@ -16,6 +16,7 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
   List<Map<String, dynamic>> _items = [];
   Map<String, dynamic> _summary = {};
   bool _loading = true;
+  String? _error;
 
   List<dynamic> _jenjangList = [];
   List<dynamic> _kelasList = [];
@@ -55,7 +56,10 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final res = await WakilKurikulumService.getDaurohNilai(
         page: _currentPage,
@@ -73,7 +77,12 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -123,7 +132,7 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
             headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
             cellAlignment: pw.Alignment.centerLeft,
             cellHeight: 24,
-            headers: ['No', 'Nama', 'NIS', 'Kelas', 'Program', 'Jenis', 'Hafalan', 'Bacaan'],
+            headers: ['No', 'Nama', 'NIS', 'Kelas', 'Program', 'Jenis', 'Bidang 1', 'Bidang 2', 'Bidang 3', 'Total', 'Catatan'],
             data: _items.asMap().entries.map((e) {
               final i = e.key + 1;
               final item = e.value;
@@ -134,8 +143,11 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
                 item['kelas_nama']?.toString() ?? '-',
                 item['nama_program']?.toString() ?? '-',
                 item['jenis_dauroh']?.toString() ?? '-',
-                item['nilai_hafalan']?.toString() ?? '-',
-                item['nilai_bacaan']?.toString() ?? '-',
+                item['nilai_bidang1']?.toString() ?? '-',
+                item['nilai_bidang2']?.toString() ?? '-',
+                item['nilai_bidang3']?.toString() ?? '-',
+                item['total_nilai']?.toString() ?? '-',
+                item['catatan_umum']?.toString() ?? '-',
               ];
             }).toList(),
           ),
@@ -315,9 +327,7 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
         children: [
           _buildSummaryCard('Total Santri', '${_summary['total_santri'] ?? 0}', AppTheme.blue),
           const SizedBox(width: 12),
-          _buildSummaryCard('Rata Hafalan', '${_summary['rata_hafalan'] ?? 0}', AppTheme.primary),
-          const SizedBox(width: 12),
-          _buildSummaryCard('Rata Bacaan', '${_summary['rata_bacaan'] ?? 0}', AppTheme.orange),
+          _buildSummaryCard('Rata Total', '${_summary['rata_total'] ?? 0}', AppTheme.primary),
           const SizedBox(width: 12),
           _buildSummaryCard('Sudah Dinilai', '${_summary['sudah_dinilai'] ?? 0}', Colors.green),
           const SizedBox(width: 12),
@@ -352,6 +362,32 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: AppTheme.error),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppTheme.error),
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _loadData,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (_items.isEmpty) {
       return const Center(
         child: Column(
@@ -378,15 +414,15 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
             DataColumn(label: Text('Kelas', style: TextStyle(fontWeight: FontWeight.bold))),
             DataColumn(label: Text('Program', style: TextStyle(fontWeight: FontWeight.bold))),
             DataColumn(label: Text('Jenis', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('Hafalan', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('Bacaan', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Bidang 1', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Bidang 2', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Bidang 3', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
             DataColumn(label: Text('Catatan', style: TextStyle(fontWeight: FontWeight.bold))),
           ],
           rows: _items.asMap().entries.map((e) {
             final i = e.key + 1;
             final item = e.value;
-            final hafalan = item['nilai_hafalan'];
-            final bacaan = item['nilai_bacaan'];
 
             return DataRow(cells: [
               DataCell(Text('$i', style: const TextStyle(fontSize: 13))),
@@ -407,27 +443,22 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
                   ),
                 ),
               ),
+              DataCell(_buildNilaiValue(item['nilai_bidang1'], max: _maxOf(item, 'max_bidang1', 40))),
+              DataCell(_buildNilaiValue(item['nilai_bidang2'], max: _maxOf(item, 'max_bidang2', 30))),
+              DataCell(_buildNilaiValue(item['nilai_bidang3'], max: _maxOf(item, 'max_bidang3', 30))),
               DataCell(Text(
-                hafalan != null ? hafalan.toString() : '-',
+                item['total_nilai']?.toString() ?? '-',
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight: hafalan != null ? FontWeight.bold : FontWeight.normal,
-                  color: hafalan != null ? AppTheme.primary : AppTheme.grey400,
-                ),
-              )),
-              DataCell(Text(
-                bacaan != null ? bacaan.toString() : '-',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: bacaan != null ? FontWeight.bold : FontWeight.normal,
-                  color: bacaan != null ? AppTheme.primary : AppTheme.grey400,
+                  fontWeight: FontWeight.bold,
+                  color: item['total_nilai'] != null ? AppTheme.primary : AppTheme.grey400,
                 ),
               )),
               DataCell(
                 SizedBox(
                   width: 120,
                   child: Text(
-                    item['catatan']?.toString() ?? '-',
+                    item['catatan_umum']?.toString() ?? '-',
                     style: const TextStyle(fontSize: 12),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -437,6 +468,30 @@ class _DaurohNilaiPageState extends State<DaurohNilaiPage> {
           }).toList(),
         ),
       ),
+    );
+  }
+
+  int _maxOf(Map<String, dynamic> item, String key, int fallback) {
+    final v = int.tryParse(item[key]?.toString() ?? '');
+    return (v ?? 0) > 0 ? v! : fallback;
+  }
+
+  Widget _buildNilaiValue(dynamic value, {required int max}) {
+    if (value == null) return const Text('-', style: TextStyle(fontSize: 13, color: AppTheme.grey400));
+    final num = double.tryParse(value.toString());
+    if (num == null) return Text(value.toString(), style: const TextStyle(fontSize: 13));
+    final ratio = max <= 0 ? 1 : num / max;
+    Color color;
+    if (ratio >= 0.8) {
+      color = AppTheme.primary;
+    } else if (ratio >= 0.6) {
+      color = AppTheme.orange;
+    } else {
+      color = AppTheme.error;
+    }
+    return Text(
+      num.toStringAsFixed(0),
+      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color),
     );
   }
 

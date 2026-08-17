@@ -14,6 +14,7 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
   List<Map<String, dynamic>> _program = [];
   List<Map<String, dynamic>> _nilai = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -22,6 +23,10 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
   }
 
   Future<void> _loadData() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final results = await Future.wait([
         _service.getProgram(),
@@ -35,15 +40,39 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return _loading
-        ? const Center(child: CircularProgressIndicator())
-        : RefreshIndicator(
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: AppTheme.error),
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: AppTheme.error)),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _loadData,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
             onRefresh: _loadData,
             child: ListView(
               padding: const EdgeInsets.all(16),
@@ -250,11 +279,11 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
             const Divider(height: 20),
             Row(
               children: [
-                _buildNilaiChip('Bidang 1', bidang1, 40),
+                _buildNilaiChip('Bidang 1', bidang1, _maxOf(nilai, 'max_bidang1', 40)),
                 const SizedBox(width: 8),
-                _buildNilaiChip('Bidang 2', bidang2, 30),
+                _buildNilaiChip('Bidang 2', bidang2, _maxOf(nilai, 'max_bidang2', 30)),
                 const SizedBox(width: 8),
-                _buildNilaiChip('Bidang 3', bidang3, 30),
+                _buildNilaiChip('Bidang 3', bidang3, _maxOf(nilai, 'max_bidang3', 30)),
                 const Spacer(),
                 _buildTotalNilai(totalNilai),
               ],
@@ -306,6 +335,13 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
         ),
       ),
     );
+  }
+
+  int _maxOf(Map<String, dynamic> nilai, String key, int fallback) {
+    final v = nilai[key];
+    if (v == null) return fallback;
+    final n = int.tryParse(v.toString());
+    return (n == null || n <= 0) ? fallback : n;
   }
 
   Widget _buildNilaiChip(String label, dynamic nilai, int max) {

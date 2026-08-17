@@ -264,7 +264,18 @@ async function deleteProgram(env: Env, id: number, user: UserPayload, ip: string
   const existing = await env.DB.prepare('SELECT id, nama_program FROM dauroh_program WHERE id = ?').bind(id).first<Row>();
   if (!existing) return notFound('Program');
 
-  // Hapus relasi dulu
+  // Hapus data turunan dulu (absensi & nilai) agar tidak ada orphan / gagal FK
+  const jadwalRows = await env.DB.prepare('SELECT id FROM dauroh_jadwal WHERE program_id = ?').bind(id).all<{ id: number }>();
+  const jadwalIds = jadwalRows.results.map((r) => r.id);
+
+  if (jadwalIds.length > 0) {
+    const placeholders = jadwalIds.map(() => '?').join(', ');
+    await env.DB.prepare(`DELETE FROM dauroh_absensi_musyrifah WHERE jadwal_id IN (${placeholders})`).bind(...jadwalIds).run();
+    await env.DB.prepare(`DELETE FROM dauroh_absensi_santri WHERE jadwal_id IN (${placeholders})`).bind(...jadwalIds).run();
+    await env.DB.prepare(`DELETE FROM dauroh_nilai WHERE jadwal_id IN (${placeholders})`).bind(...jadwalIds).run();
+  }
+
+  // Hapus relasi
   await env.DB.prepare('DELETE FROM dauroh_program_santri WHERE program_id = ?').bind(id).run();
   await env.DB.prepare('DELETE FROM dauroh_jadwal WHERE program_id = ?').bind(id).run();
   await env.DB.prepare('DELETE FROM dauroh_program WHERE id = ?').bind(id).run();
@@ -672,6 +683,10 @@ async function deleteJadwal(env: Env, id: number, user: UserPayload, ip: string)
   const existing = await env.DB.prepare('SELECT id FROM dauroh_jadwal WHERE id = ?').bind(id).first();
   if (!existing) return notFound('Jadwal');
 
+  // Hapus data turunan dulu agar tidak ada orphan / gagal FK
+  await env.DB.prepare('DELETE FROM dauroh_absensi_musyrifah WHERE jadwal_id = ?').bind(id).run();
+  await env.DB.prepare('DELETE FROM dauroh_absensi_santri WHERE jadwal_id = ?').bind(id).run();
+  await env.DB.prepare('DELETE FROM dauroh_nilai WHERE jadwal_id = ?').bind(id).run();
   await env.DB.prepare('DELETE FROM dauroh_jadwal_kelas WHERE jadwal_id = ?').bind(id).run();
   await env.DB.prepare('DELETE FROM dauroh_jadwal WHERE id = ?').bind(id).run();
 
@@ -806,6 +821,7 @@ async function handleMonitoringNilai(request: Request, env: Env, url: URL) {
       s.nis, s.nama, s.jenis_kelamin,
       k.nama as kelas_nama,
       p.nama_program, p.jenis_program, p.jenis_dauroh,
+      p.max_bidang1, p.max_bidang2, p.max_bidang3,
       n.surat_nomor,
       ds.nama as surat_nama,
       n.dari_ayat,

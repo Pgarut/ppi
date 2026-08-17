@@ -78,7 +78,8 @@ class DaurohMultiSelect<T> extends StatelessWidget {
   final String title;
   final IconData icon;
   final List<T> items;
-  final Set<T> selectedIds;
+  final Set<dynamic> selectedIds;
+  final dynamic Function(T) idFn;
   final String Function(T) labelFn;
   final ValueChanged<T> onChanged;
 
@@ -88,6 +89,7 @@ class DaurohMultiSelect<T> extends StatelessWidget {
     required this.icon,
     required this.items,
     required this.selectedIds,
+    required this.idFn,
     required this.labelFn,
     required this.onChanged,
   });
@@ -134,7 +136,7 @@ class DaurohMultiSelect<T> extends StatelessWidget {
               spacing: 8,
               runSpacing: 4,
               children: items.map((item) {
-                final isSelected = selectedIds.contains(item);
+                final isSelected = selectedIds.contains(idFn(item));
                 return FilterChip(
                   label: Text(labelFn(item), style: const TextStyle(fontSize: 12)),
                   selected: isSelected,

@@ -87,14 +87,6 @@ class MusyrifahService {
     return res['data'] as Map<String, dynamic>;
   }
 
-  // ─── RIWAYAT ────────────────────────────────────────────────
-  static Future<Map<String, dynamic>> getRiwayat(int santriId, {String? programId}) async {
-    final params = <String, String>{};
-    if (programId != null && programId.isNotEmpty) params['program_id'] = programId;
-    final res = await ApiClient.get('/musyrifah/riwayat/$santriId', queryParams: params);
-    return res['data'] as Map<String, dynamic>;
-  }
-
   // ─── NILAI ──────────────────────────────────────────────────
   static Future<List<Map<String, dynamic>>> listNilai({
     String? programId,

@@ -174,6 +174,7 @@ class _ProgramListPageState extends State<ProgramListPage> {
                       _load();
                     }
                   : null,
+              onRetry: () => _load(refresh: true),
               onEdit: (row) => _showForm(edit: row),
               onDelete: (row) => _delete(row['id'] as int, row['nama_program']?.toString() ?? ''),
               displayFn: (key, value, row) {

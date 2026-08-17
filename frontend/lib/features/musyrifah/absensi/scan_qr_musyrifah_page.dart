@@ -178,6 +178,38 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
             MobileScanner(
               controller: _cameraController!,
               onDetect: _onDetect,
+              errorBuilder: (context, error, child) {
+                return Container(
+                  color: Colors.black,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.no_photography_outlined,
+                          color: Colors.white, size: 48),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Kamera tidak dapat diakses',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Pastikan izin kamera diberikan pada pengaturan aplikasi.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
 
           _buildScanOverlay(),

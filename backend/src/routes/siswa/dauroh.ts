@@ -32,25 +32,31 @@ async function handleDaurohProgram(env: Env, user: UserPayload): Promise<Respons
   const siswaId = user.siswa_id;
   if (!siswaId) return success([]);
 
+  // Santri terdaftar di program dengan 2 cara:
+  //  1) Program "khusus" -> didaftarkan eksplisit di dauroh_program_santri
+  //  2) Program "kelas"  -> kelas santri tercantum di jadwal (dauroh_jadwal_kelas)
   const rows = await env.DB.prepare(`
-    SELECT
+    SELECT DISTINCT
       dp.id,
       dp.nama_program,
       dp.jenis_program,
       dp.jenis_dauroh,
       dp.keterangan,
-      djk.hari,
-      djk.jam_mulai,
-      djk.jam_selesai,
+      dj.hari,
+      dj.jam_mulai,
+      dj.jam_selesai,
       dm.nama AS musyrifah_nama
-    FROM dauroh_program_santri dps
-    JOIN dauroh_program dp ON dps.program_id = dp.id
+    FROM dauroh_program dp
     LEFT JOIN dauroh_jadwal dj ON dj.program_id = dp.id AND dj.is_aktif = 1
     LEFT JOIN dauroh_jadwal_kelas djk ON djk.jadwal_id = dj.id
     LEFT JOIN dauroh_musyrifah dm ON dj.musyrifah_1_id = dm.id
-    WHERE dps.santri_id = ? AND dp.is_aktif = 1
+    WHERE dp.is_aktif = 1
+      AND (
+        dp.id IN (SELECT program_id FROM dauroh_program_santri WHERE santri_id = ?)
+        OR djk.kelas_id = (SELECT kelas_id FROM siswa WHERE id = ?)
+      )
     ORDER BY dp.nama_program
-  `).bind(siswaId).all();
+  `).bind(siswaId, siswaId).all();
 
   return success(rows.results);
 }
@@ -77,6 +83,12 @@ async function handleDaurohNilai(env: Env, user: UserPayload, url: URL): Promise
       dn.program_id,
       dp.nama_program,
       dp.jenis_program,
+      dp.max_bidang1,
+      dp.max_bidang2,
+      dp.max_bidang3,
+      dp.label_bidang1,
+      dp.label_bidang2,
+      dp.label_bidang3,
       dn.surat_nomor,
       ds.nama as surat_nama,
       ds.jumlah_ayat,

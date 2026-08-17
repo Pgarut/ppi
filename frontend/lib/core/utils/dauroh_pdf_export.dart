@@ -29,6 +29,12 @@ class DaurohPdfExport {
 
   static double _n(dynamic v) => v != null ? (v as num).toDouble() : 0;
 
+  static int? _maxInt(dynamic v) {
+    if (v == null) return null;
+    final n = int.tryParse(v.toString());
+    return (n == null || n <= 0) ? null : n;
+  }
+
   // ─── EXPORT NILAI PER SANTRI ──────────────────────────────
   static Future<void> exportNilaiPerSantri(Map<String, dynamic> n) async {
     final pdf = pw.Document();
@@ -37,14 +43,14 @@ class DaurohPdfExport {
       bold: await PdfGoogleFonts.nunitoBold(),
     );
 
-    const bidang1Max = 40;
-    const bidang2Max = 30;
-    const bidang3Max = 30;
+    final bidang1Max = _maxInt(n['max_bidang1']) ?? 40;
+    final bidang2Max = _maxInt(n['max_bidang2']) ?? 30;
+    final bidang3Max = _maxInt(n['max_bidang3']) ?? 30;
     final b1 = _n(n['nilai_bidang1']);
     final b2 = _n(n['nilai_bidang2']);
     final b3 = _n(n['nilai_bidang3']);
     final total = _n(n['total_nilai']);
-    const totalMax = bidang1Max + bidang2Max + bidang3Max;
+    final totalMax = bidang1Max + bidang2Max + bidang3Max;
     final percent = totalMax > 0 ? (total / totalMax) * 100 : 0.0;
 
     pdf.addPage(
@@ -400,12 +406,15 @@ class DaurohPdfExport {
             cellHeight: 20,
             headerAlignment: pw.Alignment.centerLeft,
             data: [
-              ['Kriteria', 'Poin (1-5)', 'Deduction'],
+              ['Kriteria', 'Potongan (1-5)'],
               ...criteria.map((c) => [
                 '${c[0]}',
                 (c[1] as double).toStringAsFixed(0),
-                (c[1] as double).toStringAsFixed(0),
               ]),
+              [
+                'Total Potongan',
+                criteria.fold(0.0, (sum, c) => sum + (c[1] as double)).toStringAsFixed(0),
+              ],
             ],
           ),
           if (catatan != null && catatan.isNotEmpty) ...[

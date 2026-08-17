@@ -27,7 +27,7 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
   List<Map<String, dynamic>> _programList = [];
   List<Map<String, dynamic>> _musyrifahList = [];
   List<Map<String, dynamic>> _kelasList = [];
-  Set<Map<String, dynamic>> _selectedKelas = {};
+  Set<int> _selectedKelas = {};
 
   bool get _isEdit => widget.editData != null;
 
@@ -70,7 +70,9 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
       final kelas = detail['kelas'] as List?;
       if (kelas != null && mounted) {
         setState(() {
-          _selectedKelas = kelas.map((k) => k as Map<String, dynamic>).toSet();
+          _selectedKelas = kelas
+              .map((k) => (k as Map<String, dynamic>)['id'] as int)
+              .toSet();
         });
       }
     } catch (_) {}
@@ -175,13 +177,15 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
                   icon: Icons.meeting_room_outlined,
                   items: _kelasList,
                   selectedIds: _selectedKelas,
+                  idFn: (k) => k['id'],
                   labelFn: (k) => k['nama']?.toString() ?? '',
                   onChanged: (k) {
+                    final id = k['id'] as int;
                     setState(() {
-                      if (_selectedKelas.contains(k)) {
-                        _selectedKelas.remove(k);
+                      if (_selectedKelas.contains(id)) {
+                        _selectedKelas.remove(id);
                       } else {
-                        _selectedKelas.add(k);
+                        _selectedKelas.add(id);
                       }
                     });
                   },
@@ -235,7 +239,7 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
         'hari': _hari,
         'jam_mulai': _jamMulai,
         'jam_selesai': _jamSelesai,
-        'kelas_ids': _selectedKelas.map((k) => k['id'] as int).toList(),
+        'kelas_ids': _selectedKelas.toList(),
         'is_aktif': _isAktif ? 1 : 0,
       };
 

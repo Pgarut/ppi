@@ -243,36 +243,6 @@ class DaurohService {
     return (res['data'] as List).cast<Map<String, dynamic>>();
   }
 
-  static Future<void> inputNilai({
-    required int programId,
-    required int santriId,
-    double? nilaiHafalan,
-    double? nilaiBacaan,
-    String? catatan,
-  }) async {
-    final body = <String, dynamic>{
-      'program_id': programId,
-      'santri_id': santriId,
-    };
-    if (nilaiHafalan != null) body['nilai_hafalan'] = nilaiHafalan;
-    if (nilaiBacaan != null) body['nilai_bacaan'] = nilaiBacaan;
-    if (catatan != null) body['catatan'] = catatan;
-    await ApiClient.post('/musyrifah/nilai', body: body);
-  }
-
-  static Future<void> updateNilai({
-    required int id,
-    double? nilaiHafalan,
-    double? nilaiBacaan,
-    String? catatan,
-  }) async {
-    final body = <String, dynamic>{};
-    if (nilaiHafalan != null) body['nilai_hafalan'] = nilaiHafalan;
-    if (nilaiBacaan != null) body['nilai_bacaan'] = nilaiBacaan;
-    if (catatan != null) body['catatan'] = catatan;
-    await ApiClient.put('/musyrifah/nilai/$id', body: body);
-  }
-
   // ═══════════════════════════════════════════════════════════════
   //  SANTRI DAUROH ROUTES
   // ═══════════════════════════════════════════════════════════════

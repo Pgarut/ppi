@@ -311,9 +311,9 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
                   ),
                 ),
               ),
-              DataCell(_buildNilaiValue(row['nilai_bidang1'], max: 40)),
-              DataCell(_buildNilaiValue(row['nilai_bidang2'], max: 30)),
-              DataCell(_buildNilaiValue(row['nilai_bidang3'], max: 30)),
+              DataCell(_buildNilaiValue(row['nilai_bidang1'], max: _maxOf(row, 'max_bidang1', 40))),
+              DataCell(_buildNilaiValue(row['nilai_bidang2'], max: _maxOf(row, 'max_bidang2', 30))),
+              DataCell(_buildNilaiValue(row['nilai_bidang3'], max: _maxOf(row, 'max_bidang3', 30))),
               DataCell(_buildTotalValue(row['total_nilai'])),
               DataCell(Text(row['musyrifah_nama']?.toString() ?? '-')),
             ]);
@@ -345,6 +345,13 @@ class _NilaiMonitoringPageState extends State<NilaiMonitoringPage> {
       num.toStringAsFixed(0),
       style: TextStyle(fontWeight: FontWeight.w600, color: color),
     );
+  }
+
+  double _maxOf(Map<String, dynamic> row, String key, double fallback) {
+    final v = row[key];
+    if (v == null) return fallback;
+    final n = double.tryParse(v.toString());
+    return (n == null || n <= 0) ? fallback : n;
   }
 
   Widget _buildTotalValue(dynamic value) {
