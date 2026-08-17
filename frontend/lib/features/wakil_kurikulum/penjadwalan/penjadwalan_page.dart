@@ -472,15 +472,16 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
           const Text('KEGIATAN TETAP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey)),
           const SizedBox(width: 12),
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final k in _kegiatanTetap) ...[
-                    _buildKegiatanItem(k),
-                    const SizedBox(width: 6),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 90),
+              child: SingleChildScrollView(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final k in _kegiatanTetap) _buildKegiatanItem(k),
                   ],
-                ],
+                ),
               ),
             ),
           ),
