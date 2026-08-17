@@ -56,6 +56,25 @@ class WakilKurikulumService {
     return res['data'] as Map<String, dynamic>;
   }
 
+  static Future<List<dynamic>> getKegiatanTetap() async {
+    final res = await ApiClient.get('/wakil-kurikulum/kegiatan-tetap');
+    return res['data'] as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createKegiatanTetap(String nama, String tipe) async {
+    final res = await ApiClient.post('/wakil-kurikulum/kegiatan-tetap', body: {'nama': nama, 'tipe': tipe});
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> updateKegiatanTetap(int id, String nama, String tipe) async {
+    final res = await ApiClient.put('/wakil-kurikulum/kegiatan-tetap/$id', body: {'nama': nama, 'tipe': tipe});
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<void> deleteKegiatanTetap(int id) async {
+    await ApiClient.delete('/wakil-kurikulum/kegiatan-tetap/$id');
+  }
+
   static Future<Map<String, dynamic>> generateJadwal(int semesterId) async {
     final res = await ApiClient.post('/wakil-kurikulum/jadwal/generate', body: {'semester_id': semesterId});
     return res['data'] as Map<String, dynamic>;

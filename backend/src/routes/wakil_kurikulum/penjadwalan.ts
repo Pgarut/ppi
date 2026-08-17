@@ -90,9 +90,81 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
     return success({ kode, mulai, selesai, jadwal_synced: sync.meta?.changes ?? 0 });
   }
 
+  // ── Kegiatan Tetap ──
+  if (subPath === 'kegiatan-tetap' && request.method === 'GET') {
+    const rows = await env.DB.prepare('SELECT id, nama, tipe FROM kegiatan_tetap ORDER BY urutan, id')
+      .all<{ id: number; nama: string; tipe: string }>();
+    return success(rows.results.length > 0 ? rows.results : KEGIATAN_TETAP);
+  }
+
+  // ── Tambah Kegiatan Tetap ──
+  if (subPath === 'kegiatan-tetap' && request.method === 'POST') {
+    const body = await request.json() as { nama?: string; tipe?: string };
+    const nama = body.nama?.trim() ?? '';
+    const tipe = body.tipe === 'istirahat' ? 'istirahat' : 'kegiatan';
+
+    if (!nama) return badRequest('Nama kegiatan tidak boleh kosong');
+    if (nama.length > 100) return badRequest('Nama kegiatan maksimal 100 karakter');
+
+    const maxRow = await env.DB.prepare('SELECT MAX(urutan) AS maxUrt FROM kegiatan_tetap').first<{ maxUrt: number | null }>();
+    const urutan = (maxRow?.maxUrt ?? 0) + 1;
+
+    const res = await env.DB.prepare('INSERT INTO kegiatan_tetap (nama, tipe, urutan) VALUES (?, ?, ?)')
+      .bind(nama, tipe, urutan).run();
+    const id = Number(res.meta?.last_row_id);
+
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'create', 'kegiatan_tetap', ?, ?)"
+    ).bind(user.sub, `Tambah kegiatan tetap: ${nama}`, ip).run();
+
+    return created({ id, nama, tipe });
+  }
+
+  // ── Update Kegiatan Tetap ──
+  if (subPath.startsWith('kegiatan-tetap/') && request.method === 'PUT') {
+    const id = parseInt(subPath.split('/')[1], 10);
+    if (!Number.isInteger(id)) return badRequest('ID kegiatan tidak valid');
+
+    const existing = await env.DB.prepare('SELECT nama FROM kegiatan_tetap WHERE id = ?').bind(id).first<{ nama: string }>();
+    if (!existing) return notFound('Kegiatan Tetap');
+
+    const body = await request.json() as { nama?: string; tipe?: string };
+    const nama = body.nama?.trim() ?? '';
+    const tipe = body.tipe === 'istirahat' ? 'istirahat' : 'kegiatan';
+
+    if (!nama) return badRequest('Nama kegiatan tidak boleh kosong');
+    if (nama.length > 100) return badRequest('Nama kegiatan maksimal 100 karakter');
+
+    await env.DB.prepare('UPDATE kegiatan_tetap SET nama = ?, tipe = ? WHERE id = ?')
+      .bind(nama, tipe, id).run();
+
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'kegiatan_tetap', ?, ?)"
+    ).bind(user.sub, `Ubah kegiatan tetap: ${existing.nama} → ${nama}`, ip).run();
+
+    return success({ id, nama, tipe });
+  }
+
+  // ── Hapus Kegiatan Tetap ──
+  if (subPath.startsWith('kegiatan-tetap/') && request.method === 'DELETE') {
+    const id = parseInt(subPath.split('/')[1], 10);
+    if (!Number.isInteger(id)) return badRequest('ID kegiatan tidak valid');
+
+    const existing = await env.DB.prepare('SELECT nama FROM kegiatan_tetap WHERE id = ?').bind(id).first<{ nama: string }>();
+    if (!existing) return notFound('Kegiatan Tetap');
+
+    await env.DB.prepare('DELETE FROM kegiatan_tetap WHERE id = ?').bind(id).run();
+
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'delete', 'kegiatan_tetap', ?, ?)"
+    ).bind(user.sub, `Hapus kegiatan tetap: ${existing.nama}`, ip).run();
+
+    return success({ id });
+  }
+
   // ── Referensi ──
   if (subPath === 'referensi' && request.method === 'GET') {
-    const [kelas, guru, mapel, ruangan, semester, tingkat, guruMapel, tahunAjaran] = await Promise.all([
+    const [kelas, guru, mapel, ruangan, semester, tingkat, guruMapel, tahunAjaran, kegiatanTetap] = await Promise.all([
       env.DB.prepare('SELECT id, nama, ruangan_id, tingkat_id FROM kelas ORDER BY nama').all(),
       env.DB.prepare("SELECT DISTINCT g.id, g.nama, g.nip FROM guru g INNER JOIN guru_mapel gm ON g.id = gm.guru_id WHERE g.status_aktif = 1 ORDER BY g.nama").all(),
       env.DB.prepare('SELECT id, nama, kode FROM mata_pelajaran ORDER BY nama').all(),
@@ -108,6 +180,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
          ORDER BY mp.nama, g.nama`
       ).all(),
       env.DB.prepare('SELECT id, nama FROM tahun_ajaran ORDER BY id DESC').all(),
+      env.DB.prepare('SELECT id, nama, tipe FROM kegiatan_tetap ORDER BY urutan, id').all(),
     ]);
 
     // Ambil mapel per kelas dari mapel_kelas
@@ -124,7 +197,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       mapel_ids: kelasMapelMap.get(k.id) || [],
     }));
 
-    return success({ kelas: kelasWithMapel, guru: guru.results, mapel: mapel.results, ruangan: ruangan.results, semester: semester.results, tingkat: tingkat.results, hari: HARI, guru_mapel: guruMapel.results, tahun_ajaran: tahunAjaran.results, kegiatan_tetap: KEGIATAN_TETAP });
+    return success({ kelas: kelasWithMapel, guru: guru.results, mapel: mapel.results, ruangan: ruangan.results, semester: semester.results, tingkat: tingkat.results, hari: HARI, guru_mapel: guruMapel.results, tahun_ajaran: tahunAjaran.results, kegiatan_tetap: kegiatanTetap.results.length > 0 ? kegiatanTetap.results : KEGIATAN_TETAP });
   }
 
   // ── Guru by Kelas + Mapel ──
