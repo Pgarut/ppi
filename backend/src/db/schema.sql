@@ -210,23 +210,29 @@ CREATE TABLE jadwal_pelajaran (
                             CHECK (status_validasi IN ('draft','tervalidasi'))
 );
 
--- Jam pelajaran (JP1..JP8) — waktu dapat diatur manual oleh Wakil Kurikulum
+-- Jam pelajaran (JP1..JP12) — waktu dapat diatur manual oleh Wakil Kurikulum.
+-- tipe: 'pelajaran' = jam mengajar, 'istirahat' = slot kosong untuk kegiatan istirahat.
 CREATE TABLE jp_slot (
-    kode     TEXT PRIMARY KEY,          -- 'JP1'..'JP8'
+    kode     TEXT PRIMARY KEY,          -- 'JP1'..'JP12'
     mulai    TEXT NOT NULL,             -- format 'HH:MM'
     selesai  TEXT NOT NULL,             -- format 'HH:MM'
-    urutan   INTEGER NOT NULL
+    urutan   INTEGER NOT NULL,
+    tipe     TEXT NOT NULL DEFAULT 'pelajaran'
 );
 
-INSERT OR IGNORE INTO jp_slot (kode, mulai, selesai, urutan) VALUES
-    ('JP1', '07:00', '07:45', 1),
-    ('JP2', '07:45', '08:30', 2),
-    ('JP3', '08:30', '09:15', 3),
-    ('JP4', '09:30', '10:15', 4),
-    ('JP5', '10:15', '11:00', 5),
-    ('JP6', '11:00', '11:45', 6),
-    ('JP7', '12:30', '13:15', 7),
-    ('JP8', '13:15', '14:00', 8);
+INSERT OR IGNORE INTO jp_slot (kode, mulai, selesai, urutan, tipe) VALUES
+    ('JP1',  '07:00', '07:40', 1,  'pelajaran'),
+    ('JP2',  '07:40', '08:20', 2,  'pelajaran'),
+    ('JP3',  '08:20', '09:00', 3,  'pelajaran'),
+    ('JP4',  '09:00', '09:20', 4,  'istirahat'),
+    ('JP5',  '09:20', '09:40', 5,  'pelajaran'),
+    ('JP6',  '09:40', '10:00', 6,  'istirahat'),
+    ('JP7',  '10:00', '10:40', 7,  'pelajaran'),
+    ('JP8',  '10:40', '11:20', 8,  'pelajaran'),
+    ('JP9',  '11:20', '12:00', 9,  'pelajaran'),
+    ('JP10', '12:00', '12:40', 10, 'istirahat'),
+    ('JP11', '12:40', '13:20', 11, 'pelajaran'),
+    ('JP12', '13:20', '14:00', 12, 'pelajaran');
 
 -- ============================================================
 -- 4. ABSENSI

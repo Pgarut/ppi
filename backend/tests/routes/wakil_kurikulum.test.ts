@@ -45,7 +45,7 @@ describe('Wakil Kurikulum Routes', () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(Array.isArray(body.data)).toBe(true);
-      expect(body.data.length).toBe(8);
+      expect(body.data.length).toBe(12);
       expect(body.data[0]).toHaveProperty('kode');
     });
 
@@ -63,8 +63,15 @@ describe('Wakil Kurikulum Routes', () => {
 
     it('should generate jadwal', async () => {
       const db = makeDb();
-      // Kesiapan guru
+      // jp_slot (urutan query pertama di handleGenerateJadwal)
       db.all
+        .mockResolvedValueOnce({ results: [
+          { kode: 'JP1', mulai: '07:00', selesai: '07:40', tipe: 'pelajaran' },
+          { kode: 'JP4', mulai: '09:00', selesai: '09:20', tipe: 'istirahat' },
+          { kode: 'JP6', mulai: '09:40', selesai: '10:00', tipe: 'istirahat' },
+          { kode: 'JP10', mulai: '12:00', selesai: '12:40', tipe: 'istirahat' },
+        ] })
+        // Kesiapan guru
         .mockResolvedValueOnce({ results: [{ guru_id: 1, hari_aktif: '["Sabtu","Minggu","Senin","Selasa","Rabu","Kamis"]', jp_max_per_hari: 8, jp_max_per_minggu: 24, guru_nama: 'Guru A' }] })
         // guru_mapel
         .mockResolvedValueOnce({ results: [{ guru_id: 1, mata_pelajaran_id: 1 }] })
@@ -183,6 +190,44 @@ describe('Wakil Kurikulum Routes', () => {
       const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'jadwal', '5'], makeUrl(''));
       expect(res.status).toBe(200);
       expect(db.run).toHaveBeenCalled();
+    });
+
+    it('should preserve kelas_id tiap anggota saat memindah sesi gabungan', async () => {
+      const db = makeDb();
+      // 1. existing jadwal (anggota gabungan)
+      db.first
+        .mockResolvedValueOnce({ id: 5, kelas_id: 1, mata_pelajaran_id: 1, guru_id: 1, hari: 'Senin', jam_mulai: '07:00', jam_selesai: '07:45', semester_id: 1, gabungan_id: 1, nama_kegiatan: null, is_istirahat: 0 })
+        // 2. validasi guru-mapel spesifik: lolos
+        .mockResolvedValueOnce({})
+        // 3. cekBentrok guru: tidak bentrok
+        .mockResolvedValueOnce(null)
+        // 4. cekBentrok kelas 1: tidak bentrok
+        .mockResolvedValueOnce(null)
+        // 5. cekBentrok kelas 2: tidak bentrok
+        .mockResolvedValueOnce(null);
+      // validasi: anggota gabungan, lalu cekBentrok: sessionKelas, lalu sessionIds sesi lama
+      db.all
+        .mockResolvedValueOnce({ results: [{ kelas_id: 1 }, { kelas_id: 2 }] })
+        .mockResolvedValueOnce({ results: [{ kelas_id: 1 }, { kelas_id: 2 }] })
+        .mockResolvedValueOnce({ results: [{ id: 5 }, { id: 6 }] });
+      db.run.mockResolvedValue({ meta: { changes: 1 } });
+
+      const req = makePut('/api/wakil-kurikulum/jadwal/5', {
+        kelas_id: 1, mata_pelajaran_id: 1, guru_id: 1,
+        hari: 'Senin', jam_mulai: '08:30', jam_selesai: '09:15',
+        semester_id: 1, gabungan_id: 1,
+      });
+      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'jadwal', '5'], makeUrl(''));
+      expect(res.status).toBe(200);
+
+      // Update sesi gabungan tidak boleh menimpa kelas_id anggota lain
+      const updateSql = db.DB.prepare.mock.calls
+        .map((c) => c[0])
+        .filter((s: string) => s.startsWith('UPDATE jadwal_pelajaran'));
+      expect(updateSql.length).toBeGreaterThan(0);
+      for (const sql of updateSql) {
+        expect(sql).not.toContain('kelas_id');
+      }
     });
 
     it('should list kesiapan guru', async () => {

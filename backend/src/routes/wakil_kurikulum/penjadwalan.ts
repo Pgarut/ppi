@@ -1,19 +1,22 @@
 import { Env, UserPayload } from '../../types';
 import { success, created, notFound, badRequest } from '../../utils/response';
 
-const JP_SLOTS = ['JP1', 'JP2', 'JP3', 'JP4', 'JP5', 'JP6', 'JP7', 'JP8'];
-const JP_TIMES: Record<string, { mulai: string; selesai: string }> = {
-  JP1: { mulai: '07:00', selesai: '07:45' },
-  JP2: { mulai: '07:45', selesai: '08:30' },
-  JP3: { mulai: '08:30', selesai: '09:15' },
-  JP4: { mulai: '09:30', selesai: '10:15' },
-  JP5: { mulai: '10:15', selesai: '11:00' },
-  JP6: { mulai: '11:00', selesai: '11:45' },
-  JP7: { mulai: '12:30', selesai: '13:15' },
-  JP8: { mulai: '13:15', selesai: '14:00' },
-};
+const JP_SLOTS: { kode: string; mulai: string; selesai: string; tipe: string }[] = [
+  { kode: 'JP1', mulai: '07:00', selesai: '07:40', tipe: 'pelajaran' },
+  { kode: 'JP2', mulai: '07:40', selesai: '08:20', tipe: 'pelajaran' },
+  { kode: 'JP3', mulai: '08:20', selesai: '09:00', tipe: 'pelajaran' },
+  { kode: 'JP4', mulai: '09:00', selesai: '09:20', tipe: 'istirahat' },
+  { kode: 'JP5', mulai: '09:20', selesai: '09:40', tipe: 'pelajaran' },
+  { kode: 'JP6', mulai: '09:40', selesai: '10:00', tipe: 'istirahat' },
+  { kode: 'JP7', mulai: '10:00', selesai: '10:40', tipe: 'pelajaran' },
+  { kode: 'JP8', mulai: '10:40', selesai: '11:20', tipe: 'pelajaran' },
+  { kode: 'JP9', mulai: '11:20', selesai: '12:00', tipe: 'pelajaran' },
+  { kode: 'JP10', mulai: '12:00', selesai: '12:40', tipe: 'istirahat' },
+  { kode: 'JP11', mulai: '12:40', selesai: '13:20', tipe: 'pelajaran' },
+  { kode: 'JP12', mulai: '13:20', selesai: '14:00', tipe: 'pelajaran' },
+];
 const HARI = ['Sabtu', 'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis'];
-const JP_PER_HARI = 8;
+const JP_PER_HARI = 12;
 const KEGIATAN_TETAP = [
   { nama: 'Istirahat RG', tipe: 'istirahat' },
   { nama: 'Istirahat UG', tipe: 'istirahat' },
@@ -28,11 +31,11 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
 
   // ── JP Slots ──
   if (subPath === 'jp-slots' && request.method === 'GET') {
-    const rows = await env.DB.prepare('SELECT kode, mulai, selesai FROM jp_slot ORDER BY urutan')
-      .all<{ kode: string; mulai: string; selesai: string }>();
+    const rows = await env.DB.prepare('SELECT kode, mulai, selesai, tipe FROM jp_slot ORDER BY urutan')
+      .all<{ kode: string; mulai: string; selesai: string; tipe: string }>();
     const slots = rows.results.length > 0
       ? rows.results
-      : JP_SLOTS.map(s => ({ kode: s, ...JP_TIMES[s] }));
+      : JP_SLOTS.map(s => ({ ...s }));
     return success(slots);
   }
 
@@ -277,7 +280,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
 
   // ── Referensi ──
   if (subPath === 'referensi' && request.method === 'GET') {
-    const [kelas, guru, mapel, ruangan, semester, tingkat, guruMapel, tahunAjaran, kegiatanTetap, kelasGabungan] = await Promise.all([
+    const [kelas, guru, mapel, ruangan, semester, tingkat, guruMapel, tahunAjaran, kegiatanTetap, kelasGabungan, guruMapelTingkat] = await Promise.all([
       env.DB.prepare('SELECT id, nama, ruangan_id, tingkat_id FROM kelas ORDER BY nama').all(),
       env.DB.prepare("SELECT DISTINCT g.id, g.nama, g.nip FROM guru g INNER JOIN guru_mapel gm ON g.id = gm.guru_id WHERE g.status_aktif = 1 ORDER BY g.nama").all(),
       env.DB.prepare('SELECT id, nama, kode FROM mata_pelajaran ORDER BY nama').all(),
@@ -302,6 +305,21 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
          FROM kelas_gabungan kg
          ORDER BY kg.id`
       ).all(),
+      // Tingkat per (guru, mapel): prioritas guru_mapel_kelas (spesifik) +
+      // fallback guru_kelas × mapel_kelas. Dipakai untuk filter "Daftar Mapel" per tingkat.
+      env.DB.prepare(
+        `SELECT guru_id, mata_pelajaran_id, tingkat_id FROM (
+           SELECT DISTINCT gmk.guru_id, gmk.mata_pelajaran_id, k.tingkat_id
+           FROM guru_mapel_kelas gmk
+           JOIN kelas k ON k.id = gmk.kelas_id
+           UNION
+           SELECT DISTINCT gm.guru_id, gm.mata_pelajaran_id, k.tingkat_id
+           FROM guru_mapel gm
+           JOIN guru_kelas gk ON gk.guru_id = gm.guru_id
+           JOIN kelas k ON k.id = gk.kelas_id
+           JOIN mapel_kelas mk ON mk.kelas_id = k.id AND mk.mata_pelajaran_id = gm.mata_pelajaran_id
+         )`
+      ).all<{ guru_id: number; mata_pelajaran_id: number; tingkat_id: number }>(),
     ]);
 
     // Ambil mapel per kelas dari mapel_kelas
@@ -332,7 +350,20 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       kelas_ids: gabKelasMap.get(g.id) || [],
     }));
 
-    return success({ kelas: kelasWithMapel, guru: guru.results, mapel: mapel.results, ruangan: ruangan.results, semester: semester.results, tingkat: tingkat.results, hari: HARI, guru_mapel: guruMapel.results, tahun_ajaran: tahunAjaran.results, kegiatan_tetap: kegiatanTetap.results.length > 0 ? kegiatanTetap.results : KEGIATAN_TETAP, kelas_gabungan: kelasGabunganWithAnggota });
+    // tingkat_ids per (guru, mapel) agar "Daftar Mapel" bisa difilter per tingkat
+    const guruMapelTingkatMap = new Map<string, number[]>();
+    for (const r of guruMapelTingkat.results) {
+      const key = `${r.guru_id}|${r.mata_pelajaran_id}`;
+      if (!guruMapelTingkatMap.has(key)) guruMapelTingkatMap.set(key, []);
+      const list = guruMapelTingkatMap.get(key)!;
+      if (!list.includes(r.tingkat_id)) list.push(r.tingkat_id);
+    }
+    const guruMapelWithTingkat = guruMapel.results.map((gm: any) => ({
+      ...gm,
+      tingkat_ids: guruMapelTingkatMap.get(`${gm.guru_id}|${gm.mata_pelajaran_id}`) || [],
+    }));
+
+    return success({ kelas: kelasWithMapel, guru: guru.results, mapel: mapel.results, ruangan: ruangan.results, semester: semester.results, tingkat: tingkat.results, hari: HARI, guru_mapel: guruMapelWithTingkat, tahun_ajaran: tahunAjaran.results, kegiatan_tetap: kegiatanTetap.results.length > 0 ? kegiatanTetap.results : KEGIATAN_TETAP, kelas_gabungan: kelasGabunganWithAnggota });
   }
 
   // ── Guru by Kelas + Mapel ──
@@ -679,12 +710,32 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       }
 
       if (gabunganSesi) {
-        // Propagasi update ke seluruh anggota sesi (berdasar identitas sesi LAMA)
-        const sessionIds = await env.DB.prepare(
-          `SELECT id FROM jadwal_pelajaran WHERE gabungan_id = ? AND hari = ? AND jam_mulai = ? AND jam_selesai = ? AND guru_id = ?`
-        ).bind(existing['gabungan_id'], existing['hari'], existing['jam_mulai'], existing['jam_selesai'], existing['guru_id']).all<{ id: number }>();
-        for (const s of sessionIds.results) {
-          await env.DB.prepare(`UPDATE jadwal_pelajaran SET ${setClauses.join(', ')} WHERE id = ?`).bind(...vals, s.id).run();
+        // Propagasi hanya bila entri lama memang bagian dari sesi gabungan.
+        // Jika entri lama biasa (gabungan_id NULL), jangan propagasi: cukup update baris ini.
+        if (existing['gabungan_id']) {
+          const sessionIds = await env.DB.prepare(
+            `SELECT id FROM jadwal_pelajaran WHERE gabungan_id = ? AND hari = ? AND jam_mulai = ? AND jam_selesai = ? AND guru_id = ?`
+          ).bind(existing['gabungan_id'], existing['hari'], existing['jam_mulai'], existing['jam_selesai'], existing['guru_id']).all<{ id: number }>();
+
+          // kelas_id & gabungan_id tiap anggota DIJAGA saat memindah sesi,
+          // agar drop pada satu kolom kelas tidak menimpa kelas anggota lainnya.
+          const sessionClauses: string[] = [];
+          const sessionVals: unknown[] = [];
+          for (let i = 0; i < setClauses.length; i++) {
+            const clause = setClauses[i];
+            if (clause.startsWith('kelas_id') || clause.startsWith('gabungan_id')) continue;
+            sessionClauses.push(clause);
+            sessionVals.push(vals[i]);
+          }
+
+          if (sessionClauses.length > 0) {
+            for (const s of sessionIds.results) {
+              await env.DB.prepare(`UPDATE jadwal_pelajaran SET ${sessionClauses.join(', ')} WHERE id = ?`).bind(...sessionVals, s.id).run();
+            }
+          }
+        } else {
+          vals.push(id);
+          await env.DB.prepare(`UPDATE jadwal_pelajaran SET ${setClauses.join(', ')} WHERE id = ?`).bind(...vals).run();
         }
       } else {
         vals.push(id);
@@ -1020,7 +1071,16 @@ export async function handleGenerateJadwal(request: Request, env: Env, user: Use
     "DELETE FROM jadwal_pelajaran WHERE semester_id = ? AND status_validasi = 'draft'"
   ).bind(semesterId).run();
 
-  // 2. Ambil kesiapan guru
+  // 2. Ambil slot jam pelajaran (prioritas dari DB, fallback ke konstanta)
+  const slotRows = await env.DB.prepare('SELECT kode, mulai, selesai, tipe FROM jp_slot ORDER BY urutan')
+    .all<{ kode: string; mulai: string; selesai: string; tipe: string }>();
+  const slots = slotRows.results.length > 0
+    ? slotRows.results
+    : JP_SLOTS.map(s => ({ ...s }));
+  // Slot istirahat (tipe 'istirahat') tidak dipakai untuk mengisi jam pelajaran
+  const jpSlots = slots.filter(s => s.tipe !== 'istirahat');
+
+  // 2b. Ambil kesiapan guru
   const kesiapanList = await env.DB.prepare(
     `SELECT gmp.*, g.nama as guru_nama
      FROM guru_mata_pelajaran gmp
@@ -1166,8 +1226,8 @@ export async function handleGenerateJadwal(request: Request, env: Env, user: Use
           const mingguCount = guruMingguCount.get(guru.guruId) || 0;
           if (mingguCount >= guru.jpMaxMinggu) continue;
 
-          for (const jp of JP_SLOTS) {
-            const time = JP_TIMES[jp];
+          for (const jp of jpSlots) {
+            const time = { mulai: jp.mulai, selesai: jp.selesai };
             const kelasKey = `${kelasId}|${hari}|${time.mulai}`;
             const guruKey = `${guru.guruId}|${hari}|${time.mulai}`;
 

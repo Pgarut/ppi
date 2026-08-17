@@ -419,6 +419,12 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
 
   Widget _buildMapelPanel() {
     final guruMapel = _refList('guru_mapel');
+    final mapelFiltered = _filterTingkat != null
+        ? guruMapel.where((gm) {
+            final tingkatIds = (gm['tingkat_ids'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
+            return tingkatIds.contains(_filterTingkat);
+          }).toList()
+        : guruMapel;
 
     return Container(
       color: Colors.white,
@@ -454,15 +460,15 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
               children: [
                 const Text('DAFTAR MAPEL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey)),
                 const Spacer(),
-                Text('${guruMapel.length} mapel', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                Text('${mapelFiltered.length} mapel', style: const TextStyle(fontSize: 10, color: Colors.grey)),
               ],
             ),
           ),
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: guruMapel.length,
-              itemBuilder: (_, i) => _buildMapelItem(guruMapel[i]),
+              itemCount: mapelFiltered.length,
+              itemBuilder: (_, i) => _buildMapelItem(mapelFiltered[i]),
             ),
           ),
         ],
@@ -2157,6 +2163,14 @@ class _KelolaGabunganDialogState extends State<_KelolaGabunganDialog> {
               style: TextStyle(fontSize: 11, color: Colors.grey[600]),
             ),
             const SizedBox(height: 8),
+            Row(
+              children: [
+                const Text('DAFTAR KELAS GABUNGAN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey)),
+                const Spacer(),
+                Text('${_items.length} gabungan', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+              ],
+            ),
+            const SizedBox(height: 4),
             Flexible(
               child: Container(
                 constraints: const BoxConstraints(maxHeight: 260),
@@ -2177,11 +2191,13 @@ class _KelolaGabunganDialogState extends State<_KelolaGabunganDialog> {
                             itemBuilder: (_, i) {
                               final g = _items[i];
                               final ids = (g['kelas_ids'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+                              final kelasNama = g['kelas_nama']?.toString() ?? '';
+                              final subtitle = kelasNama.isNotEmpty ? kelasNama : 'Kelas id: ${ids.join(', ')}';
                               return ListTile(
                                 dense: true,
                                 leading: const Icon(Icons.group_work, size: 18, color: Colors.indigo),
                                 title: Text(g['nama']?.toString() ?? '-', style: const TextStyle(fontSize: 12.5)),
-                                subtitle: Text(ids.join(', '), style: const TextStyle(fontSize: 11)),
+                                subtitle: Text(subtitle, style: const TextStyle(fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -2444,7 +2460,7 @@ class _WaktuDialogState extends State<_WaktuDialog> {
                   child: TextField(
                     controller: _selesaiCtrl,
                     keyboardType: TextInputType.datetime,
-                    decoration: const InputDecoration(labelText: 'Selesai', hintText: '07:45', isDense: true),
+                    decoration: const InputDecoration(labelText: 'Selesai', hintText: '07:40', isDense: true),
                   ),
                 ),
               ],
