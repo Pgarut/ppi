@@ -663,7 +663,17 @@ async function updateJadwal(request: Request, env: Env, id: number, user: UserPa
       is_aktif = COALESCE(?, is_aktif),
       updated_at = datetime('now')
     WHERE id = ?
-  `).bind(program_id, musyrifah_1_id, musyrifah_2_id, jenjang, hari, jam_mulai, jam_selesai, is_aktif, id).run();
+  `).bind(
+    program_id ?? null,
+    musyrifah_1_id ?? null,
+    musyrifah_2_id ?? null,
+    jenjang ?? null,
+    hari ?? null,
+    jam_mulai ?? null,
+    jam_selesai ?? null,
+    is_aktif ?? null,
+    id
+  ).run();
 
   // Update kelas
   if (Array.isArray(kelas_ids)) {
