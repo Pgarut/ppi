@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_utils.dart';
 import '../../../shared/widgets/common_widgets.dart';
 import '../services/admin_service.dart';
 
@@ -206,6 +207,7 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
             DataColumn(label: Text('Jam Keluar', style: TextStyle(fontWeight: FontWeight.w600))),
             DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
             DataColumn(label: Text('Keterangan', style: TextStyle(fontWeight: FontWeight.w600))),
+            DataColumn(label: Text('Aksi', style: TextStyle(fontWeight: FontWeight.w600))),
           ],
           rows: _data.map((item) {
             final s = item;
@@ -218,11 +220,102 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
               DataCell(Text(s['jam_keluar']?.toString() ?? '-')),
               DataCell(AttendanceStatus.fromString(st)),
               DataCell(Text(s['keterangan']?.toString() ?? '-')),
+              DataCell(IconButton(
+                icon: const Icon(Icons.edit_outlined, size: 18, color: AppTheme.primary),
+                tooltip: 'Koreksi',
+                onPressed: () => _showEditGuruDialog(s),
+              )),
             ]);
           }).toList(),
         ),
       ),
     );
+  }
+
+  Future<void> _showEditGuruDialog(Map<String, dynamic> item) async {
+    final id = (item['id'] as num).toInt();
+    final jamMasukCtrl = TextEditingController(text: item['jam_masuk']?.toString() ?? '');
+    final jamKeluarCtrl = TextEditingController(text: item['jam_keluar']?.toString() ?? '');
+    final keteranganCtrl = TextEditingController(text: item['keterangan']?.toString() ?? '');
+    String status = item['status']?.toString() ?? 'hadir';
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Koreksi Absensi Asatidz'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${item['guru_nama'] ?? '-'} — ${item['tanggal'] ?? '-'}',
+                  style: const TextStyle(fontSize: 12, color: AppTheme.grey500),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: jamMasukCtrl,
+                  decoration: inputDecoration('Jam Masuk (HH:MM)', Icons.login, optional: true),
+                  keyboardType: TextInputType.datetime,
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: jamKeluarCtrl,
+                  decoration: inputDecoration('Jam Keluar (HH:MM)', Icons.logout, optional: true),
+                  keyboardType: TextInputType.datetime,
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: status,
+                  isDense: true,
+                  decoration: inputDecoration('Status', Icons.filter_alt_outlined),
+                  items: ['hadir', 'izin', 'sakit', 'alpa'].map((s) =>
+                      DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13)))).toList(),
+                  onChanged: (v) => setState(() => status = v ?? 'hadir'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: keteranganCtrl,
+                  decoration: inputDecoration('Keterangan', Icons.notes, optional: true),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            FilledButton(
+              onPressed: () async {
+                final body = <String, dynamic>{};
+                if (jamMasukCtrl.text.trim().isNotEmpty) body['jam_masuk'] = jamMasukCtrl.text.trim();
+                if (jamKeluarCtrl.text.trim().isNotEmpty) body['jam_keluar'] = jamKeluarCtrl.text.trim();
+                body['status'] = status;
+                if (keteranganCtrl.text.trim().isNotEmpty) body['keterangan'] = keteranganCtrl.text.trim();
+
+                if (body['jam_masuk'] == null && body['jam_keluar'] == null) {
+                  AppUtils.showError(ctx, 'Isi minimal salah satu jam (masuk/keluar)');
+                  return;
+                }
+                try {
+                  await AdminService.updateAbsensiGuru(id, body);
+                  if (ctx.mounted) Navigator.pop(ctx, true);
+                } catch (e) {
+                  if (ctx.mounted) AppUtils.handleError(ctx, e, message: 'Gagal menyimpan koreksi');
+                }
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved == true) {
+      if (!mounted) return;
+      AppUtils.showSuccess(context, 'Koreksi absensi disimpan');
+      _load();
+    }
   }
 
   Widget _buildRekapTab() {

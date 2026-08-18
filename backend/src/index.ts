@@ -202,7 +202,7 @@ export default {
 
         // Absensi, Nilai, Rapor monitoring
         if (subPath.startsWith('absensi')) {
-          return handleAdminAbsensi(request, env, url);
+          return handleAdminAbsensi(request, env, user, url);
         }
         if (subPath.startsWith('nilai')) {
           return handleAdminNilai(request, env, user, url);
@@ -740,7 +740,11 @@ async function handleDashboardWK(env: Env): Promise<Response> {
 
 // ═══════════════════════════════════════════════════════════════
 //  QR SCAN ABSENSI GURU (shared untuk guru, WK, KS)
+//  Window: masuk 06:30-10:00 WIB, keluar 11:00-15:00 WIB
+//  (dapat disesuaikan via env JAM_MASUK_*/JAM_KELUAR_*)
 // ═══════════════════════════════════════════════════════════════
+const WIB_MS = 7 * 60 * 60 * 1000;
+
 async function handleScanAbsensi(request: Request, env: Env, user: UserPayload): Promise<Response> {
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
 
@@ -762,33 +766,63 @@ async function handleScanAbsensi(request: Request, env: Env, user: UserPayload):
     return error('Data guru tidak ditemukan untuk akun ini', 400);
   }
 
-  const now = new Date();
-  const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
-  const currentTime = now.toTimeString().split(' ')[0]; // HH:MM:SS
+  // Waktu selalu dalam WIB (UTC+7)
+  const wibNow = new Date(Date.now() + WIB_MS);
+  const today = wibNow.toISOString().split('T')[0];       // YYYY-MM-DD (WIB)
+  const currentTime = wibNow.toISOString().slice(11, 19); // HH:MM:SS (WIB)
+
+  // Window jam absensi (default: masuk 06:30-10:00, keluar 11:00-15:00 WIB)
+  const masukMulai = env.JAM_MASUK_MULAI || '06:30:00';
+  const masukSelesai = env.JAM_MASUK_SELESAI || '10:00:00';
+  const keluarMulai = env.JAM_KELUAR_MULAI || '11:00:00';
+  const keluarSelesai = env.JAM_KELUAR_SELESAI || '15:00:00';
+
+  const inJamMasuk = currentTime >= masukMulai && currentTime <= masukSelesai;
+  const inJamKeluar = currentTime >= keluarMulai && currentTime <= keluarSelesai;
 
   // Cek apakah sudah ada absensi hari ini
   const existing = await env.DB.prepare(
     'SELECT id, jam_masuk, jam_keluar FROM absensi_guru WHERE guru_id = ? AND tanggal = ?'
   ).bind(user.guru_id, today).first<{ id: number; jam_masuk: string | null; jam_keluar: string | null }>();
 
-  if (!existing) {
-    // Scan pertama → Jam Masuk
-    await env.DB.prepare(
-      'INSERT INTO absensi_guru (guru_id, tanggal, jam_masuk, status) VALUES (?, ?, ?, ?)'
-    ).bind(user.guru_id, today, currentTime, 'hadir').run();
+  // Di luar window jam absensi
+  if (!inJamMasuk && !inJamKeluar) {
+    return error(
+      `Di luar jam absensi. Jam masuk ${masukMulai.slice(0, 5)}–${masukSelesai.slice(0, 5)}, jam keluar ${keluarMulai.slice(0, 5)}–${keluarSelesai.slice(0, 5)} WIB`,
+      400
+    );
+  }
 
-    // Log aktivitas
-    await env.DB.prepare(
-      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'scan_masuk', 'absensi_guru', ?, ?)"
-    ).bind(user.sub, `Scan QR masuk - ${user.username}`, ip).run();
+  if (inJamMasuk) {
+    if (!existing) {
+      // Scan masuk → Jam Masuk
+      await env.DB.prepare(
+        'INSERT INTO absensi_guru (guru_id, tanggal, jam_masuk, status) VALUES (?, ?, ?, ?)'
+      ).bind(user.guru_id, today, currentTime, 'hadir').run();
 
-    return success({
-      action: 'jam_masuk',
-      time: currentTime,
-      message: `Absensi masuk tercatat pukul ${currentTime}`,
-    });
-  } else if (existing.jam_masuk && !existing.jam_keluar) {
-    // Scan kedua → Jam Keluar
+      // Log aktivitas
+      await env.DB.prepare(
+        "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'scan_masuk', 'absensi_guru', ?, ?)"
+      ).bind(user.sub, `Scan QR masuk - ${user.username}`, ip).run();
+
+      return success({
+        action: 'jam_masuk',
+        time: currentTime,
+        message: `Absensi masuk tercatat pukul ${currentTime} WIB`,
+      });
+    }
+    if (existing.jam_masuk && !existing.jam_keluar) {
+      return error(`Jam masuk sudah tercatat. Jam keluar dibuka pukul ${keluarMulai.slice(0, 5)} WIB.`, 400);
+    }
+    return error('Anda sudah melakukan absensi masuk dan keluar hari ini', 400);
+  }
+
+  // inJamKeluar
+  if (!existing || !existing.jam_masuk) {
+    return error('Belum ada absen masuk hari ini', 400);
+  }
+  if (existing.jam_masuk && !existing.jam_keluar) {
+    // Scan keluar → Jam Keluar
     await env.DB.prepare(
       'UPDATE absensi_guru SET jam_keluar = ? WHERE id = ?'
     ).bind(currentTime, existing.id).run();
@@ -801,10 +835,8 @@ async function handleScanAbsensi(request: Request, env: Env, user: UserPayload):
     return success({
       action: 'jam_keluar',
       time: currentTime,
-      message: `Absensi keluar tercatat pukul ${currentTime}`,
+      message: `Absensi keluar tercatat pukul ${currentTime} WIB`,
     });
-  } else {
-    // Sudah scan masuk dan keluar
-    return error('Anda sudah melakukan absensi masuk dan keluar hari ini', 400);
   }
+  return error('Anda sudah melakukan absensi masuk dan keluar hari ini', 400);
 }

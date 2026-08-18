@@ -6,6 +6,10 @@ export interface Env {
   CORS_ORIGIN?: string;
   QR_DAUROH_TOKEN?: string;
   QR_ABSENSI_TOKEN?: string;
+  JAM_MASUK_MULAI?: string;
+  JAM_MASUK_SELESAI?: string;
+  JAM_KELUAR_MULAI?: string;
+  JAM_KELUAR_SELESAI?: string;
 }
 
 export interface UserPayload {

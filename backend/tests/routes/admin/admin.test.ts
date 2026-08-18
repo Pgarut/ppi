@@ -214,7 +214,7 @@ describe('Admin Routes', () => {
       db.all.mockResolvedValue({ results: [{ id: 1, guru_nama: 'Guru A', status: 'hadir' }] });
 
       const req = makeGet('/api/admin/absensi/guru');
-      const res = await handleAdminAbsensi(req, db, makeUrl('/api/admin/absensi/guru'));
+      const res = await handleAdminAbsensi(req, db, adminUser, makeUrl('/api/admin/absensi/guru'));
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.data.items).toHaveLength(1);
@@ -226,7 +226,7 @@ describe('Admin Routes', () => {
       db.all.mockResolvedValue({ results: [{ id: 1, siswa_nama: 'Siswa A', status: 'hadir' }] });
 
       const req = makeGet('/api/admin/absensi/siswa?kelas_id=1&tanggal=2026-07-27');
-      const res = await handleAdminAbsensi(req, db, makeUrl('/api/admin/absensi/siswa', 'kelas_id=1&tanggal=2026-07-27'));
+      const res = await handleAdminAbsensi(req, db, adminUser, makeUrl('/api/admin/absensi/siswa', 'kelas_id=1&tanggal=2026-07-27'));
       expect(res.status).toBe(200);
     });
 
@@ -235,7 +235,7 @@ describe('Admin Routes', () => {
       db.all.mockResolvedValue({ results: [{ status: 'hadir', count: 20 }] });
 
       const req = makeGet('/api/admin/absensi/rekap');
-      const res = await handleAdminAbsensi(req, db, makeUrl('/api/admin/absensi/rekap'));
+      const res = await handleAdminAbsensi(req, db, adminUser, makeUrl('/api/admin/absensi/rekap'));
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.data).toHaveProperty('siswa');
@@ -245,7 +245,36 @@ describe('Admin Routes', () => {
     it('should return 400 for unknown endpoint', async () => {
       const db = makeDb();
       const req = makeGet('/api/admin/absensi/unknown');
-      const res = await handleAdminAbsensi(req, db, makeUrl('/api/admin/absensi/unknown'));
+      const res = await handleAdminAbsensi(req, db, adminUser, makeUrl('/api/admin/absensi/unknown'));
+      expect(res.status).toBe(400);
+    });
+
+    it('should update absensi guru via PUT', async () => {
+      const db = makeDb();
+      db.first.mockResolvedValue({ id: 1, tanggal: '2026-08-18' });
+
+      const req = makePut('/api/admin/absensi/guru/1', { jam_masuk: '07:00', jam_keluar: '14:30', status: 'hadir' });
+      const res = await handleAdminAbsensi(req, db, adminUser, makeUrl('/api/admin/absensi/guru/1'));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.updated).toBe(true);
+    });
+
+    it('should return 404 when absensi guru not found', async () => {
+      const db = makeDb();
+      db.first.mockResolvedValue(null);
+
+      const req = makePut('/api/admin/absensi/guru/999', { status: 'izin' });
+      const res = await handleAdminAbsensi(req, db, adminUser, makeUrl('/api/admin/absensi/guru/999'));
+      expect(res.status).toBe(404);
+    });
+
+    it('should reject invalid time format in absensi guru PUT', async () => {
+      const db = makeDb();
+      db.first.mockResolvedValue({ id: 1, tanggal: '2026-08-18' });
+
+      const req = makePut('/api/admin/absensi/guru/1', { jam_masuk: '25:99' });
+      const res = await handleAdminAbsensi(req, db, adminUser, makeUrl('/api/admin/absensi/guru/1'));
       expect(res.status).toBe(400);
     });
   });

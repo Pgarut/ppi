@@ -68,6 +68,10 @@ class AdminService {
     return res['data'] as Map<String, dynamic>;
   }
 
+  static Future<void> updateAbsensiGuru(int id, Map<String, dynamic> body) async {
+    await ApiClient.put('/admin/absensi/guru/$id', body: body);
+  }
+
   static Future<Map<String, dynamic>> getAbsensiSiswa({int page = 1, int perPage = 20, String? kelasId, String? tanggal, String? status}) async {
     final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
     if (kelasId != null && kelasId.isNotEmpty) params['kelas_id'] = kelasId;

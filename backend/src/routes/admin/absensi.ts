@@ -1,5 +1,5 @@
-import { Env } from '../../types';
-import { success, badRequest } from '../../utils/response';
+import { Env, UserPayload } from '../../types';
+import { success, badRequest, notFound } from '../../utils/response';
 
 function buildStatusMap(results: { status: string; count: number }[]): Record<string, number> {
   const map: Record<string, number> = {};
@@ -7,7 +7,7 @@ function buildStatusMap(results: { status: string; count: number }[]): Record<st
   return map;
 }
 
-export async function handleAdminAbsensi(request: Request, env: Env, url: URL): Promise<Response> {
+export async function handleAdminAbsensi(request: Request, env: Env, user: UserPayload, url: URL): Promise<Response> {
   const subPath = url.pathname.replace('/api/admin/absensi', '');
 
   // GET /api/admin/absensi/guru - monitoring absensi guru
@@ -35,6 +35,51 @@ export async function handleAdminAbsensi(request: Request, env: Env, url: URL): 
     ).bind(...bindings).all();
 
     return success({ items: rows.results, pagination: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) } });
+  }
+
+  // PUT /api/admin/absensi/guru/:id - koreksi absensi guru oleh admin
+  const guruEditMatch = subPath.match(/^\/guru\/(\d+)$/);
+  if (guruEditMatch && request.method === 'PUT') {
+    const id = parseInt(guruEditMatch[1]);
+    const existing = await env.DB.prepare('SELECT id, tanggal FROM absensi_guru WHERE id = ?').bind(id).first<{ id: number; tanggal: string }>();
+    if (!existing) return notFound('Absensi Guru');
+
+    const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+    if (!body) return badRequest('Body JSON tidak valid');
+
+    const timeRe = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+    const normalize = (t: string | null) => (t && t.length === 5) ? `${t}:00` : t;
+
+    const jamMasuk = body.jam_masuk != null ? String(body.jam_masuk).trim() : null;
+    const jamKeluar = body.jam_keluar != null ? String(body.jam_keluar).trim() : null;
+    const status = body.status != null ? String(body.status).trim() : null;
+    const keterangan = body.keterangan != null ? String(body.keterangan).trim() : null;
+
+    if (jamMasuk !== null && (jamMasuk === '' || !timeRe.test(jamMasuk))) {
+      return badRequest('jam_masuk harus format HH:MM atau HH:MM:SS');
+    }
+    if (jamKeluar !== null && (jamKeluar === '' || !timeRe.test(jamKeluar))) {
+      return badRequest('jam_keluar harus format HH:MM atau HH:MM:SS');
+    }
+    if (status !== null && !['hadir', 'izin', 'sakit', 'alpa'].includes(status)) {
+      return badRequest('status harus hadir, izin, sakit, atau alpa');
+    }
+
+    await env.DB.prepare(
+      `UPDATE absensi_guru SET
+         jam_masuk = COALESCE(?, jam_masuk),
+         jam_keluar = COALESCE(?, jam_keluar),
+         status = COALESCE(?, status),
+         keterangan = COALESCE(?, keterangan)
+       WHERE id = ?`
+    ).bind(normalize(jamMasuk), normalize(jamKeluar), status, keterangan, id).run();
+
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'absensi', ?, ?)"
+    ).bind(user.sub, `Koreksi absensi guru id=${id} (${existing.tanggal})`, ip).run();
+
+    return success({ id, updated: true });
   }
 
   // GET /api/admin/absensi/siswa - monitoring absensi siswa
