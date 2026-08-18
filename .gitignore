@@ -9,6 +9,9 @@ build/
 backend.log
 backend_run.log
 
+# Backup database produksi (data sensitif, jangan di-commit)
+backend/backup_prod_*.sql
+
 # Flutter generated
 frontend/.dart_tool/
 frontend/.packages

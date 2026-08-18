@@ -52,6 +52,11 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
       return badRequest('Jam mulai harus lebih awal dari jam selesai');
     }
 
+    const existingTime = await env.DB.prepare('SELECT kode FROM jp_slot WHERE mulai = ?').bind(mulai).first<{ kode: string }>();
+    if (existingTime) {
+      return badRequest(`Waktu mulai ${mulai} sudah dipakai oleh ${existingTime.kode}. Gunakan waktu mulai yang berbeda.`);
+    }
+
     const maxRow = await env.DB.prepare('SELECT MAX(urutan) AS maxUrt FROM jp_slot').first<{ maxUrt: number }>();
     const nextUrutan = (maxRow?.maxUrt ?? 0) + 1;
     const kode = `JP${nextUrutan}`;
@@ -78,6 +83,11 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
     const existing = await env.DB.prepare('SELECT mulai, selesai FROM jp_slot WHERE kode = ?').bind(kode).first<{ mulai: string; selesai: string }>();
     if (!existing) return notFound('JP Slot');
 
+    const existingTime = await env.DB.prepare('SELECT kode FROM jp_slot WHERE mulai = ? AND kode != ?').bind(mulai, kode).first<{ kode: string }>();
+    if (existingTime) {
+      return badRequest(`Waktu mulai ${mulai} sudah dipakai oleh ${existingTime.kode}. Gunakan waktu mulai yang berbeda.`);
+    }
+
     await env.DB.prepare('UPDATE jp_slot SET mulai = ?, selesai = ? WHERE kode = ?')
       .bind(mulai, selesai, kode).run();
 
@@ -91,6 +101,31 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
     ).bind(user.sub, `Ubah waktu ${kode} dari ${existing.mulai}-${existing.selesai} ke ${mulai}-${selesai} (${sync.meta?.changes ?? 0} jadwal disinkronkan)`, ip).run();
 
     return success({ kode, mulai, selesai, jadwal_synced: sync.meta?.changes ?? 0 });
+  }
+
+  // ── Hapus JP Slot ──
+  if (subPath.startsWith('jp-slots/') && request.method === 'DELETE') {
+    const kode = subPath.split('/')[1];
+
+    const existing = await env.DB.prepare('SELECT mulai, selesai FROM jp_slot WHERE kode = ?').bind(kode).first<{ mulai: string; selesai: string }>();
+    if (!existing) return notFound('JP Slot');
+
+    // Proteksi: jangan hapus jika masih ada jadwal (draft/tervalidasi) yang memakai jam ini
+    const used = await env.DB.prepare(
+      'SELECT COUNT(*) AS total FROM jadwal_pelajaran WHERE jam_mulai = ? AND jam_selesai = ?'
+    ).bind(existing.mulai, existing.selesai).first<{ total: number }>();
+    const usedTotal = used?.total ?? 0;
+    if (usedTotal > 0) {
+      return badRequest(`Slot ${kode} masih dipakai ${usedTotal} jadwal. Ubah waktu slot tersebut atau hapus jadwal terkait terlebih dahulu.`);
+    }
+
+    await env.DB.prepare('DELETE FROM jp_slot WHERE kode = ?').bind(kode).run();
+
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'delete', 'jp_slot', ?, ?)"
+    ).bind(user.sub, `Hapus JP slot ${kode} (${existing.mulai}-${existing.selesai})`, ip).run();
+
+    return success({ kode });
   }
 
   // ── Kegiatan Tetap ──

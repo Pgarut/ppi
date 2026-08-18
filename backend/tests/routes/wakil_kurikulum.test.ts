@@ -49,6 +49,62 @@ describe('Wakil Kurikulum Routes', () => {
       expect(body.data[0]).toHaveProperty('kode');
     });
 
+    it('should reject JP slot with duplicate start time', async () => {
+      const db = makeDb();
+      db.first.mockResolvedValueOnce({ kode: 'JP1' });
+      const req = makePost('/api/wakil-kurikulum/jp-slots', { mulai: '07:00', selesai: '08:00' });
+      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'jp-slots'], makeUrl(''));
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error.message).toContain('sudah dipakai');
+    });
+
+    it('should reject JP slot update colliding with another slot start time', async () => {
+      const db = makeDb();
+      db.first
+        .mockResolvedValueOnce({ mulai: '07:40', selesai: '08:20' })
+        .mockResolvedValueOnce({ kode: 'JP2' });
+      const req = makePut('/api/wakil-kurikulum/jp-slots/JP1', { mulai: '07:40', selesai: '08:00' });
+      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'jp-slots', 'JP1'], makeUrl(''));
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error.message).toContain('sudah dipakai');
+    });
+
+    it('should allow JP slot update when start time is unchanged', async () => {
+      const db = makeDb();
+      db.first
+        .mockResolvedValueOnce({ mulai: '07:40', selesai: '08:20' })
+        .mockResolvedValueOnce(null);
+      db.run.mockResolvedValue({ meta: { changes: 0 } });
+      const req = makePut('/api/wakil-kurikulum/jp-slots/JP1', { mulai: '07:40', selesai: '08:30' });
+      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'jp-slots', 'JP1'], makeUrl(''));
+      expect(res.status).toBe(200);
+    });
+
+    it('should delete JP slot', async () => {
+      const db = makeDb();
+      db.first
+        .mockResolvedValueOnce({ mulai: '07:40', selesai: '08:20' })
+        .mockResolvedValueOnce({ total: 0 });
+      db.run.mockResolvedValue({ meta: { changes: 1 } });
+      const req = makeDelete('/api/wakil-kurikulum/jp-slots/JP1');
+      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'jp-slots', 'JP1'], makeUrl(''));
+      expect(res.status).toBe(200);
+    });
+
+    it('should reject deleting JP slot still used by schedules', async () => {
+      const db = makeDb();
+      db.first
+        .mockResolvedValueOnce({ mulai: '07:40', selesai: '08:20' })
+        .mockResolvedValueOnce({ total: 3 });
+      const req = makeDelete('/api/wakil-kurikulum/jp-slots/JP1');
+      const res = await handlePenjadwalan(req, db, wkUser, ['api', 'wakil-kurikulum', 'jp-slots', 'JP1'], makeUrl(''));
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error.message).toContain('masih dipakai');
+    });
+
     it('should return referensi dropdown data', async () => {
       const db = makeDb();
       db.all.mockResolvedValue({ results: [{ id: 1, nama: 'X-A' }] });

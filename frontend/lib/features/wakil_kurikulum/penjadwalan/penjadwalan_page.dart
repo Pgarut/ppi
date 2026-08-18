@@ -722,21 +722,37 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
                     borderRadius: BorderRadius.circular(6),
                     child: Padding(
                       padding: const EdgeInsets.all(4),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('JP $jpKode', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                              const SizedBox(width: 4),
-                              Icon(Icons.edit_outlined, size: 10, color: Colors.grey[400]),
-                            ],
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('JP $jpKode', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 4),
+                        InkWell(
+                          onTap: () => _editWaktuSlot(jp),
+                          borderRadius: BorderRadius.circular(4),
+                          child: Padding(
+                            padding: const EdgeInsets.all(1),
+                            child: Icon(Icons.edit_outlined, size: 10, color: Colors.grey[500]),
                           ),
-                          Text(jpWaktu, style: TextStyle(fontSize: 9, color: Colors.grey[600])),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 2),
+                        InkWell(
+                          onTap: () => _hapusJpSlot(jp),
+                          borderRadius: BorderRadius.circular(4),
+                          child: Padding(
+                            padding: const EdgeInsets.all(1),
+                            child: Icon(Icons.close, size: 11, color: Colors.red[400]),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(jpWaktu, style: TextStyle(fontSize: 9, color: Colors.grey[600])),
+                  ],
+                ),
                     ),
                   ),
                 ),
@@ -967,6 +983,9 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
 
     try {
       await WakilKurikulumService.updateJpSlot(kode, hasil['mulai']!, hasil['selesai']!);
+      final slots = await WakilKurikulumService.getJpSlots();
+      if (!mounted) return;
+      setState(() => _jpSlots = slots.cast<Map<String, dynamic>>());
       await _loadJadwal();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -977,6 +996,35 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal ubah waktu: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _hapusJpSlot(Map<String, dynamic> jp) async {
+    final kode = jp['kode'] as String;
+    final nama = 'JP $kode (${jp['mulai']}-${jp['selesai']})';
+
+    final ok = await AppUtils.confirm(
+      context,
+      title: 'Hapus JP Slot',
+      message: 'Hapus slot $nama dari tabel jadwal?\n\n'
+          'Jika slot ini masih dipakai jadwal, penghapusan akan ditolak.',
+    );
+    if (!ok || !mounted) return;
+
+    try {
+      await WakilKurikulumService.deleteJpSlot(kode);
+      final slots = await WakilKurikulumService.getJpSlots();
+      if (!mounted) return;
+      setState(() => _jpSlots = slots.cast<Map<String, dynamic>>());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('JP slot dihapus'), backgroundColor: Colors.orange),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal hapus JP: $e'), backgroundColor: Colors.red),
         );
       }
     }

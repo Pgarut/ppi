@@ -56,6 +56,10 @@ class WakilKurikulumService {
     return res['data'] as Map<String, dynamic>;
   }
 
+  static Future<void> deleteJpSlot(String kode) async {
+    await ApiClient.delete('/wakil-kurikulum/jp-slots/$kode');
+  }
+
   static Future<List<dynamic>> getKegiatanTetap() async {
     final res = await ApiClient.get('/wakil-kurikulum/kegiatan-tetap');
     return res['data'] as List<dynamic>;

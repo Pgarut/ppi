@@ -23,6 +23,7 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
   String _statusFilter = '';
   String? _kelasId;
   List<dynamic> _kelas = [];
+  final TextEditingController _tanggalCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -41,7 +42,21 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
   }
 
   @override
-  void dispose() { _tabCtrl.dispose(); super.dispose(); }
+  void dispose() { _tabCtrl.dispose(); _tanggalCtrl.dispose(); super.dispose(); }
+
+  Future<void> _pickTanggal() async {
+    final d = await showDatePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+    if (d != null) {
+      setState(() {
+        _filterTanggal = d.toIso8601String().substring(0, 10);
+        _tanggalCtrl.text = _filterTanggal;
+      });
+    }
+  }
 
   Future<void> _load() async {
     setState(() => _loading = true);
@@ -110,8 +125,10 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
           SizedBox(
             width: 200,
             child: TextField(
-              decoration: inputDecoration('Tanggal (YYYY-MM-DD)', Icons.calendar_today_outlined),
-              onChanged: (v) { _filterTanggal = v; },
+              controller: _tanggalCtrl,
+              readOnly: true,
+              onTap: _pickTanggal,
+              decoration: inputDecoration('Tanggal', Icons.calendar_today_outlined),
             ),
           ),
           SizedBox(
@@ -324,8 +341,10 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
         SizedBox(
           width: 240,
           child: TextField(
-            decoration: inputDecoration('Tanggal Mulai (YYYY-MM-DD)', Icons.date_range_outlined),
-            onChanged: (v) { _filterTanggal = v; },
+            controller: _tanggalCtrl,
+            readOnly: true,
+            onTap: _pickTanggal,
+            decoration: inputDecoration('Tanggal Mulai', Icons.date_range_outlined),
           ),
         ),
         FilledButton.icon(
@@ -424,6 +443,17 @@ class _AnalisisAbsensiTabState extends State<_AnalisisAbsensiTab> {
           width: 200,
           child: TextField(
             controller: _tglMulaiCtrl,
+            readOnly: true,
+            onTap: () async {
+              final d = await showDatePicker(
+                context: context,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2030),
+              );
+              if (d != null) {
+                setState(() => _tglMulaiCtrl.text = d.toIso8601String().substring(0, 10));
+              }
+            },
             decoration: inputDecoration('Tanggal Mulai', Icons.date_range_outlined),
           ),
         ),
@@ -431,6 +461,17 @@ class _AnalisisAbsensiTabState extends State<_AnalisisAbsensiTab> {
           width: 200,
           child: TextField(
             controller: _tglSelesaiCtrl,
+            readOnly: true,
+            onTap: () async {
+              final d = await showDatePicker(
+                context: context,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2030),
+              );
+              if (d != null) {
+                setState(() => _tglSelesaiCtrl.text = d.toIso8601String().substring(0, 10));
+              }
+            },
             decoration: inputDecoration('Tanggal Selesai', Icons.date_range_outlined, optional: true),
           ),
         ),

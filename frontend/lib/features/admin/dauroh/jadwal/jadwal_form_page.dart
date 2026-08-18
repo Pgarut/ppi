@@ -19,10 +19,17 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
   int? _musyrifah1Id;
   int? _musyrifah2Id;
   String _hari = 'Senin';
-  String _jamMulai = '08:00';
-  String _jamSelesai = '10:00';
+  final _jamMulaiCtrl = TextEditingController(text: '08:00');
+  final _jamSelesaiCtrl = TextEditingController(text: '10:00');
   bool _isAktif = true;
   bool _saving = false;
+
+  static bool _validWaktu(String t) => RegExp(r'^\d{2}:\d{2}$').hasMatch(t);
+
+  static int _toMenit(String t) {
+    final parts = t.split(':');
+    return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+  }
 
   List<Map<String, dynamic>> _programList = [];
   List<Map<String, dynamic>> _musyrifahList = [];
@@ -41,8 +48,8 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
       _musyrifah1Id = d['musyrifah_1_id'] as int?;
       _musyrifah2Id = d['musyrifah_2_id'] as int?;
       _hari = d['hari']?.toString() ?? 'Senin';
-      _jamMulai = d['jam_mulai']?.toString() ?? '08:00';
-      _jamSelesai = d['jam_selesai']?.toString() ?? '10:00';
+      _jamMulaiCtrl.text = d['jam_mulai']?.toString() ?? '08:00';
+      _jamSelesaiCtrl.text = d['jam_selesai']?.toString() ?? '10:00';
       _isAktif = d['is_aktif'] == 1;
       // Load kelas terkait
       _loadKelasTerkait(d['id'] as int);
@@ -76,6 +83,13 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
         });
       }
     } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _jamMulaiCtrl.dispose();
+    _jamSelesaiCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -145,28 +159,20 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: DaurohDropdown<String>(
-                        value: _jamMulai,
+                      child: _buildWaktuField(
+                        controller: _jamMulaiCtrl,
                         label: 'Jam Mulai',
                         icon: Icons.access_time,
-                        items: List.generate(24, (i) => DropdownMenuItem(
-                          value: '${i.toString().padLeft(2, '0')}:00',
-                          child: Text('${i.toString().padLeft(2, '0')}:00'),
-                        )),
-                        onChanged: (v) => setState(() => _jamMulai = v ?? '08:00'),
+                        hint: 'cth: 07:45',
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: DaurohDropdown<String>(
-                        value: _jamSelesai,
+                      child: _buildWaktuField(
+                        controller: _jamSelesaiCtrl,
                         label: 'Jam Selesai',
                         icon: Icons.access_time_filled,
-                        items: List.generate(24, (i) => DropdownMenuItem(
-                          value: '${i.toString().padLeft(2, '0')}:00',
-                          child: Text('${i.toString().padLeft(2, '0')}:00'),
-                        )),
-                        onChanged: (v) => setState(() => _jamSelesai = v ?? '10:00'),
+                        hint: 'cth: 10:30',
                       ),
                     ),
                   ],
@@ -221,6 +227,34 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
     );
   }
 
+  Widget _buildWaktuField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required String hint,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: TextInputType.datetime,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon),
+        border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
+        filled: true,
+        fillColor: Colors.white,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      ),
+      validator: (v) {
+        final t = v?.trim() ?? '';
+        if (t.isEmpty) return '$label wajib diisi';
+        if (!_validWaktu(t)) return 'Format jam harus HH:MM';
+        return null;
+      },
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_programId == null || _musyrifah1Id == null) {
@@ -229,6 +263,16 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
       );
       return;
     }
+
+    final jamMulai = _jamMulaiCtrl.text.trim();
+    final jamSelesai = _jamSelesaiCtrl.text.trim();
+    if (_toMenit(jamMulai) >= _toMenit(jamSelesai)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Jam mulai harus lebih awal dari jam selesai')),
+      );
+      return;
+    }
+
     setState(() => _saving = true);
 
     try {
@@ -237,8 +281,8 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
         'musyrifah_1_id': _musyrifah1Id,
         'musyrifah_2_id': _musyrifah2Id,
         'hari': _hari,
-        'jam_mulai': _jamMulai,
-        'jam_selesai': _jamSelesai,
+        'jam_mulai': jamMulai,
+        'jam_selesai': jamSelesai,
         'kelas_ids': _selectedKelas.toList(),
         'is_aktif': _isAktif ? 1 : 0,
       };
