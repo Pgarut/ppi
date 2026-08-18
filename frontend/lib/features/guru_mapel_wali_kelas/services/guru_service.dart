@@ -168,10 +168,11 @@ class GuruService {
   }
 
   // ── Materi ──
-  static Future<Map<String, dynamic>> getMateri({String? kelasId, String? mapelId, int page = 1, int perPage = 50}) async {
+  static Future<Map<String, dynamic>> getMateri({String? kelasId, String? mapelId, String? tingkatId, int page = 1, int perPage = 50}) async {
     final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
     if (kelasId != null) params['kelas_id'] = kelasId;
     if (mapelId != null) params['mata_pelajaran_id'] = mapelId;
+    if (tingkatId != null) params['tingkat_id'] = tingkatId;
     final res = await ApiClient.get('/guru/materi', queryParams: params);
     return res['data'] as Map<String, dynamic>;
   }

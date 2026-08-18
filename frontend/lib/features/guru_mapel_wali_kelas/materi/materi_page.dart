@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_utils.dart';
 import '../services/guru_service.dart';
@@ -15,7 +14,7 @@ class _MateriPageGuruState extends State<MateriPageGuru> {
   List<dynamic> _materi = [];
   List<dynamic> _assignments = [];
   bool _loading = true;
-  String? _filterKelasId;
+  String? _filterTingkatId;
   String? _filterMapelId;
 
   @override
@@ -27,7 +26,7 @@ class _MateriPageGuruState extends State<MateriPageGuru> {
   Future<void> _loadData() async {
     setState(() => _loading = true);
     try {
-      final materiRes = await GuruService.getMateri(kelasId: _filterKelasId, mapelId: _filterMapelId);
+      final materiRes = await GuruService.getMateri(tingkatId: _filterTingkatId, mapelId: _filterMapelId);
       final assignmentsRes = await GuruService.getMateriAssignments();
       if (mounted) {
         setState(() {
@@ -41,13 +40,6 @@ class _MateriPageGuruState extends State<MateriPageGuru> {
         AppUtils.handleError(context, e, message: 'Gagal memuat data materi');
         setState(() => _loading = false);
       }
-    }
-  }
-
-  Future<void> _openLink(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -96,12 +88,12 @@ class _MateriPageGuruState extends State<MateriPageGuru> {
     if (result == true) _loadData();
   }
 
-  List<Map<String, String>> get _kelasOptions {
+  List<Map<String, String>> get _tingkatOptions {
     final seen = <String>{};
     return _assignments
         .whereType<Map<String, dynamic>>()
-        .map<Map<String, String>>((a) => {'id': '${a['kelas_id']}', 'nama': '${a['kelas_nama']}'})
-        .where((e) => seen.add(e['id']!))
+        .map<Map<String, String>>((a) => {'id': '${a['tingkat_id']}', 'nama': '${a['tingkat_nama']}'})
+        .where((e) => e['id'] != 'null' && seen.add(e['id']!))
         .toList();
   }
 
@@ -119,30 +111,19 @@ class _MateriPageGuruState extends State<MateriPageGuru> {
     return Column(
       children: [
         // Header
-        Container(
-          padding: const EdgeInsets.all(16),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Row(
             children: [
-              const Icon(Icons.menu_book, color: AppTheme.primary, size: 20),
-              const SizedBox(width: 8),
-              const Text('Materi Pelajaran', style: TextStyle(
+              Icon(Icons.menu_book, color: AppTheme.primary, size: 20),
+              SizedBox(width: 8),
+              Text('Materi Pelajaran', style: TextStyle(
                 fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.primaryDark,
               )),
-              const Spacer(),
-              ElevatedButton.icon(
-                onPressed: () => _showAddEditDialog(),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Tambah'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
             ],
           ),
         ),
-        // Filter
+        // Filter: Pilih Tingkat | Mapel yang Diampu
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
@@ -156,14 +137,14 @@ class _MateriPageGuruState extends State<MateriPageGuru> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: DropdownButton<String>(
-                      value: _filterKelasId,
-                      hint: const Text('Semua Kelas', style: TextStyle(fontSize: 13)),
+                      value: _filterTingkatId,
+                      hint: const Text('Pilih Tingkat', style: TextStyle(fontSize: 13)),
                       isExpanded: true,
-                      items: [null, ..._kelasOptions].map((k) => DropdownMenuItem(
+                      items: [null, ..._tingkatOptions].map((k) => DropdownMenuItem(
                         value: k?['id'],
-                        child: Text(k?['nama'] ?? 'Semua Kelas', style: const TextStyle(fontSize: 13)),
+                        child: Text(k?['nama'] ?? 'Semua Tingkat', style: const TextStyle(fontSize: 13)),
                       )).toList(),
-                      onChanged: (v) { setState(() => _filterKelasId = v); _loadData(); },
+                      onChanged: (v) { setState(() => _filterTingkatId = v); _loadData(); },
                     ),
                   ),
                 ),
@@ -179,7 +160,7 @@ class _MateriPageGuruState extends State<MateriPageGuru> {
                     ),
                     child: DropdownButton<String>(
                       value: _filterMapelId,
-                      hint: const Text('Semua Mapel', style: TextStyle(fontSize: 13)),
+                      hint: const Text('Mapel yang Diampu', style: TextStyle(fontSize: 13)),
                       isExpanded: true,
                       items: [null, ..._mapelOptions].map((m) => DropdownMenuItem(
                         value: m?['id'],
@@ -194,6 +175,24 @@ class _MateriPageGuruState extends State<MateriPageGuru> {
           ),
         ),
         const SizedBox(height: 12),
+        // + Tambah Materi
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _showAddEditDialog(),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Tambah Materi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         // List
         Expanded(
           child: _loading
@@ -203,7 +202,7 @@ class _MateriPageGuruState extends State<MateriPageGuru> {
                   : RefreshIndicator(
                       onRefresh: _loadData,
                       child: ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                         itemCount: _materi.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (_, i) => _buildMateriCard(_materi[i]),
@@ -216,62 +215,91 @@ class _MateriPageGuruState extends State<MateriPageGuru> {
 
   Widget _buildMateriCard(Map<String, dynamic> m) {
     final isActive = m['is_aktif'] == 1;
+    final hasYoutube = m['link_youtube'] != null && (m['link_youtube'] as String).isNotEmpty;
+    final hasDrive = m['link_url'] != null && (m['link_url'] as String).isNotEmpty;
+    final tingkat = m['tingkat_nama'] != null && (m['tingkat_nama'] as String).isNotEmpty
+        ? 'Tingkat ${m['tingkat_nama']}'
+        : 'Tingkat -';
+
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Pertemuan badge + Judul
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (m['pertemuan'] != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text('Pertemuan ${m['pertemuan']}',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.primaryDark)),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: Text(m['judul'] ?? '-',
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            // Mapel • Tingkat
+            Text('${m['mapel_nama'] ?? '-'} • $tingkat',
+                style: const TextStyle(fontSize: 12, color: AppTheme.grey500)),
+            const SizedBox(height: 8),
+            // Badge Video / Drive
             Row(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(m['judul'] ?? '-',
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      const SizedBox(height: 4),
-                      Text('${m['mapel_nama'] ?? '-'} • ${m['kelas_nama'] ?? '-'}',
-                          style: const TextStyle(fontSize: 12, color: AppTheme.grey500)),
-                      if (m['pertemuan'] != null)
-                        Text('Pertemuan ${m['pertemuan']}',
-                            style: const TextStyle(fontSize: 11, color: AppTheme.grey400)),
-                      if (m['link_youtube'] != null)
-                        const Row(
-                          children: [
-                            Icon(Icons.play_circle_outline, size: 12, color: Colors.red),
-                            SizedBox(width: 4),
-                            Text('Video tersedia', style: TextStyle(fontSize: 11, color: Colors.red)),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-                Switch(
-                  value: isActive,
-                  onChanged: (v) => _toggleAktif(m['id'], isActive),
-                  activeColor: AppTheme.primary,
-                ),
+                if (hasYoutube) ...[
+                  const Icon(Icons.play_circle_outline, size: 14, color: Colors.red),
+                  const SizedBox(width: 4),
+                  const Text('Video', style: TextStyle(fontSize: 11, color: Colors.red)),
+                  const SizedBox(width: 12),
+                ],
+                if (hasDrive) ...[
+                  const Icon(Icons.folder_open, size: 14, color: AppTheme.primary),
+                  const SizedBox(width: 4),
+                  const Text('Materi', style: TextStyle(fontSize: 11, color: AppTheme.primary)),
+                ],
               ],
             ),
             if (m['deskripsi'] != null && (m['deskripsi'] as String).isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(m['deskripsi'], style: const TextStyle(fontSize: 12, color: AppTheme.grey600)),
+              Text(m['deskripsi'],
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.grey600)),
             ],
             const SizedBox(height: 8),
+            const Divider(height: 1),
+            const SizedBox(height: 4),
+            // On/Off + aksi
             Row(
               children: [
-                if (m['link_url'] != null)
-                  TextButton.icon(
-                    onPressed: () => _openLink(m['link_url']),
-                    icon: const Icon(Icons.open_in_new, size: 14),
-                    label: const Text('Buka Link', style: TextStyle(fontSize: 12)),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppTheme.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                Switch(
+                  value: isActive,
+                  onChanged: (v) => _toggleAktif(m['id'], isActive),
+                  activeColor: AppTheme.primary,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    isActive ? 'Aktif untuk $tingkat' : 'Nonaktif untuk $tingkat',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: isActive ? AppTheme.primaryDark : AppTheme.grey500,
                     ),
                   ),
-                const Spacer(),
+                ),
                 IconButton(
                   onPressed: () => _showAddEditDialog(materi: m),
                   icon: const Icon(Icons.edit, size: 18),
@@ -317,7 +345,7 @@ class _MateriDialogState extends State<_MateriDialog> {
   late TextEditingController _linkC;
   late TextEditingController _linkYoutubeC;
   late TextEditingController _pertemuanC;
-  String? _kelasId;
+  String? _tingkatId;
   String? _mapelId;
   bool _isAktif = true;
   bool _saving = false;
@@ -331,7 +359,7 @@ class _MateriDialogState extends State<_MateriDialog> {
     _linkC = TextEditingController(text: m?['link_url'] ?? '');
     _linkYoutubeC = TextEditingController(text: m?['link_youtube'] ?? '');
     _pertemuanC = TextEditingController(text: m?['pertemuan'] ?? '');
-    _kelasId = m?['kelas_id']?.toString();
+    _tingkatId = m?['tingkat_id']?.toString();
     _mapelId = m?['mata_pelajaran_id']?.toString();
     _isAktif = (m?['is_aktif'] ?? 1) == 1;
   }
@@ -346,11 +374,11 @@ class _MateriDialogState extends State<_MateriDialog> {
     super.dispose();
   }
 
-  List<Map<String, String>> get _kelasOptions {
+  List<Map<String, String>> get _tingkatOptions {
     final seen = <String>{};
     return widget.assignments
-        .map<Map<String, String>>((a) => {'id': '${a['kelas_id']}', 'nama': '${a['kelas_nama']}'})
-        .where((e) => seen.add(e['id']!))
+        .map<Map<String, String>>((a) => {'id': '${a['tingkat_id']}', 'nama': '${a['tingkat_nama']}'})
+        .where((e) => e['id'] != 'null' && seen.add(e['id']!))
         .toList();
   }
 
@@ -373,7 +401,7 @@ class _MateriDialogState extends State<_MateriDialog> {
         'link_url': _linkC.text.trim(),
         'link_youtube': _linkYoutubeC.text.trim().isEmpty ? null : _linkYoutubeC.text.trim(),
         'pertemuan': _pertemuanC.text.trim().isEmpty ? null : _pertemuanC.text.trim(),
-        'kelas_id': int.parse(_kelasId!),
+        'tingkat_id': int.parse(_tingkatId!),
         'mata_pelajaran_id': int.parse(_mapelId!),
         'is_aktif': _isAktif ? 1 : 0,
       };
@@ -404,13 +432,13 @@ class _MateriDialogState extends State<_MateriDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                value: _kelasId,
-                decoration: const InputDecoration(labelText: 'Kelas *', border: OutlineInputBorder()),
-                items: _kelasOptions.map((k) => DropdownMenuItem(
+                value: _tingkatId,
+                decoration: const InputDecoration(labelText: 'Tingkat *', border: OutlineInputBorder()),
+                items: _tingkatOptions.map((k) => DropdownMenuItem(
                   value: k['id'], child: Text(k['nama']!),
                 )).toList(),
-                onChanged: (v) => setState(() => _kelasId = v),
-                validator: (v) => v == null ? 'Pilih kelas' : null,
+                onChanged: (v) => setState(() => _tingkatId = v),
+                validator: (v) => v == null ? 'Pilih tingkat' : null,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(

@@ -8,13 +8,14 @@ export async function handleMateri(
 ): Promise<Response> {
   const mapelFilter = url.searchParams.get('mapel_id');
 
-  // Ambil kelas_id
+  // Ambil kelas_id + tingkat_id siswa
   const { results: siswaData } = await env.DB.prepare(
-    'SELECT kelas_id FROM siswa WHERE id = ?'
+    'SELECT s.kelas_id, k.tingkat_id FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id WHERE s.id = ?'
   ).bind(user.siswa_id).all();
 
   if (siswaData.length === 0) return error('Data siswa tidak ditemukan', 404);
   const kelasId = (siswaData[0] as any).kelas_id;
+  const tingkatId = (siswaData[0] as any).tingkat_id;
 
   // Cek apakah tabel materi ada
   const tableCheck = await env.DB.prepare(
@@ -25,15 +26,16 @@ export async function handleMateri(
     return success({ data: [], grouped: [] });
   }
 
-  // Query materi (hanya yang aktif)
+  // Query materi (hanya yang aktif) — berlaku untuk seluruh tingkat siswa
+  // (tingkat_id) dan kompatibel dengan materi lama berbasis kelas.
   let query = `
     SELECT m.*, mp.nama as mapel_nama, g.nama as guru_nama
     FROM materi m
     JOIN mata_pelajaran mp ON m.mata_pelajaran_id = mp.id
     JOIN guru g ON m.guru_id = g.id
-    WHERE m.kelas_id = ? AND m.is_aktif = 1
+    WHERE m.is_aktif = 1 AND (m.tingkat_id = ? OR m.kelas_id = ?)
   `;
-  const params: any[] = [kelasId];
+  const params: any[] = [tingkatId, kelasId];
 
   if (mapelFilter) {
     query += ' AND m.mata_pelajaran_id = ?';
