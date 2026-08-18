@@ -56,17 +56,19 @@
       to { transform: rotate(360deg); }
     }
 
-    /* Update notification styles */
-    .update-toast {
+    /* PWA Install banner styles */
+    .install-banner {
       position: fixed;
-      bottom: 20px;
+      bottom: 16px;
       left: 50%;
       transform: translateX(-50%);
-      background: #1B5E20;
-      color: white;
-      padding: 16px 24px;
+      width: calc(100% - 32px);
+      max-width: 420px;
+      background: #FFFFFF;
+      color: #1B5E20;
+      padding: 14px 16px;
       border-radius: 12px;
-      display: flex;
+      display: none;
       align-items: center;
       gap: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
@@ -77,17 +79,47 @@
       from { transform: translate(-50%, 100%); opacity: 0; }
       to { transform: translate(-50%, 0); opacity: 1; }
     }
-    .update-toast button {
-      background: white;
-      color: #1B5E20;
+    .install-banner.visible {
+      display: flex;
+    }
+    .install-banner-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+    }
+    .install-banner-text {
+      flex: 1;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .install-banner-text strong {
+      display: block;
+      font-size: 14px;
+    }
+    .install-banner-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .install-banner button {
+      background: #1B5E20;
+      color: white;
       border: none;
-      padding: 8px 16px;
+      padding: 10px 16px;
       border-radius: 8px;
       font-weight: 600;
       cursor: pointer;
+      white-space: nowrap;
+      font-size: 13px;
     }
-    .update-toast button:hover {
-      background: #E8F5E9;
+    .install-banner button:hover {
+      background: #2E7D32;
+    }
+    .install-banner-close {
+      background: transparent !important;
+      color: #666 !important;
+      padding: 6px 8px !important;
+      font-size: 16px;
     }
   </style>
 </head>
@@ -100,8 +132,11 @@
   
   <script>
     // Hide loading when Flutter is ready
+    var appReady = false;
     window.addEventListener('flutter-first-frame', function() {
+      appReady = true;
       document.getElementById('loading')?.remove();
+      if (deferredPrompt) showInstallBanner();
     });
 
     // Fallback: jika Flutter gagal load dalam 8 detik, sembunyikan loading
@@ -118,16 +153,53 @@
       }
     }, 8000);
 
-    // Register Service Worker for PWA
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js')
-          .then(function(registration) {
-            console.log('ServiceWorker registered with scope:', registration.scope);
-          })
-          .catch(function(error) {
-            console.log('ServiceWorker registration failed:', error);
-          });
+    // PWA Install: tangkap beforeinstallprompt lalu tampilkan banner install
+    var deferredPrompt = null;
+    var installBanner = null;
+
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (appReady) showInstallBanner();
+    });
+
+    window.addEventListener('appinstalled', function() {
+      deferredPrompt = null;
+      hideInstallBanner();
+    });
+
+    function showInstallBanner() {
+      if (installBanner) return;
+      installBanner = document.createElement('div');
+      installBanner.className = 'install-banner visible';
+      installBanner.innerHTML =
+        '<span class="install-banner-icon">📲</span>' +
+        '<div class="install-banner-text"><strong>Instal Aplikasi MA Persis</strong>Akses lebih cepat dari layar utama</div>' +
+        '<div class="install-banner-actions">' +
+        '<button onclick="installApp()">Instal</button>' +
+        '<button class="install-banner-close" onclick="dismissInstallBanner()" title="Tutup">✕</button>' +
+        '</div>';
+      document.body.appendChild(installBanner);
+    }
+
+    function hideInstallBanner() {
+      if (installBanner) {
+        installBanner.remove();
+        installBanner = null;
+      }
+    }
+
+    function dismissInstallBanner() {
+      deferredPrompt = null;
+      hideInstallBanner();
+    }
+
+    function installApp() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function(choiceResult) {
+        deferredPrompt = null;
+        hideInstallBanner();
       });
     }
 
@@ -139,35 +211,6 @@
     window.addEventListener('offline', function() {
       document.title = '[Offline] MA Persis';
     });
-
-    // Handle PWA update notification
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', function(event) {
-        if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
-          showUpdateNotification();
-        }
-      });
-    }
-
-    function showUpdateNotification() {
-      // Remove existing toast if any
-      const existing = document.querySelector('.update-toast');
-      if (existing) existing.remove();
-
-      // Create toast notification
-      const toast = document.createElement('div');
-      toast.className = 'update-toast';
-      toast.innerHTML = '<span style="margin-right:8px;">🔄 Update tersedia!</span>'
-        + '<button onclick="reloadApp()" style="background:white;color:#1B5E20;border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Muat Ulang</button>';
-      document.body.appendChild(toast);
-    }
-
-    function reloadApp() {
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
-      }
-      window.location.reload();
-    }
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
