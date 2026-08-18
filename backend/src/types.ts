@@ -10,6 +10,10 @@ export interface Env {
   JAM_MASUK_SELESAI?: string;
   JAM_KELUAR_MULAI?: string;
   JAM_KELUAR_SELESAI?: string;
+  DAUROH_JAM_MASUK_MULAI?: string;
+  DAUROH_JAM_MASUK_SELESAI?: string;
+  DAUROH_JAM_KELUAR_MULAI?: string;
+  DAUROH_JAM_KELUAR_SELESAI?: string;
 }
 
 export interface UserPayload {

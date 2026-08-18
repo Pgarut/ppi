@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/app_utils.dart';
 import '../../../../shared/widgets/common_widgets.dart';
 import '../services/dauroh_service.dart';
 
@@ -23,10 +24,15 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
   @override
   void initState() {
     super.initState();
-    _tanggal = DateTime.now().toIso8601String().split('T')[0];
+    _tanggal = _wibDate();
     _tanggalCtrl = TextEditingController(text: _tanggal);
     _loadPrograms();
     _load();
+  }
+
+  String _wibDate() {
+    final d = DateTime.now().toUtc().add(const Duration(hours: 7));
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -171,6 +177,8 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
         StatChip(label: 'Sakit', value: '${r['sakit'] ?? 0}', color: AppTheme.blue),
         const SizedBox(width: 8),
         StatChip(label: 'Alpha', value: '${r['alpha'] ?? 0}', color: AppTheme.error),
+        const SizedBox(width: 8),
+        StatChip(label: 'Belum Absen', value: '${r['belum_absen'] ?? 0}', color: AppTheme.grey400),
       ],
     );
   }
@@ -200,7 +208,7 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
     if (_data.isEmpty) {
       return const EmptyState(
         icon: Icons.checklist_outlined,
-        message: 'Belum ada data absensi musyrifah untuk tanggal ini',
+        message: 'Tidak ada jadwal dauroh aktif pada tanggal ini',
       );
     }
 
@@ -219,21 +227,36 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
             DataColumn(label: Text('JK')),
             DataColumn(label: Text('Program')),
             DataColumn(label: Text('Hari')),
+            DataColumn(label: Text('Jam Jadwal')),
             DataColumn(label: Text('Masuk')),
             DataColumn(label: Text('Keluar')),
             DataColumn(label: Text('Status')),
+            DataColumn(label: Text('Aksi')),
           ],
           rows: _data.map((row) {
             final status = row['status']?.toString() ?? 'hadir';
+            final belumAbsen = (row['belum_absen'] as num?)?.toInt() == 1;
             return DataRow(cells: [
               DataCell(Text(row['nipmus']?.toString() ?? '-')),
               DataCell(Text(row['nama']?.toString() ?? '-')),
               DataCell(Text(row['jenis_kelamin']?.toString() == 'L' ? 'L' : 'P')),
               DataCell(Text(row['nama_program']?.toString() ?? '-')),
               DataCell(Text(row['hari']?.toString() ?? '-')),
+              DataCell(Text('${row['jam_mulai'] ?? '-'} - ${row['jam_selesai'] ?? '-'}')),
               DataCell(Text(row['waktu_masuk']?.toString() ?? '-')),
               DataCell(Text(row['waktu_keluar']?.toString() ?? '-')),
-              DataCell(AttendanceStatus.fromString(status)),
+              DataCell(
+                belumAbsen
+                    ? const StatusBadge(label: 'Belum Absen', color: AppTheme.grey400)
+                    : AttendanceStatus.fromString(status),
+              ),
+              DataCell(row['absensi_id'] == null
+                  ? const Text('-')
+                  : IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18, color: AppTheme.primary),
+                      tooltip: 'Koreksi',
+                      onPressed: () => _showEditDialog(row),
+                    )),
             ]);
           }).toList(),
           headingRowColor: WidgetStateProperty.all(AppTheme.grey50),
@@ -244,5 +267,99 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _showEditDialog(Map<String, dynamic> row) async {
+    final id = (row['absensi_id'] as num).toInt();
+    final waktuMasukCtrl = TextEditingController(text: row['waktu_masuk']?.toString() ?? '');
+    final waktuKeluarCtrl = TextEditingController(text: row['waktu_keluar']?.toString() ?? '');
+    String status = row['status']?.toString() ?? 'hadir';
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Koreksi Absensi Musyrifah'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${row['nama'] ?? '-'} — ${row['nama_program'] ?? '-'}',
+                  style: const TextStyle(fontSize: 12, color: AppTheme.grey500),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: waktuMasukCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Jam Masuk (HH:MM)',
+                    prefixIcon: Icon(Icons.login, size: 18),
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+                  ),
+                  keyboardType: TextInputType.datetime,
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: waktuKeluarCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Jam Keluar (HH:MM)',
+                    prefixIcon: Icon(Icons.logout, size: 18),
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+                  ),
+                  keyboardType: TextInputType.datetime,
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: status,
+                  isDense: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    prefixIcon: Icon(Icons.filter_alt_outlined, size: 18),
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+                  ),
+                  items: ['hadir', 'izin', 'sakit', 'alpha'].map((s) =>
+                      DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13)))).toList(),
+                  onChanged: (v) => setState(() => status = v ?? 'hadir'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            FilledButton(
+              onPressed: () async {
+                final body = <String, dynamic>{};
+                if (waktuMasukCtrl.text.trim().isNotEmpty) body['waktu_masuk'] = waktuMasukCtrl.text.trim();
+                if (waktuKeluarCtrl.text.trim().isNotEmpty) body['waktu_keluar'] = waktuKeluarCtrl.text.trim();
+                body['status'] = status;
+
+                if (body['waktu_masuk'] == null && body['waktu_keluar'] == null) {
+                  AppUtils.showError(ctx, 'Isi minimal salah satu jam (masuk/keluar)');
+                  return;
+                }
+                try {
+                  await DaurohService.updateAbsensiMusyrifah(id, body);
+                  if (ctx.mounted) Navigator.pop(ctx, true);
+                } catch (e) {
+                  if (ctx.mounted) AppUtils.handleError(ctx, e, message: 'Gagal menyimpan koreksi');
+                }
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved == true) {
+      if (!mounted) return;
+      AppUtils.showSuccess(context, 'Koreksi absensi disimpan');
+      _load();
+    }
   }
 }

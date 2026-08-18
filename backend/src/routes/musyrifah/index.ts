@@ -295,6 +295,23 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
   const currentTime = wibTime();
   const hariIni = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][wib.getUTCDay()];
 
+  // Window jam absensi musyrifah (default: masuk 06:30-07:00, keluar 08:00-09:00 WIB)
+  const masukMulai = env.DAUROH_JAM_MASUK_MULAI || '06:30:00';
+  const masukSelesai = env.DAUROH_JAM_MASUK_SELESAI || '07:00:00';
+  const keluarMulai = env.DAUROH_JAM_KELUAR_MULAI || '08:00:00';
+  const keluarSelesai = env.DAUROH_JAM_KELUAR_SELESAI || '09:00:00';
+
+  const inJamMasuk = currentTime >= masukMulai && currentTime <= masukSelesai;
+  const inJamKeluar = currentTime >= keluarMulai && currentTime <= keluarSelesai;
+
+  // Di luar window jam absensi
+  if (!inJamMasuk && !inJamKeluar) {
+    return error(
+      `Di luar jam absensi. Jam masuk ${masukMulai.slice(0, 5)}–${masukSelesai.slice(0, 5)}, jam keluar ${keluarMulai.slice(0, 5)}–${keluarSelesai.slice(0, 5)} WIB`,
+      400
+    );
+  }
+
   // Cari jadwal aktif hari ini
   let jadwalFilter = '';
   const jadwalBindings: unknown[] = [musyrifah.id, musyrifah.id, hariIni];
@@ -340,15 +357,43 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
 
   // Cek absensi hari ini (check-in / check-out)
   const existing = await env.DB.prepare(
-    'SELECT id, waktu_keluar FROM dauroh_absensi_musyrifah WHERE musyrifah_id = ? AND jadwal_id = ? AND tanggal = ?'
-  ).bind(musyrifah.id, jadwal.id, today).first<{ id: number; waktu_keluar: string | null }>();
+    'SELECT id, waktu_masuk, waktu_keluar FROM dauroh_absensi_musyrifah WHERE musyrifah_id = ? AND jadwal_id = ? AND tanggal = ?'
+  ).bind(musyrifah.id, jadwal.id, today).first<{ id: number; waktu_masuk: string | null; waktu_keluar: string | null }>();
 
-  if (existing) {
-    if (existing.waktu_keluar) {
-      return error('Anda sudah melakukan absensi masuk dan keluar hari ini', 400);
+  const jadwalRes = {
+    program: jadwal.nama_program,
+    hari: jadwal.hari,
+    jam_mulai: jadwal.jam_mulai,
+    jam_selesai: jadwal.jam_selesai,
+  };
+
+  if (inJamMasuk) {
+    if (!existing) {
+      // Scan masuk → absen masuk
+      await env.DB.prepare(`
+        INSERT INTO dauroh_absensi_musyrifah (musyrifah_id, jadwal_id, tanggal, waktu_scan, waktu_masuk, status)
+        VALUES (?, ?, ?, ?, ?, 'hadir')
+      `).bind(musyrifah.id, jadwal.id, today, currentTime, currentTime).run();
+
+      return success({
+        action: 'absen_masuk',
+        time: currentTime,
+        jadwal: jadwalRes,
+        message: `Absensi masuk tercatat pukul ${currentTime}`,
+      });
     }
+    if (existing.waktu_masuk && !existing.waktu_keluar) {
+      return error(`Jam masuk sudah tercatat. Jam keluar dibuka pukul ${keluarMulai.slice(0, 5)} WIB.`, 400);
+    }
+    return error('Anda sudah melakukan absensi masuk dan keluar hari ini', 400);
+  }
 
-    // Scan kedua = absensi keluar
+  // inJamKeluar
+  if (!existing || !existing.waktu_masuk) {
+    return error('Belum ada absen masuk hari ini', 400);
+  }
+  if (existing.waktu_masuk && !existing.waktu_keluar) {
+    // Scan keluar → absen keluar
     await env.DB.prepare(
       'UPDATE dauroh_absensi_musyrifah SET waktu_keluar = ? WHERE id = ?'
     ).bind(currentTime, existing.id).run();
@@ -356,33 +401,11 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
     return success({
       action: 'absen_keluar',
       time: currentTime,
-      jadwal: {
-        program: jadwal.nama_program,
-        hari: jadwal.hari,
-        jam_mulai: jadwal.jam_mulai,
-        jam_selesai: jadwal.jam_selesai,
-      },
+      jadwal: jadwalRes,
       message: `Absensi keluar tercatat pukul ${currentTime}`,
     });
   }
-
-  // Scan pertama = absensi masuk
-  await env.DB.prepare(`
-    INSERT INTO dauroh_absensi_musyrifah (musyrifah_id, jadwal_id, tanggal, waktu_scan, waktu_masuk, status)
-    VALUES (?, ?, ?, ?, ?, 'hadir')
-  `).bind(musyrifah.id, jadwal.id, today, currentTime, currentTime).run();
-
-  return success({
-    action: 'absen_masuk',
-    time: currentTime,
-    jadwal: {
-      program: jadwal.nama_program,
-      hari: jadwal.hari,
-      jam_mulai: jadwal.jam_mulai,
-      jam_selesai: jadwal.jam_selesai,
-    },
-    message: `Absensi masuk tercatat pukul ${currentTime}`,
-  });
+  return error('Anda sudah melakukan absensi masuk dan keluar hari ini', 400);
 }
 
 async function listAbsensiMusyrifah(env: Env, user: UserPayload, url: URL) {

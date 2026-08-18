@@ -49,11 +49,12 @@ export async function handleAdminDauroh(
   if (subPath === 'qr') {
     return handleGetQR(env);
   }
-  if (subPath === 'qr/generate' && request.method === 'POST') {
-    return handleGenerateQR(request, env, user, ip);
-  }
 
   // ─── MONITORING ABSENSI ─────────────────────────────────────
+  const absensiKoreksiMatch = subPath.match(/^monitoring\/absensi\/(\d+)$/);
+  if (absensiKoreksiMatch && request.method === 'PUT') {
+    return handleKoreksiAbsensiMusyrifah(request, env, user, parseInt(absensiKoreksiMatch[1]), ip);
+  }
   if (subPath === 'monitoring/absensi') {
     return handleMonitoringAbsensi(request, env, url);
   }
@@ -709,49 +710,26 @@ async function handleGetQR(env: Env) {
   });
 }
 
-async function handleGenerateQR(request: Request, env: Env, user: UserPayload, ip: string) {
-  const body = await request.json() as { jadwal_id?: number; tanggal?: string };
-  const { jadwal_id } = body;
-
-  if (!jadwal_id) {
-    return badRequest('jadwal_id wajib diisi');
-  }
-
-  const jadwal = await env.DB.prepare(`
-    SELECT j.*, p.nama_program, m1.nama as musyrifah_nama
-    FROM dauroh_jadwal j
-    JOIN dauroh_program p ON j.program_id = p.id
-    JOIN dauroh_musyrifah m1 ON j.musyrifah_1_id = m1.id
-    WHERE j.id = ?
-  `).bind(jadwal_id).first<Row>();
-
-  if (!jadwal) return notFound('Jadwal');
-
-  const token = env.QR_DAUROH_TOKEN || DEFAULT_QR_TOKEN;
-
-  return success({
-    qr_data: token,
-    jadwal: {
-      id: jadwal_id,
-      program: jadwal.nama_program,
-      musyrifah: jadwal.musyrifah_nama,
-      hari: jadwal.hari,
-      jam_mulai: jadwal.jam_mulai,
-      jam_selesai: jadwal.jam_selesai,
-    },
-  });
-}
-
 // ============================================================
 // MONITORING
 // ============================================================
 
+const HARI_INDONESIA = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+function wibHari(tanggal: string): string {
+  const d = new Date(`${tanggal}T00:00:00Z`);
+  return HARI_INDONESIA[d.getUTCDay()];
+}
+
 async function handleMonitoringAbsensi(request: Request, env: Env, url: URL) {
   const tanggal = url.searchParams.get('tanggal') || wibDate();
   const programId = url.searchParams.get('program_id');
+  const hari = wibHari(tanggal);
 
-  let where = 'WHERE am.tanggal = ?';
+  // Bindings: [tanggal] utk LEFT JOIN, lalu [hari], lalu [programId]
   const bindings: unknown[] = [tanggal];
+  let where = 'WHERE j.is_aktif = 1 AND j.hari = ?';
+  bindings.push(hari);
 
   if (programId) {
     where += ' AND j.program_id = ?';
@@ -759,27 +737,36 @@ async function handleMonitoringAbsensi(request: Request, env: Env, url: URL) {
   }
 
   const rows = await env.DB.prepare(`
-    SELECT 
+    SELECT
       m.nipmus, m.nama, m.jenis_kelamin,
-      j.hari, am.waktu_masuk, am.waktu_keluar, am.status,
-      p.nama_program
-    FROM dauroh_absensi_musyrifah am
-    JOIN dauroh_musyrifah m ON am.musyrifah_id = m.id
-    JOIN dauroh_jadwal j ON am.jadwal_id = j.id
+      j.id AS jadwal_id, j.hari, j.jam_mulai, j.jam_selesai,
+      p.nama_program,
+      am.id AS absensi_id,
+      am.waktu_masuk, am.waktu_keluar, am.status,
+      CASE WHEN am.id IS NULL THEN 1 ELSE 0 END AS belum_absen
+    FROM dauroh_jadwal j
     JOIN dauroh_program p ON j.program_id = p.id
+    JOIN dauroh_musyrifah m ON (m.id = j.musyrifah_1_id OR m.id = j.musyrifah_2_id)
+    LEFT JOIN dauroh_absensi_musyrifah am
+      ON am.musyrifah_id = m.id AND am.jadwal_id = j.id AND am.tanggal = ?
     ${where}
-    ORDER BY m.nipmus ASC
+    ORDER BY m.nipmus ASC, j.jam_mulai ASC
   `).bind(...bindings).all();
 
-  // Rekap
+  // Rekap (ikut JOIN agar filter program_id valid)
   const rekap = await env.DB.prepare(`
-    SELECT 
+    SELECT
       COUNT(*) as total,
       SUM(CASE WHEN am.status = 'hadir' THEN 1 ELSE 0 END) as hadir,
       SUM(CASE WHEN am.status = 'izin' THEN 1 ELSE 0 END) as izin,
       SUM(CASE WHEN am.status = 'sakit' THEN 1 ELSE 0 END) as sakit,
-      SUM(CASE WHEN am.status = 'alpha' THEN 1 ELSE 0 END) as alpha
-    FROM dauroh_absensi_musyrifah am
+      SUM(CASE WHEN am.status = 'alpha' THEN 1 ELSE 0 END) as alpha,
+      SUM(CASE WHEN am.id IS NULL THEN 1 ELSE 0 END) as belum_absen
+    FROM dauroh_jadwal j
+    JOIN dauroh_program p ON j.program_id = p.id
+    JOIN dauroh_musyrifah m ON (m.id = j.musyrifah_1_id OR m.id = j.musyrifah_2_id)
+    LEFT JOIN dauroh_absensi_musyrifah am
+      ON am.musyrifah_id = m.id AND am.jadwal_id = j.id AND am.tanggal = ?
     ${where}
   `).bind(...bindings).first();
 
@@ -788,6 +775,48 @@ async function handleMonitoringAbsensi(request: Request, env: Env, url: URL) {
     data: rows.results,
     rekap,
   });
+}
+
+// PUT /api/admin/dauroh/monitoring/absensi/:id - koreksi absensi musyrifah oleh admin
+async function handleKoreksiAbsensiMusyrifah(request: Request, env: Env, user: UserPayload, id: number, ip: string) {
+  const existing = await env.DB.prepare(
+    'SELECT id, tanggal FROM dauroh_absensi_musyrifah WHERE id = ?'
+  ).bind(id).first<{ id: number; tanggal: string }>();
+  if (!existing) return notFound('Absensi Musyrifah');
+
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  if (!body) return badRequest('Body JSON tidak valid');
+
+  const timeRe = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+  const normalize = (t: string | null) => (t && t.length === 5) ? `${t}:00` : t;
+
+  const waktuMasuk = body.waktu_masuk != null ? String(body.waktu_masuk).trim() : null;
+  const waktuKeluar = body.waktu_keluar != null ? String(body.waktu_keluar).trim() : null;
+  const status = body.status != null ? String(body.status).trim() : null;
+
+  if (waktuMasuk !== null && (waktuMasuk === '' || !timeRe.test(waktuMasuk))) {
+    return badRequest('waktu_masuk harus format HH:MM atau HH:MM:SS');
+  }
+  if (waktuKeluar !== null && (waktuKeluar === '' || !timeRe.test(waktuKeluar))) {
+    return badRequest('waktu_keluar harus format HH:MM atau HH:MM:SS');
+  }
+  if (status !== null && !['hadir', 'izin', 'sakit', 'alpha'].includes(status)) {
+    return badRequest('status harus hadir, izin, sakit, atau alpha');
+  }
+
+  await env.DB.prepare(
+    `UPDATE dauroh_absensi_musyrifah SET
+       waktu_masuk = COALESCE(?, waktu_masuk),
+       waktu_keluar = COALESCE(?, waktu_keluar),
+       status = COALESCE(?, status)
+     WHERE id = ?`
+  ).bind(normalize(waktuMasuk), normalize(waktuKeluar), status, id).run();
+
+  await env.DB.prepare(
+    "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'update', 'dauroh_absensi', ?, ?)"
+  ).bind(user.sub, `Koreksi absensi musyrifah id=${id} (${existing.tanggal})`, ip).run();
+
+  return success({ id, updated: true });
 }
 
 async function handleMonitoringNilai(request: Request, env: Env, url: URL) {

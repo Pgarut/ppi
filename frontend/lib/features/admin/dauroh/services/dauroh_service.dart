@@ -124,13 +124,6 @@ class DaurohService {
     return res['data'] as Map<String, dynamic>;
   }
 
-  static Future<Map<String, dynamic>> generateQR(int jadwalId) async {
-    final res = await ApiClient.post('/admin/dauroh/qr/generate', body: {
-      'jadwal_id': jadwalId,
-    });
-    return res['data'] as Map<String, dynamic>;
-  }
-
   // ═══════════════════════════════════════════════════════════════
   //  MONITORING
   // ═══════════════════════════════════════════════════════════════
@@ -144,6 +137,10 @@ class DaurohService {
     if (programId != null && programId.isNotEmpty) params['program_id'] = programId;
     final res = await ApiClient.get('/admin/dauroh/monitoring/absensi', queryParams: params);
     return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<void> updateAbsensiMusyrifah(int id, Map<String, dynamic> body) async {
+    await ApiClient.put('/admin/dauroh/monitoring/absensi/$id', body: body);
   }
 
   static Future<List<Map<String, dynamic>>> monitoringNilai({

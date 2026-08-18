@@ -7,6 +7,7 @@ import { handleAdminAbsensi } from '../../../src/routes/admin/absensi';
 import { handleAdminNilai } from '../../../src/routes/admin/nilai';
 import { handleAdminRapor } from '../../../src/routes/admin/rapor';
 import { handlePengaturanTampilan } from '../../../src/routes/admin/pengaturan_tampilan';
+import { handleAdminDauroh } from '../../../src/routes/admin/dauroh';
 import { handleHealth } from '../../../src/routes/health';
 
 function makeDb() {
@@ -276,6 +277,53 @@ describe('Admin Routes', () => {
       const req = makePut('/api/admin/absensi/guru/1', { jam_masuk: '25:99' });
       const res = await handleAdminAbsensi(req, db, adminUser, makeUrl('/api/admin/absensi/guru/1'));
       expect(res.status).toBe(400);
+    });
+  });
+
+  describe('Dauroh Absensi Monitoring', () => {
+    it('should list monitoring absensi musyrifah', async () => {
+      const db = makeDb();
+      db.all.mockResolvedValue({ results: [{ nipmus: 'M001', nama: 'Mufidah', belum_absen: 1 }] });
+      db.first.mockResolvedValue({ total: 1, hadir: 0, izin: 0, sakit: 0, alpha: 0, belum_absen: 1 });
+
+      const req = makeGet('/api/admin/dauroh/monitoring/absensi?tanggal=2026-08-18');
+      const pathParts = ['api', 'admin', 'dauroh', 'monitoring', 'absensi'];
+      const res = await handleAdminDauroh(req, db, adminUser, pathParts, makeUrl('/api/admin/dauroh/monitoring/absensi', 'tanggal=2026-08-18'));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.data).toHaveLength(1);
+    });
+
+    it('should update absensi musyrifah via PUT', async () => {
+      const db = makeDb();
+      db.first.mockResolvedValue({ id: 1, tanggal: '2026-08-18' });
+
+      const req = makePut('/api/admin/dauroh/monitoring/absensi/1', { waktu_masuk: '06:40', waktu_keluar: '08:30', status: 'hadir' });
+      const pathParts = ['api', 'admin', 'dauroh', 'monitoring', 'absensi', '1'];
+      const res = await handleAdminDauroh(req, db, adminUser, pathParts, makeUrl('/api/admin/dauroh/monitoring/absensi/1'));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.updated).toBe(true);
+    });
+
+    it('should reject invalid time format in absensi musyrifah PUT', async () => {
+      const db = makeDb();
+      db.first.mockResolvedValue({ id: 1, tanggal: '2026-08-18' });
+
+      const req = makePut('/api/admin/dauroh/monitoring/absensi/1', { waktu_masuk: '25:99' });
+      const pathParts = ['api', 'admin', 'dauroh', 'monitoring', 'absensi', '1'];
+      const res = await handleAdminDauroh(req, db, adminUser, pathParts, makeUrl('/api/admin/dauroh/monitoring/absensi/1'));
+      expect(res.status).toBe(400);
+    });
+
+    it('should return 404 when absensi musyrifah not found', async () => {
+      const db = makeDb();
+      db.first.mockResolvedValue(null);
+
+      const req = makePut('/api/admin/dauroh/monitoring/absensi/999', { status: 'izin' });
+      const pathParts = ['api', 'admin', 'dauroh', 'monitoring', 'absensi', '999'];
+      const res = await handleAdminDauroh(req, db, adminUser, pathParts, makeUrl('/api/admin/dauroh/monitoring/absensi/999'));
+      expect(res.status).toBe(404);
     });
   });
 

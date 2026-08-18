@@ -1,13 +1,11 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../services/dauroh_service.dart';
-import '../widgets/dauroh_form_widgets.dart';
 
 class QrDaurohPage extends StatefulWidget {
   const QrDaurohPage({super.key});
@@ -17,18 +15,9 @@ class QrDaurohPage extends StatefulWidget {
 }
 
 class _QrDaurohPageState extends State<QrDaurohPage> {
-  Map<String, dynamic>? _qrInfo;
-  Map<String, dynamic>? _generatedQR;
-  List<Map<String, dynamic>> _jadwalList = [];
-  int? _selectedJadwalId;
+  String? _token;
   bool _loading = true;
-  bool _generating = false;
   String? _error;
-
-  String get _qrToken =>
-      _generatedQR?['qr_data']?.toString() ??
-      _qrInfo?['token']?.toString() ??
-      'PPI_DAUROH_QR_2026';
 
   @override
   void initState() {
@@ -42,14 +31,10 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
       _error = null;
     });
     try {
-      final results = await Future.wait([
-        DaurohService.getQRInfo(),
-        DaurohService.listJadwal(perPage: 100),
-      ]);
+      final info = await DaurohService.getQRInfo();
       if (mounted) {
         setState(() {
-          _qrInfo = results[0];
-          _jadwalList = (results[1]['items'] as List).cast<Map<String, dynamic>>();
+          _token = info['token']?.toString() ?? 'PPI_DAUROH_QR_2026';
           _loading = false;
         });
       }
@@ -63,35 +48,8 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
     }
   }
 
-  Future<void> _generateQR() async {
-    if (_selectedJadwalId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih jadwal terlebih dahulu')),
-      );
-      return;
-    }
-    setState(() => _generating = true);
-    try {
-      final result = await DaurohService.generateQR(_selectedJadwalId!);
-      if (mounted) {
-        setState(() {
-          _generatedQR = result;
-          _generating = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _generating = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal generate QR: $e')),
-        );
-      }
-    }
-  }
-
   Future<void> _printQR() async {
-    final token = _qrToken;
-    final jadwal = _generatedQR?['jadwal'];
+    final token = _token ?? 'PPI_DAUROH_QR_2026';
 
     final pdf = pw.Document();
     final theme = pw.ThemeData.withFont(
@@ -152,36 +110,10 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
               ),
             ),
           ),
-          if (jadwal != null) ...[
-            pw.SizedBox(height: 24),
-            pw.Container(
-              width: double.infinity,
-              padding: const pw.EdgeInsets.all(16),
-              decoration: pw.BoxDecoration(
-                border: pw.Border.all(color: PdfColors.grey300),
-                borderRadius: pw.BorderRadius.circular(8),
-              ),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'Informasi Jadwal',
-                    style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
-                  ),
-                  pw.SizedBox(height: 8),
-                  _pdfInfoRow('Program', '${jadwal['program'] ?? '-'}'),
-                  pw.SizedBox(height: 4),
-                  _pdfInfoRow('Musyrifah', '${jadwal['musyrifah'] ?? '-'}'),
-                  pw.SizedBox(height: 4),
-                  _pdfInfoRow('Jadwal', '${jadwal['hari'] ?? '-'}, ${jadwal['jam_mulai'] ?? ''} - ${jadwal['jam_selesai'] ?? ''}'),
-                ],
-              ),
-            ),
-          ],
           pw.SizedBox(height: 40),
           pw.Center(
             child: pw.Text(
-              'Pindai QR Code ini untuk melakukan absensi',
+              'Pindai QR Code ini untuk absensi musyrifah.',
               style: pw.TextStyle(fontSize: 11, color: PdfColors.grey500, fontStyle: pw.FontStyle.italic),
             ),
           ),
@@ -190,20 +122,6 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
     );
 
     await Printing.layoutPdf(onLayout: (format) => pdf.save());
-  }
-
-  pw.Widget _pdfInfoRow(String label, String value) {
-    return pw.Row(
-      children: [
-        pw.SizedBox(
-          width: 100,
-          child: pw.Text(label, style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600)),
-        ),
-        pw.Expanded(
-          child: pw.Text(value, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-        ),
-      ],
-    );
   }
 
   @override
@@ -230,300 +148,167 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
       );
     }
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'QR Code at-Ta\'wid',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Generate QR Code untuk absensi musyrifah',
-            style: TextStyle(fontSize: 13, color: AppTheme.grey500),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withAlpha(12),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppTheme.primary.withAlpha(60)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.info_outline, size: 18, color: AppTheme.primary),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Token QR bersifat statis dan berlaku untuk semua jadwal. '
-                    'Jadwal dipilih hanya untuk informasi pada QR yang dicetak.',
-                    style: TextStyle(fontSize: 12, color: AppTheme.grey700),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _buildInfoCard(),
           const SizedBox(height: 24),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left: Form
-                Expanded(
-                  flex: 2,
-                  child: _buildFormCard(),
-                ),
-                const SizedBox(width: 24),
-                // Right: QR Preview
-                Expanded(
-                  flex: 3,
-                  child: _buildQRPreview(),
-                ),
-              ],
-            ),
+          _buildQrCode(),
+          const SizedBox(height: 24),
+          _buildInstructions(),
+          const SizedBox(height: 24),
+          _buildPrintButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+      ),
+      child: const Column(
+        children: [
+          Icon(Icons.qr_code_2, color: AppTheme.primary, size: 32),
+          SizedBox(height: 12),
+          Text(
+            'QR Code Absensi Musyrifah',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryDark),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Cetak QR Code ini sekali dan tempel di area kegiatan.\n'
+            'QR berlaku untuk semua jadwal at-Ta\'wid.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: AppTheme.grey700),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFormCard() {
+  Widget _buildQrCode() {
+    final token = _token ?? 'PPI_DAUROH_QR_2026';
     return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const Text(
+            'SCAN UNTUK ABSENSI',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.grey800, letterSpacing: 1.2),
+          ),
+          const SizedBox(height: 16),
+          QrImageView(
+            data: token,
+            version: QrVersions.auto,
+            size: 250,
+            backgroundColor: Colors.white,
+            eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: AppTheme.grey800),
+            dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: AppTheme.grey800),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'MA Persis Garut',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.grey600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstructions() {
+    return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.grey200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.qr_code, color: AppTheme.primary, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Generate QR',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-            ],
+          const Text(
+            'Cara Penggunaan:',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.grey800),
           ),
-          const SizedBox(height: 16),
-          DaurohDropdown<int>(
-            value: _selectedJadwalId,
-            label: 'Pilih Jadwal',
-            icon: Icons.calendar_month_outlined,
-            items: _jadwalList.map((j) => DropdownMenuItem<int>(
-              value: j['id'] as int,
-              child: Text(
-                '${j['nama_program']} - ${j['hari']} ${j['jam_mulai']}-${j['jam_selesai']}',
-                overflow: TextOverflow.ellipsis,
-              ),
-            )).toList(),
-            onChanged: (v) => setState(() {
-              _selectedJadwalId = v;
-              _generatedQR = null;
-            }),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _generating ? null : _generateQR,
-              icon: _generating
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.qr_code_2, size: 18),
-              label: Text(_generating ? 'Generating...' : 'Generate QR'),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Divider(),
           const SizedBox(height: 12),
-          // QR Token Info
-          if (_qrInfo != null) ...[
-            const Row(
-              children: [
-                Icon(Icons.info_outline, size: 16, color: AppTheme.grey500),
-                SizedBox(width: 6),
-                Text(
-                  'QR Token (Statis):',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.grey600),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.grey50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppTheme.grey200),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _qrInfo!['token'] ?? '',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.copy, size: 18),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: _qrInfo!['token'] ?? ''));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Token disalin')),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Token ini dicetak pada QR. Musyrifah memindai QR untuk melakukan absensi.',
-              style: TextStyle(fontSize: 12, color: AppTheme.grey500),
-            ),
-          ],
+          _buildInstructionStep(1, 'Cetak QR Code ini (ukuran minimal 10x10 cm)'),
+          _buildInstructionStep(2, 'Tempel QR Code di pintu masuk atau area yang mudah diakses'),
+          _buildInstructionStep(3, 'Musyrifah buka aplikasi → tap icon "Scan" di navigation bar'),
+          _buildInstructionStep(4, 'Arahkan kamera ke QR Code untuk absen masuk (06:30-07:00 WIB)'),
+          _buildInstructionStep(5, 'Scan kembali untuk absen keluar (08:00-09:00 WIB)'),
         ],
       ),
     );
   }
 
-  Widget _buildQRPreview() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.grey200),
-      ),
-      child: Column(
+  Widget _buildInstructionStep(int step, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.preview, color: AppTheme.primary, size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'Preview QR Code',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          Container(
+            width: 24,
+            height: 24,
+            decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+            child: Center(
+              child: Text(
+                '$step',
+                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
               ),
-              const Spacer(),
-              if (_generatedQR != null)
-                OutlinedButton.icon(
-                  onPressed: _printQR,
-                  icon: const Icon(Icons.print, size: 18),
-                  label: const Text('Cetak'),
-                ),
-            ],
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(width: 12),
           Expanded(
-            child: _generatedQR != null
-                ? _buildQRContent()
-                : const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.qr_code_2, size: 80, color: AppTheme.grey300),
-                        SizedBox(height: 16),
-                        Text(
-                          'Pilih jadwal dan klik Generate QR',
-                          style: TextStyle(color: AppTheme.grey500, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14, color: AppTheme.grey700),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQRContent() {
-    final token = _qrToken;
-    final jadwal = _generatedQR?['jadwal'];
-
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          border: Border.all(color: AppTheme.grey300, width: 2),
-          borderRadius: BorderRadius.circular(12),
+  Widget _buildPrintButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton.icon(
+        onPressed: _printQR,
+        icon: const Icon(Icons.print, color: Colors.white),
+        label: const Text(
+          'Cetak QR Code',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'ABSENSI AT-TA\'WID',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text('MA Persis Garut', style: TextStyle(fontSize: 14, color: AppTheme.grey600)),
-            const SizedBox(height: 24),
-            QrImageView(
-              data: token,
-              version: QrVersions.auto,
-              size: 200,
-              backgroundColor: Colors.white,
-              eyeStyle: const QrEyeStyle(
-                eyeShape: QrEyeShape.square,
-                color: AppTheme.grey800,
-              ),
-              dataModuleStyle: const QrDataModuleStyle(
-                dataModuleShape: QrDataModuleShape.square,
-                color: AppTheme.grey800,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.grey50,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppTheme.grey200),
-              ),
-              child: Text(
-                token,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            if (jadwal != null) ...[
-              Text(
-                jadwal['program'] ?? '',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Musyrifah: ${jadwal['musyrifah'] ?? '-'}',
-                style: const TextStyle(fontSize: 13, color: AppTheme.grey600),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${jadwal['hari'] ?? '-'}, ${jadwal['jam_mulai'] ?? ''} - ${jadwal['jam_selesai'] ?? ''}',
-                style: const TextStyle(fontSize: 13, color: AppTheme.grey600),
-              ),
-            ],
-          ],
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.primary,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
