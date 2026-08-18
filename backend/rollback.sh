@@ -41,7 +41,7 @@ rollback_frontend() {
   echo "=== Rollback Frontend (Cloudflare Pages) ==="
   echo ""
   echo "1. Buka https://dash.cloudflare.com"
-  echo "2. Klik Workers & Pages → ppi-frontend"
+  echo "2. Klik Workers & Pages → ppi"
   echo "3. Klik tab Deployments"
   echo "4. Cari deployment stabil terakhir"
   echo "5. Klik ikon ▶️ (play) untuk aktivasi"
