@@ -611,8 +611,12 @@ async function createJadwal(request: Request, env: Env, user: UserPayload, ip: s
   const body = await request.json() as Record<string, unknown>;
   const { program_id, musyrifah_1_id, musyrifah_2_id, jenjang, hari, jam_mulai, jam_selesai, kelas_ids } = body;
 
-  if (!program_id || !musyrifah_1_id || !hari || !jam_mulai || !jam_selesai) {
-    return badRequest('program_id, musyrifah_1_id, hari, jam_mulai, jam_selesai wajib diisi');
+  const hariList = Array.isArray(hari)
+    ? (hari as unknown[]).filter((h): h is string => typeof h === 'string' && h.trim().length > 0)
+    : (typeof hari === 'string' && hari.trim() ? [hari.trim()] : []);
+
+  if (!program_id || !musyrifah_1_id || hariList.length === 0 || !jam_mulai || !jam_selesai) {
+    return badRequest('program_id, musyrifah_1_id, hari (minimal 1), jam_mulai, jam_selesai wajib diisi');
   }
 
   // Validasi program
@@ -623,33 +627,43 @@ async function createJadwal(request: Request, env: Env, user: UserPayload, ip: s
   const musyrifah = await env.DB.prepare('SELECT id FROM dauroh_musyrifah WHERE id = ?').bind(musyrifah_1_id).first();
   if (!musyrifah) return notFound('Musyrifah 1');
 
-  const result = await env.DB.prepare(`
-    INSERT INTO dauroh_jadwal (program_id, musyrifah_1_id, musyrifah_2_id, jenjang, hari, jam_mulai, jam_selesai)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).bind(program_id, musyrifah_1_id, musyrifah_2_id || null, jenjang || null, hari, jam_mulai, jam_selesai).run();
+  const createdIds: number[] = [];
+  for (const h of hariList) {
+    const result = await env.DB.prepare(`
+      INSERT INTO dauroh_jadwal (program_id, musyrifah_1_id, musyrifah_2_id, jenjang, hari, jam_mulai, jam_selesai)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(program_id, musyrifah_1_id, musyrifah_2_id || null, jenjang || null, h, jam_mulai, jam_selesai).run();
 
-  const newId = result.meta.last_row_id;
+    const newId = Number(result.meta.last_row_id);
+    createdIds.push(newId);
 
-  // Simpan kelas
-  if (Array.isArray(kelas_ids)) {
-    for (const kelasId of kelas_ids) {
-      await env.DB.prepare(
-        'INSERT OR IGNORE INTO dauroh_jadwal_kelas (jadwal_id, kelas_id) VALUES (?, ?)'
-      ).bind(newId, kelasId).run();
+    // Simpan kelas
+    if (Array.isArray(kelas_ids)) {
+      for (const kelasId of kelas_ids) {
+        await env.DB.prepare(
+          'INSERT OR IGNORE INTO dauroh_jadwal_kelas (jadwal_id, kelas_id) VALUES (?, ?)'
+        ).bind(newId, kelasId).run();
+      }
     }
   }
 
-  await logAction(env, user.sub, 'create', 'dauroh_jadwal', `Buat jadwal program id=${program_id}`, ip);
+  await logAction(env, user.sub, 'create', 'dauroh_jadwal', `Buat ${createdIds.length} jadwal program id=${program_id}`, ip);
 
-  return created({ id: newId });
+  return created({ ids: createdIds, count: createdIds.length });
 }
 
 async function updateJadwal(request: Request, env: Env, id: number, user: UserPayload, ip: string) {
   const body = await request.json() as Record<string, unknown>;
   const { program_id, musyrifah_1_id, musyrifah_2_id, jenjang, hari, jam_mulai, jam_selesai, kelas_ids, is_aktif } = body;
 
-  const existing = await env.DB.prepare('SELECT id FROM dauroh_jadwal WHERE id = ?').bind(id).first();
+  const existing = await env.DB.prepare('SELECT id, hari FROM dauroh_jadwal WHERE id = ?').bind(id).first<{ id: number; hari: string }>();
   if (!existing) return notFound('Jadwal');
+
+  const hariList = Array.isArray(hari)
+    ? (hari as unknown[]).filter((h): h is string => typeof h === 'string' && h.trim().length > 0)
+    : (typeof hari === 'string' && hari.trim() ? [hari.trim()] : []);
+
+  const hariFinal = hariList[0] ?? existing.hari;
 
   await env.DB.prepare(`
     UPDATE dauroh_jadwal SET
@@ -657,7 +671,7 @@ async function updateJadwal(request: Request, env: Env, id: number, user: UserPa
       musyrifah_1_id = COALESCE(?, musyrifah_1_id),
       musyrifah_2_id = COALESCE(?, musyrifah_2_id),
       jenjang = COALESCE(?, jenjang),
-      hari = COALESCE(?, hari),
+      hari = ?,
       jam_mulai = COALESCE(?, jam_mulai),
       jam_selesai = COALESCE(?, jam_selesai),
       is_aktif = COALESCE(?, is_aktif),
@@ -668,7 +682,7 @@ async function updateJadwal(request: Request, env: Env, id: number, user: UserPa
     musyrifah_1_id ?? null,
     musyrifah_2_id ?? null,
     jenjang ?? null,
-    hari ?? null,
+    hariFinal,
     jam_mulai ?? null,
     jam_selesai ?? null,
     is_aktif ?? null,
@@ -685,9 +699,30 @@ async function updateJadwal(request: Request, env: Env, id: number, user: UserPa
     }
   }
 
-  await logAction(env, user.sub, 'update', 'dauroh_jadwal', `Update jadwal id=${id}`, ip);
+  // Hari tambahan (di luar hari baris yang di-update) → buat jadwal baru
+  const createdIds: number[] = [];
+  for (const h of hariList.slice(1)) {
+    const result = await env.DB.prepare(`
+      INSERT INTO dauroh_jadwal (program_id, musyrifah_1_id, musyrifah_2_id, jenjang, hari, jam_mulai, jam_selesai, is_aktif)
+      SELECT program_id, musyrifah_1_id, musyrifah_2_id, jenjang, ?, jam_mulai, jam_selesai, is_aktif
+      FROM dauroh_jadwal WHERE id = ?
+    `).bind(h, id).run();
 
-  return success({ id, message: 'Jadwal berhasil diupdate' });
+    const newId = Number(result.meta.last_row_id);
+    createdIds.push(newId);
+
+    if (Array.isArray(kelas_ids)) {
+      for (const kelasId of kelas_ids) {
+        await env.DB.prepare(
+          'INSERT OR IGNORE INTO dauroh_jadwal_kelas (jadwal_id, kelas_id) VALUES (?, ?)'
+        ).bind(newId, kelasId).run();
+      }
+    }
+  }
+
+  await logAction(env, user.sub, 'update', 'dauroh_jadwal', `Update jadwal id=${id}${createdIds.length ? ` + ${createdIds.length} hari baru` : ''}`, ip);
+
+  return success({ id, created_ids: createdIds, message: 'Jadwal berhasil diupdate' });
 }
 
 async function deleteJadwal(env: Env, id: number, user: UserPayload, ip: string) {

@@ -18,7 +18,7 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
   int? _programId;
   int? _musyrifah1Id;
   int? _musyrifah2Id;
-  String _hari = 'Senin';
+  final Set<String> _selectedHari = {'Senin'};
   final _jamMulaiCtrl = TextEditingController(text: '08:00');
   final _jamSelesaiCtrl = TextEditingController(text: '10:00');
   bool _isAktif = true;
@@ -47,7 +47,9 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
       _programId = d['program_id'] as int?;
       _musyrifah1Id = d['musyrifah_1_id'] as int?;
       _musyrifah2Id = d['musyrifah_2_id'] as int?;
-      _hari = d['hari']?.toString() ?? 'Senin';
+      _selectedHari
+        ..clear()
+        ..add(d['hari']?.toString() ?? 'Senin');
       _jamMulaiCtrl.text = d['jam_mulai']?.toString() ?? '08:00';
       _jamSelesaiCtrl.text = d['jam_selesai']?.toString() ?? '10:00';
       _isAktif = d['is_aktif'] == 1;
@@ -140,20 +142,22 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
                   onChanged: (v) => setState(() => _musyrifah2Id = v),
                 ),
                 const SizedBox(height: 16),
-                DaurohDropdown<String>(
-                  value: _hari,
-                  label: 'Hari',
+                DaurohMultiSelect<String>(
+                  title: 'Hari (bisa pilih beberapa)',
                   icon: Icons.calendar_today_outlined,
-                  items: const [
-                    DropdownMenuItem(value: 'Senin', child: Text('Senin')),
-                    DropdownMenuItem(value: 'Selasa', child: Text('Selasa')),
-                    DropdownMenuItem(value: 'Rabu', child: Text('Rabu')),
-                    DropdownMenuItem(value: 'Kamis', child: Text('Kamis')),
-                    DropdownMenuItem(value: 'Jumat', child: Text('Jumat')),
-                    DropdownMenuItem(value: 'Sabtu', child: Text('Sabtu')),
-                    DropdownMenuItem(value: 'Minggu', child: Text('Minggu')),
-                  ],
-                  onChanged: (v) => setState(() => _hari = v ?? 'Senin'),
+                  items: const ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'],
+                  selectedIds: _selectedHari,
+                  idFn: (h) => h,
+                  labelFn: (h) => h,
+                  onChanged: (h) {
+                    setState(() {
+                      if (_selectedHari.contains(h)) {
+                        _selectedHari.remove(h);
+                      } else {
+                        _selectedHari.add(h);
+                      }
+                    });
+                  },
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -263,6 +267,12 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
       );
       return;
     }
+    if (_selectedHari.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih minimal 1 hari')),
+      );
+      return;
+    }
 
     final jamMulai = _jamMulaiCtrl.text.trim();
     final jamSelesai = _jamSelesaiCtrl.text.trim();
@@ -280,7 +290,7 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
         'program_id': _programId,
         'musyrifah_1_id': _musyrifah1Id,
         'musyrifah_2_id': _musyrifah2Id,
-        'hari': _hari,
+        'hari': _selectedHari.toList(),
         'jam_mulai': jamMulai,
         'jam_selesai': jamSelesai,
         'kelas_ids': _selectedKelas.toList(),
