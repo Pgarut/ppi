@@ -15,7 +15,7 @@ class _JadwalSantriPageState extends State<JadwalSantriPage> {
   bool _loading = true;
   String? _filterHari;
 
-  final _hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  final _hariList = ['Sabtu', 'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis'];
 
   @override
   void initState() {

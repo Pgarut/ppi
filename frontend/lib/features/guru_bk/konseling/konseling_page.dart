@@ -93,7 +93,7 @@ class _KonselingPageState extends State<KonselingPage>
 
     // Pilih hari dalam seminggu
     String? selectedHari;
-    final hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    final hariList = ['Sabtu', 'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis'];
 
     final saved = await showDialog<bool>(
       context: context,
