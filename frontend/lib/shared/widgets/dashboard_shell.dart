@@ -17,6 +17,7 @@ class DashboardShell extends StatefulWidget {
   final WidgetBuilder? scanPage;
   final Widget Function(BuildContext, VoidCallback)? scanPageBuilder;
   final bool showScanTab;
+  final String? roleDisplay;
 
   const DashboardShell({
     super.key,
@@ -28,6 +29,7 @@ class DashboardShell extends StatefulWidget {
     this.scanPage,
     this.scanPageBuilder,
     this.showScanTab = false,
+    this.roleDisplay,
   });
 
   @override
@@ -456,7 +458,7 @@ class _DashboardShellState extends State<DashboardShell> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            auth.user?.role ?? '',
+                            widget.roleDisplay ?? auth.user?.role ?? '',
                             style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
                           ),
                         ],
@@ -688,7 +690,7 @@ class _DashboardShellState extends State<DashboardShell> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  auth.user?.role ?? '',
+                                  widget.roleDisplay ?? auth.user?.role ?? '',
                                   style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.7)),
                                 ),
                               ],

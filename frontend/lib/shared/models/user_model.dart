@@ -59,4 +59,16 @@ class UserModel {
       default: return role;
     }
   }
+
+  static String jabatanGuru({String? jabatan, bool? isWaliKelas}) {
+    if (jabatan != null && jabatan.trim().isNotEmpty) {
+      final parts = jabatan.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toSet();
+      final isMapel = parts.contains('guru_mapel');
+      final isWali = parts.contains('wali_kelas');
+      if (isMapel && isWali) return 'Asatidz Mapel / Wali Kelas';
+      if (isWali) return 'Asatidz Wali Kelas';
+      return 'Asatidz Mapel';
+    }
+    return isWaliKelas == true ? 'Asatidz Mapel / Wali Kelas' : 'Asatidz Mapel';
+  }
 }

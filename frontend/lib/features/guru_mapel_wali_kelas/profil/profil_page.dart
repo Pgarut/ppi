@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../services/guru_service.dart';
 
 class ProfilPageGuru extends StatefulWidget {
   const ProfilPageGuru({super.key});
@@ -14,6 +15,7 @@ class ProfilPageGuru extends StatefulWidget {
 class _ProfilPageGuruState extends State<ProfilPageGuru> {
   Map<String, dynamic>? _profil;
   bool _loading = true;
+  bool _isWaliKelas = false;
 
   @override
   void initState() {
@@ -26,7 +28,17 @@ class _ProfilPageGuruState extends State<ProfilPageGuru> {
       final res = await ApiClient.get('/guru/profil');
       _profil = res['data'] as Map<String, dynamic>?;
     } catch (_) {}
+    try {
+      final wali = await GuruService.cekWaliKelas();
+      _isWaliKelas = wali['is_wali_kelas'] == true;
+    } catch (_) {}
     if (mounted) setState(() => _loading = false);
+  }
+
+  String get _jabatanDisplay {
+    final raw = _profil?['jabatan']?.toString() ?? '';
+    if (raw.trim().isNotEmpty) return UserModel.jabatanGuru(jabatan: raw);
+    return UserModel.jabatanGuru(isWaliKelas: _isWaliKelas);
   }
 
   Future<void> _logout() async {
@@ -57,7 +69,7 @@ class _ProfilPageGuruState extends State<ProfilPageGuru> {
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
     final name = _profil?['nama']?.toString() ?? user?.username ?? 'Asatidz';
-    final roleDisplay = UserModel.roleDisplayName(user?.role ?? '');
+    final jabatanDisplay = _jabatanDisplay;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -82,7 +94,7 @@ class _ProfilPageGuruState extends State<ProfilPageGuru> {
                   color: const Color(0xFF2E7D32).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(roleDisplay, style: const TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.w500)),
+                child: Text(jabatanDisplay, style: const TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.w500)),
               ),
               const SizedBox(height: 16),
 
@@ -132,7 +144,7 @@ class _ProfilPageGuruState extends State<ProfilPageGuru> {
                   _infoRow('Alamat', _profil!['alamat']?.toString()),
                   _infoRow('No. HP', _profil!['no_hp']?.toString()),
                   _infoRow('Email', _profil!['email']?.toString()),
-                  _infoRow('Jabatan', _profil!['jabatan']?.toString()),
+                  _infoRow('Jabatan', jabatanDisplay),
                   _infoRow('Status', _profil!['status_aktif'] == 1 ? 'Aktif' : 'Tidak Aktif'),
                 ],
               ),

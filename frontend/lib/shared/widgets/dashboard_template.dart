@@ -30,6 +30,7 @@ class DashboardTemplate extends StatelessWidget {
   final String? subtitle;  // Contoh: NIS
   final String? info1;     // Contoh: Wali Kelas
   final String? info2;     // Contoh: Kelas
+  final String? roleDisplay; // Override label jabatan/role
 
   const DashboardTemplate({
     super.key,
@@ -41,6 +42,7 @@ class DashboardTemplate extends StatelessWidget {
     this.subtitle,
     this.info1,
     this.info2,
+    this.roleDisplay,
   });
 
   @override
@@ -59,7 +61,7 @@ class DashboardTemplate extends StatelessWidget {
         if (showHeader) ...[
           Padding(
             padding: EdgeInsets.fromLTRB(20, topPadding + 12, 20, 0),
-            child: _Header(subtitle: subtitle, info1: info1, info2: info2),
+            child: _Header(subtitle: subtitle, info1: info1, info2: info2, roleDisplay: roleDisplay),
           ),
           const SizedBox(height: 28),
         ],
@@ -113,14 +115,15 @@ class _Header extends StatelessWidget {
   final String? subtitle;
   final String? info1;
   final String? info2;
-  
-  const _Header({this.subtitle, this.info1, this.info2});
+  final String? roleDisplay;
+
+  const _Header({this.subtitle, this.info1, this.info2, this.roleDisplay});
 
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
     final name = user?.displayName ?? 'Pengguna';
-    final roleDisplay = UserModel.roleDisplayName(user?.role ?? '');
+    final roleDisplay = this.roleDisplay ?? UserModel.roleDisplayName(user?.role ?? '');
 
     final hour = DateTime.now().hour;
     String greeting;

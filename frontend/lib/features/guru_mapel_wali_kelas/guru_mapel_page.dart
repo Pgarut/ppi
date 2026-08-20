@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../shared/widgets/app_utils.dart';
 import '../../../shared/widgets/dashboard_shell.dart';
+import '../../../shared/models/user_model.dart';
 import 'dashboard/dashboard_page.dart';
 import 'absensi/absensi_page.dart';
 import 'jadwal/jadwal_page.dart';
@@ -43,6 +44,7 @@ class _GuruMapelPageState extends State<GuruMapelPage> {
     return DashboardShell(
       title: 'Asatidz',
       showScanTab: true,
+      roleDisplay: UserModel.jabatanGuru(isWaliKelas: _isWaliKelas),
       dashboardBuilder: (context, onFeatureTap, onLogout) => DashboardPageGuru(
         onFeatureTap: onFeatureTap,
       ),
