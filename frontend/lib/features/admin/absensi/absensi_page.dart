@@ -29,6 +29,8 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 5, vsync: this);
+    _filterTanggal = DateTime.now().toIso8601String().substring(0, 10);
+    _tanggalCtrl.text = _filterTanggal;
     _loadKelas();
     _load();
   }

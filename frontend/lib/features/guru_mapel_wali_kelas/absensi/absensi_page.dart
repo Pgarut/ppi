@@ -226,11 +226,7 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
     setState(() {
       _mapelId = id;
       _kelasId = null;
-      _siswa = [];
-      _siswaFiltered = [];
-      _statusMap = {};
-      for (final c in _ketCtl.values) { c.dispose(); }
-      _ketCtl = {};
+      _resetSiswaState();
       if (id != null) {
         final mapel = _assignments.firstWhere((a) => a['id'] == id, orElse: () => null);
         _kelasList = mapel != null ? List<dynamic>.from(mapel['kelas'] ?? []) : [];
@@ -253,6 +249,15 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
         }).toList();
       }
     });
+  }
+
+  void _resetSiswaState() {
+    _siswa = [];
+    _siswaFiltered = [];
+    _statusMap = {};
+    for (final c in _ketCtl.values) { c.dispose(); }
+    _ketCtl = {};
+    _searchCtl.clear();
   }
 
   Future<void> _loadSiswa() async {
@@ -368,7 +373,10 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
                               decoration: const InputDecoration(labelText: 'Kelas', border: OutlineInputBorder(), prefixIcon: Icon(Icons.school)),
                               value: _kelasId,
                               items: _kelasList.map((k) => DropdownMenuItem(value: k['id'] as int, child: Text(k['nama'] as String? ?? ''))).toList(),
-                              onChanged: (v) => setState(() => _kelasId = v),
+                              onChanged: (v) => setState(() {
+                                _kelasId = v;
+                                _resetSiswaState();
+                              }),
                             )),
                             SizedBox(width: 160, child: TextField(
                               controller: _tanggalCtl,
@@ -376,7 +384,12 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
                               readOnly: true,
                               onTap: () async {
                                 final d = await showDatePicker(context: context, firstDate: DateTime(2020), lastDate: DateTime(2030));
-                                if (d != null) _tanggalCtl.text = d.toIso8601String().substring(0, 10);
+                                if (d != null) {
+                                  setState(() {
+                                    _tanggalCtl.text = d.toIso8601String().substring(0, 10);
+                                    _resetSiswaState();
+                                  });
+                                }
                               },
                             )),
                             SizedBox(width: 140, child: TextField(
@@ -385,7 +398,10 @@ class _InputAbsensiPageState extends State<_InputAbsensiPage> {
                               readOnly: true,
                               onTap: () async {
                                 final t = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-                                if (t != null) { if (!context.mounted) return; _jamCtl.text = t.format(context); }
+                                if (t != null) { if (!context.mounted) return; setState(() {
+                                  _jamCtl.text = t.format(context);
+                                  _resetSiswaState();
+                                }); }
                               },
                             )),
                             SizedBox(

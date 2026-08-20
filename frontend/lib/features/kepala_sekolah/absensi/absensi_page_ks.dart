@@ -103,6 +103,7 @@ class _TabGuruState extends State<_TabGuru> {
   @override
   void initState() {
     super.initState();
+    _tanggalCtl.text = DateTime.now().toIso8601String().substring(0, 10);
     _load();
   }
 
@@ -276,6 +277,7 @@ class _TabSiswaState extends State<_TabSiswa> {
   @override
   void initState() {
     super.initState();
+    _tanggalCtl.text = DateTime.now().toIso8601String().substring(0, 10);
     _loadKelas();
     _load();
   }
