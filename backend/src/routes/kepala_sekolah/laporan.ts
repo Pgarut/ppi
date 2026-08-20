@@ -16,7 +16,10 @@ export async function handleLaporanKS(request: Request, env: Env, url: URL): Pro
                  LEFT JOIN ruangan r ON jp.ruangan_id = r.id`;
     const bindings: unknown[] = [];
     if (kelasId) { query += ' WHERE jp.kelas_id = ?'; bindings.push(parseInt(kelasId)); }
-    query += ' ORDER BY jp.hari, jp.jam_mulai';
+    query += ` ORDER BY CASE jp.hari
+      WHEN 'Sabtu' THEN 1 WHEN 'Minggu' THEN 2 WHEN 'Senin' THEN 3
+      WHEN 'Selasa' THEN 4 WHEN 'Rabu' THEN 5 WHEN 'Kamis' THEN 6
+      ELSE 7 END, jp.jam_mulai`;
 
     const rows = bindings.length > 0
       ? await env.DB.prepare(query).bind(...bindings).all()

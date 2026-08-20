@@ -32,7 +32,10 @@ export async function handleJadwal(
     params.push(hari);
   }
 
-  query += ' ORDER BY jp.hari, jp.jam_mulai';
+  query += ` ORDER BY CASE jp.hari
+    WHEN 'Sabtu' THEN 1 WHEN 'Minggu' THEN 2 WHEN 'Senin' THEN 3
+    WHEN 'Selasa' THEN 4 WHEN 'Rabu' THEN 5 WHEN 'Kamis' THEN 6
+    ELSE 7 END, jp.jam_mulai`;
 
   const { results } = await env.DB.prepare(query).bind(...params).all();
 

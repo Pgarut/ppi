@@ -17,7 +17,10 @@ export async function handleLaporanWK(request: Request, env: Env, _user: UserPay
          LEFT JOIN guru g ON jp.guru_id = g.id
          LEFT JOIN kelas k ON jp.kelas_id = k.id
          LEFT JOIN ruangan r ON jp.ruangan_id = r.id
-         ORDER BY jp.hari, jp.jam_mulai`
+         ORDER BY CASE jp.hari
+            WHEN 'Sabtu' THEN 1 WHEN 'Minggu' THEN 2 WHEN 'Senin' THEN 3
+            WHEN 'Selasa' THEN 4 WHEN 'Rabu' THEN 5 WHEN 'Kamis' THEN 6
+            ELSE 7 END, jp.jam_mulai`
       ).all();
       return success(rows.results);
     }

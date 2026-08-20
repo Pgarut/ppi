@@ -669,7 +669,10 @@ async function handleJadwalGuru(env: Env, user: UserPayload): Promise<Response> 
     LEFT JOIN kelas k ON jp.kelas_id = k.id
     LEFT JOIN ruangan r ON jp.ruangan_id = r.id
     WHERE jp.guru_id = ? AND jp.semester_id = ? AND jp.status_validasi = 'tervalidasi'
-    ORDER BY jp.hari, jp.jam_mulai
+    ORDER BY CASE jp.hari
+      WHEN 'Sabtu' THEN 1 WHEN 'Minggu' THEN 2 WHEN 'Senin' THEN 3
+      WHEN 'Selasa' THEN 4 WHEN 'Rabu' THEN 5 WHEN 'Kamis' THEN 6
+      ELSE 7 END, jp.jam_mulai
   `).bind(guruId, semester.id).all();
   return success(rows.results);
 }
@@ -713,7 +716,7 @@ async function handleReferensi(env: Env): Promise<Response> {
     env.DB.prepare('SELECT id, nama FROM kelas ORDER BY nama').all(),
     env.DB.prepare('SELECT id, nama, kode FROM mata_pelajaran ORDER BY nama').all(),
     env.DB.prepare('SELECT id, nama FROM semester WHERE is_aktif = 1 ORDER BY tahun_ajaran_id DESC, nama').all(),
-    env.DB.prepare("SELECT id, nis, nama FROM siswa WHERE status = 'aktif' ORDER BY nama").all(),
+    env.DB.prepare("SELECT id, nis, nama, kelas_id FROM siswa WHERE status = 'aktif' ORDER BY nama").all(),
   ]);
 
   return success({

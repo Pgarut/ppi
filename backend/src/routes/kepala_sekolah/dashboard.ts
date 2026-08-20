@@ -12,7 +12,10 @@ export async function handleDashboardKS(env: Env): Promise<Response> {
     env.DB.prepare(
       `SELECT hari, COUNT(*) as jumlah FROM jadwal_pelajaran
        WHERE status_validasi = 'tervalidasi'
-       GROUP BY hari ORDER BY hari`
+       GROUP BY hari ORDER BY CASE hari
+         WHEN 'Sabtu' THEN 1 WHEN 'Minggu' THEN 2 WHEN 'Senin' THEN 3
+         WHEN 'Selasa' THEN 4 WHEN 'Rabu' THEN 5 WHEN 'Kamis' THEN 6
+         ELSE 7 END`
     ).all<{ hari: string; jumlah: number }>(),
 
     env.DB.prepare(
