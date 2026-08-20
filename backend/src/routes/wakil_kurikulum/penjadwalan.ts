@@ -575,7 +575,7 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
   }
 
   // Jadwal CRUD
-  if (subPath === 'jadwal' || (subPath.startsWith('jadwal/') && !subPath.includes('/generate') && !subPath.includes('/reset') && !subPath.includes('/publikasi') && !subPath.includes('/simpan') && !subPath.includes('/cek-bentrok'))) {
+  if (subPath === 'jadwal' || (subPath.startsWith('jadwal/') && !subPath.includes('/generate') && !subPath.includes('/reset') && !subPath.includes('/publikasi') && !subPath.includes('/unpublikasi') && !subPath.includes('/simpan') && !subPath.includes('/cek-bentrok'))) {
     const id = subPath === 'jadwal' ? null : parseInt(subPath.split('/')[1]);
 
     if (request.method === 'GET') {
@@ -933,6 +933,23 @@ export async function handlePenjadwalan(request: Request, env: Env, user: UserPa
     ).bind(user.sub, `Publikasi jadwal semester ${semId}`, ip).run();
 
     return success({ message: 'Jadwal berhasil dipublikasikan', affected: result.meta?.changes });
+  }
+
+  // ── Unpublikasi (kembalikan tervalidasi → draft untuk revisi) ──
+  if (subPath === 'jadwal/unpublikasi' && request.method === 'POST') {
+    const body = await request.json() as { semester_id?: number };
+    const semId = body.semester_id;
+    if (!semId) return badRequest('semester_id diperlukan');
+
+    const result = await env.DB.prepare(
+      "UPDATE jadwal_pelajaran SET status_validasi = 'draft' WHERE semester_id = ? AND status_validasi = 'tervalidasi'"
+    ).bind(semId).run();
+
+    await env.DB.prepare(
+      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'unpublish', 'penjadwalan', ?, ?)"
+    ).bind(user.sub, `Unpublikasi jadwal semester ${semId}`, ip).run();
+
+    return success({ message: 'Jadwal dikembalikan ke draft. Publikasikan ulang setelah selesai revisi.', affected: result.meta?.changes });
   }
 
   // ── Beban mengajar ──

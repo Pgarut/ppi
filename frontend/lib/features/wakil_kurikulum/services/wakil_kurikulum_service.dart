@@ -115,6 +115,11 @@ class WakilKurikulumService {
     return res['data'] as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> unpublikasiJadwal(int semesterId) async {
+    final res = await ApiClient.post('/wakil-kurikulum/jadwal/unpublikasi', body: {'semester_id': semesterId});
+    return res['data'] as Map<String, dynamic>;
+  }
+
   static Future<List<dynamic>> getJadwalPerKelas(String kelasId, String semesterId) async {
     final res = await ApiClient.get('/wakil-kurikulum/jadwal-per-kelas',
         queryParams: {'kelas_id': kelasId, 'semester_id': semesterId});

@@ -273,6 +273,13 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
             color: Colors.green,
             onPressed: _filterSemester != null ? _publikasiJadwal : null,
           ),
+          // Unpublikasi
+          _buildActionBtn(
+            icon: Icons.unpublished_outlined,
+            label: 'Unpublikasi',
+            color: Colors.brown,
+            onPressed: _filterSemester != null ? _unpublikasiJadwal : null,
+          ),
           // Reset
           _buildActionBtn(
             icon: Icons.undo,
@@ -1459,6 +1466,30 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> with SingleTickerProv
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal publikasi: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _unpublikasiJadwal() async {
+    if (_filterSemester == null) return;
+    final ok = await AppUtils.confirm(context, title: 'Unpublikasi Jadwal',
+        message: 'Kembalikan SEMUA jadwal tervalidasi semester ini ke draft untuk direvisi?\n\n'
+            'Guru & santri TIDAK akan melihat jadwal sampai Anda publikasikan ulang.');
+    if (!ok) return;
+
+    try {
+      final res = await WakilKurikulumService.unpublikasiJadwal(int.parse(_filterSemester!));
+      await _loadJadwal();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${res['message'] ?? 'Jadwal dikembalikan ke draft'}'), backgroundColor: Colors.orange),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal unpublikasi: $e'), backgroundColor: Colors.red),
         );
       }
     }
