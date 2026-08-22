@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../services/dauroh_santri_service.dart';
 
-class DaurohSantriPage extends StatefulWidget {
-  const DaurohSantriPage({super.key});
+class HasilProgramPage extends StatefulWidget {
+  const HasilProgramPage({super.key});
 
   @override
-  State<DaurohSantriPage> createState() => _DaurohSantriPageState();
+  State<HasilProgramPage> createState() => _HasilProgramPageState();
 }
 
-class _DaurohSantriPageState extends State<DaurohSantriPage> {
+class _HasilProgramPageState extends State<HasilProgramPage> {
   final _service = DaurohSantriService();
-  List<Map<String, dynamic>> _program = [];
   List<Map<String, dynamic>> _nilai = [];
   bool _loading = true;
   String? _error;
@@ -28,16 +27,9 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
       _error = null;
     });
     try {
-      final results = await Future.wait([
-        _service.getProgram(),
-        _service.getNilai(),
-      ]);
+      _nilai = await _service.getNilai();
       if (mounted) {
-        setState(() {
-          _program = results[0];
-          _nilai = results[1];
-          _loading = false;
-        });
+        setState(() => _loading = false);
       }
     } catch (e) {
       if (mounted) {
@@ -51,6 +43,24 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
 
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Hasil Program',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -73,35 +83,15 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
       );
     }
     return RefreshIndicator(
-            onRefresh: _loadData,
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _buildSectionTitle('Program Yang Diikuti'),
-                const SizedBox(height: 12),
-                if (_program.isEmpty)
-                  _buildEmptyCard('Belum terdaftar di program at-Ta\'wid')
-                else
-                  ..._program.map((p) => _buildProgramCard(p)),
-                const SizedBox(height: 24),
-                _buildSectionTitle('Riwayat Penilaian'),
-                const SizedBox(height: 12),
-                if (_nilai.isEmpty)
-                  _buildEmptyCard('Belum ada penilaian')
-                else
-                  ..._nilai.map((n) => _buildNilaiCard(n)),
-              ],
-            ),
-          );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: AppTheme.grey800,
+      onRefresh: _loadData,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (_nilai.isEmpty)
+            _buildEmptyCard('Belum ada penilaian')
+          else
+            ..._nilai.map((n) => _buildNilaiCard(n)),
+        ],
       ),
     );
   }
@@ -121,107 +111,33 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
     );
   }
 
-  Widget _buildProgramCard(Map<String, dynamic> program) {
-    final nama = program['nama_program']?.toString() ?? '-';
-    final jenis = program['jenis_program']?.toString() ?? '-';
-    final dauroh = program['jenis_dauroh']?.toString() ?? '-';
-    final hari = program['hari']?.toString() ?? '-';
-    final jamMulai = program['jam_mulai']?.toString() ?? '';
-    final jamSelesai = program['jam_selesai']?.toString() ?? '';
-    final musyrifah = program['musyrifah_nama']?.toString() ?? '-';
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withAlpha(25),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    jenis.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primary,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withAlpha(25),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    dauroh.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              nama,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.grey800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.calendar_today, '$hari, $jamMulai - $jamSelesai'),
-            const SizedBox(height: 4),
-            _buildInfoRow(Icons.person, 'Musyrifah: $musyrifah'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: AppTheme.grey500),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 13, color: AppTheme.grey500),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildNilaiCard(Map<String, dynamic> nilai) {
     final program = nilai['nama_program']?.toString() ?? '-';
+    final jenisProgram = nilai['jenis_program']?.toString() ?? '-';
     final surat = nilai['surat_nama']?.toString() ?? '-';
     final dariAyat = nilai['dari_ayat']?.toString() ?? '-';
     final sampaiAyat = nilai['sampai_ayat']?.toString() ?? '-';
     final status = nilai['status_hafalan']?.toString() ?? '-';
     final totalNilai = nilai['total_nilai'];
+
+    // Dynamic labels dari backend
+    final labelBidang1 = nilai['label_bidang1']?.toString() ?? 'Bidang 1';
+    final labelBidang2 = nilai['label_bidang2']?.toString() ?? 'Bidang 2';
+    final labelBidang3 = nilai['label_bidang3']?.toString() ?? 'Bidang 3';
+
+    // Dynamic max values dari backend
+    final maxBidang1 = _parseInt(nilai['max_bidang1']) ?? 40;
+    final maxBidang2 = _parseInt(nilai['max_bidang2']) ?? 30;
+    final maxBidang3 = _parseInt(nilai['max_bidang3']) ?? 30;
+
     final bidang1 = nilai['nilai_bidang1'];
     final bidang2 = nilai['nilai_bidang2'];
     final bidang3 = nilai['nilai_bidang3'];
     final catatan = nilai['catatan_umum']?.toString();
+    final rencanaTL = nilai['rencana_tindak_lanjut']?.toString();
     final musyrifah = nilai['musyrifah_nama']?.toString() ?? '-';
     final tanggal = nilai['created_at']?.toString() ?? '-';
 
-    // Status color
     Color statusColor;
     switch (status) {
       case 'mengulang':
@@ -245,6 +161,7 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header: Program + Status
             Row(
               children: [
                 Expanded(
@@ -254,6 +171,11 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
                       Text(
                         'Program: $program',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Jenis: $jenisProgram',
+                        style: const TextStyle(fontSize: 12, color: AppTheme.grey500),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -277,18 +199,20 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
               ],
             ),
             const Divider(height: 20),
+            // Nilai per Bidang (dynamic labels & max)
             Row(
               children: [
-                _buildNilaiChip('Bidang 1', bidang1, _maxOf(nilai, 'max_bidang1', 40)),
+                _buildNilaiChip(labelBidang1, bidang1, maxBidang1),
                 const SizedBox(width: 8),
-                _buildNilaiChip('Bidang 2', bidang2, _maxOf(nilai, 'max_bidang2', 30)),
+                _buildNilaiChip(labelBidang2, bidang2, maxBidang2),
                 const SizedBox(width: 8),
-                _buildNilaiChip('Bidang 3', bidang3, _maxOf(nilai, 'max_bidang3', 30)),
+                _buildNilaiChip(labelBidang3, bidang3, maxBidang3),
                 const Spacer(),
                 _buildTotalNilai(totalNilai),
               ],
             ),
             const SizedBox(height: 12),
+            // Musyrifah + Tanggal
             Row(
               children: [
                 const Icon(Icons.person_outline, size: 14, color: AppTheme.grey500),
@@ -306,30 +230,15 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
                 ),
               ],
             ),
+            // Catatan
             if (catatan != null && catatan.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppTheme.grey50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Catatan:',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.grey600),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      catatan,
-                      style: const TextStyle(fontSize: 12, color: AppTheme.grey700),
-                    ),
-                  ],
-                ),
-              ),
+              _buildInfoBox('Catatan:', catatan),
+            ],
+            // Rencana Tindak Lanjut
+            if (rencanaTL != null && rencanaTL.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _buildInfoBox('Rencana Tindak Lanjut:', rencanaTL),
             ],
           ],
         ),
@@ -337,11 +246,34 @@ class _DaurohSantriPageState extends State<DaurohSantriPage> {
     );
   }
 
-  int _maxOf(Map<String, dynamic> nilai, String key, int fallback) {
-    final v = nilai[key];
-    if (v == null) return fallback;
-    final n = int.tryParse(v.toString());
-    return (n == null || n <= 0) ? fallback : n;
+  Widget _buildInfoBox(String title, String content) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppTheme.grey50,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.grey600),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            content,
+            style: const TextStyle(fontSize: 12, color: AppTheme.grey700),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    return int.tryParse(value.toString());
   }
 
   Widget _buildNilaiChip(String label, dynamic nilai, int max) {
