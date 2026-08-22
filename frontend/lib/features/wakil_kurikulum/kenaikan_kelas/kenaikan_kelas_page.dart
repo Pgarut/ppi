@@ -68,8 +68,8 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
         WakilKurikulumService.getKenaikanKelas(page: _kenaikanPage, search: _searchKenaikanCtrl.text),
         WakilKurikulumService.getAlumni(page: _alumniPage, search: _searchAlumniCtrl.text),
       ]);
-      final kenaikanData = results[0] as Map<String, dynamic>;
-      final alumniData = results[1] as Map<String, dynamic>;
+      final kenaikanData = results[0];
+      final alumniData = results[1];
       _kenaikan = List<Map<String, dynamic>>.from(kenaikanData['items'] ?? []);
       _kenaikanTotalPages = kenaikanData['pagination']?['total_pages'] ?? 1;
       _alumni = List<Map<String, dynamic>>.from(alumniData['items'] ?? []);
@@ -168,7 +168,7 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: Icon(Icons.warning_amber_rounded, color: AppTheme.orange, size: 40),
+        icon: const Icon(Icons.warning_amber_rounded, color: AppTheme.orange, size: 40),
         title: const Text('Konfirmasi Kenaikan Kelas'),
         content: Text(
           'Proses kenaikan kelas untuk ${_selectedSiswaIds.length} siswa?\n\n'
@@ -1263,6 +1263,7 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
       return;
     }
 
+    if (!mounted) return;
     return showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
