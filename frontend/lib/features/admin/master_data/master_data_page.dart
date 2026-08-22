@@ -112,8 +112,8 @@ enum MasterDataType {
     label: 'Santri',
     resource: 'siswa',
     icon: Icons.person_outline,
-    columns: ['nis', 'nama', 'jenis_kelamin', 'kelas_id', 'username', 'status'],
-    displayCols: ['NIS', 'Nama', 'JK', 'Kelas', 'Username', 'Status'],
+    columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'username', 'whatsapp', 'status'],
+    displayCols: ['NIS', 'NISN', 'Nama', 'JK', 'Kelas', 'Username', 'WA', 'Status'],
     hasTemplate: true,
     hasFilters: true,
     templateFileName: 'template_siswa.xlsx',
@@ -210,6 +210,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
 
   String? _filterTingkat;
   String? _filterKelas;
+  String? _filterStatus;
   List<Map<String, dynamic>> _tingkatList = [];
   List<Map<String, dynamic>> _kelasList = [];
 
@@ -287,12 +288,13 @@ class _MasterDataPageState extends State<MasterDataPage> {
       if (type == MasterDataType.santri) {
         if (_filterTingkat != null) filters['tingkat_id'] = _filterTingkat!;
         if (_filterKelas != null) filters['kelas_id'] = _filterKelas!;
+        if (_filterStatus != null) filters['status'] = _filterStatus!;
       }
 
       final res = await AdminService.list(
         type.resource,
         page: _page[type]!,
-        perPage: 100,
+        perPage: 20,
         search: _searchCtrl[type]!.text,
         filters: filters,
       );
@@ -943,6 +945,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
               if (type.hasFilters) ...[
                 _buildFilterTingkat(),
                 _buildFilterKelas(),
+                _buildFilterStatus(),
                 _buildFilterReset(),
               ],
               SizedBox(
@@ -1023,8 +1026,30 @@ class _MasterDataPageState extends State<MasterDataPage> {
     );
   }
 
+  Widget _buildFilterStatus() {
+    return SizedBox(
+      width: 140,
+      child: ModernDropdown<String>(
+        value: _filterStatus,
+        label: 'Status',
+        icon: Icons.info_outline,
+        items: [
+          const DropdownMenuItem<String>(value: null, child: Text('Semua')),
+          const DropdownMenuItem(value: 'aktif', child: Text('Aktif')),
+          const DropdownMenuItem(value: 'lulus', child: Text('Lulus')),
+          const DropdownMenuItem(value: 'keluar', child: Text('Keluar')),
+          const DropdownMenuItem(value: 'pindah', child: Text('Pindah')),
+        ],
+        onChanged: (v) {
+          setState(() => _filterStatus = v);
+          _load(MasterDataType.santri, refresh: true);
+        },
+      ),
+    );
+  }
+
   Widget _buildFilterReset() {
-    final hasFilter = _filterTingkat != null || _filterKelas != null;
+    final hasFilter = _filterTingkat != null || _filterKelas != null || _filterStatus != null;
     if (!hasFilter) return const SizedBox.shrink();
     return ActionChip(
       avatar: const Icon(Icons.close, size: 16, color: AppTheme.error),
@@ -1033,6 +1058,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
         setState(() {
           _filterTingkat = null;
           _filterKelas = null;
+          _filterStatus = null;
         });
         _load(MasterDataType.santri, refresh: true);
       },

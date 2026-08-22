@@ -7,17 +7,41 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
   const resource = pathParts[2];
   const subPath = subPathFull === resource ? '' : subPathFull.replace(resource + '/', '');
 
-  // GET list kenaikan kelas
+  // GET list kenaikan kelas (dengan pagination & search)
   if (subPath === '' && request.method === 'GET') {
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
+    const perPage = Math.min(100, Math.max(1, parseInt(url.searchParams.get('per_page') || '20')));
+    const search = url.searchParams.get('search') || '';
+    const offset = (page - 1) * perPage;
+
+    let where = '';
+    const bindings: unknown[] = [];
+    if (search) {
+      where = `WHERE s.nama LIKE ? OR s.nis LIKE ?`;
+      bindings.push(`%${search}%`, `%${search}%`);
+    }
+
+    const countResult = await env.DB.prepare(
+      `SELECT COUNT(*) as total FROM kenaikan_kelas kk
+       LEFT JOIN siswa s ON kk.siswa_id = s.id ${where}`
+    ).bind(...bindings).first<{ total: number }>();
+    const total = countResult?.total || 0;
+
     const rows = await env.DB.prepare(
       `SELECT kk.*, s.nama as siswa_nama, s.nis, dk.nama as dari_kelas, tk.nama as ke_kelas
        FROM kenaikan_kelas kk
        LEFT JOIN siswa s ON kk.siswa_id = s.id
        LEFT JOIN kelas dk ON kk.dari_kelas_id = dk.id
        LEFT JOIN kelas tk ON kk.ke_kelas_id = tk.id
-       ORDER BY kk.created_at DESC`
-    ).all();
-    return success(rows.results);
+       ${where}
+       ORDER BY kk.created_at DESC
+       LIMIT ? OFFSET ?`
+    ).bind(...bindings, perPage, offset).all();
+
+    return success({
+      items: rows.results,
+      pagination: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) }
+    });
   }
 
   // Data calon naik kelas (siswa aktif per kelas)
@@ -110,7 +134,7 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
       });
     }
 
-    // Ambil data absensi per siswa
+    // Ambil data absensi per siswa (filtered by tahun ajaran via semester)
     const absensiRows = await env.DB.prepare(
       `SELECT a.siswa_id,
               COUNT(CASE WHEN a.status = 'hadir' THEN 1 END) as hadir,
@@ -121,8 +145,10 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
        FROM absensi_siswa a
        WHERE a.siswa_id IN (${placeholders})
          AND a.kelas_id = ?
+         AND a.tanggal >= (SELECT MIN(tanggal) FROM semester WHERE tahun_ajaran_id = ?)
+         AND a.tanggal <= (SELECT MAX(tanggal) FROM semester WHERE tahun_ajaran_id = ?)
        GROUP BY a.siswa_id`
-    ).bind(...siswaIds, kelasIdNum2).all();
+    ).bind(...siswaIds, kelasIdNum2, taIdNum2, taIdNum2).all();
 
     const absensiMap = new Map<number, Record<string, unknown>>();
     for (const row of absensiRows.results) {
@@ -297,36 +323,49 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
 
     const results: Array<{ siswa_id: number; status: string; kelas_nama?: string }> = [];
 
+    // Pre-fetch tahun_ajaran_id dari kelas tujuan (sekali untuk semua)
+    const targetTaIds = new Map<number, number>();
+    if (body.siswa_naik && body.siswa_naik.length > 0) {
+      const kelasTujuanIds = [...new Set(body.siswa_naik.map(s => s.ke_kelas_id))];
+      const ktPlaceholders = kelasTujuanIds.map(() => '?').join(',');
+      const kelasTujuanRows = await env.DB.prepare(
+        `SELECT id, tahun_ajaran_id FROM kelas WHERE id IN (${ktPlaceholders})`
+      ).bind(...kelasTujuanIds).all<{ id: number; tahun_ajaran_id: number }>();
+      for (const row of kelasTujuanRows.results) {
+        targetTaIds.set(row.id, row.tahun_ajaran_id);
+      }
+    }
+
+    // Kumpulkan semua statements untuk batch execution (atomic)
+    const batchStatements: ReturnType<typeof env.DB.prepare>[] = [];
+
     // Proses siswa yang naik kelas
     if (body.siswa_naik && body.siswa_naik.length > 0) {
       for (const s of body.siswa_naik) {
-        await env.DB.prepare(
-          `INSERT INTO kenaikan_kelas (siswa_id, dari_kelas_id, ke_kelas_id, tahun_ajaran_id, status, tanggal_keputusan)
-           VALUES (?, ?, ?, ?, 'naik', date('now'))`
-        ).bind(s.siswa_id, body.dari_kelas_id, s.ke_kelas_id, body.tahun_ajaran_id).run();
-
-        // Ambil tahun_ajaran_id dari kelas tujuan
-        const kelasTujuan = await env.DB.prepare("SELECT tahun_ajaran_id FROM kelas WHERE id = ?").bind(s.ke_kelas_id).first<{ tahun_ajaran_id: number }>();
-        const targetTaId = kelasTujuan?.tahun_ajaran_id || body.tahun_ajaran_id;
-
-        // Update kelas_id dan tahun_ajaran_id siswa ke kelas tujuan
-        await env.DB.prepare("UPDATE siswa SET kelas_id = ?, tahun_ajaran_id = ? WHERE id = ?").bind(s.ke_kelas_id, targetTaId, s.siswa_id).run();
-
-        // Ambil nama kelas tujuan untuk response
-        const kelasNama = await env.DB.prepare("SELECT nama FROM kelas WHERE id = ?").bind(s.ke_kelas_id).first() as Record<string, unknown> | null;
-
-        results.push({ siswa_id: s.siswa_id, status: 'naik', kelas_nama: kelasNama?.nama as string });
+        const targetTaId = targetTaIds.get(s.ke_kelas_id) || body.tahun_ajaran_id;
+        batchStatements.push(
+          env.DB.prepare(
+            `INSERT INTO kenaikan_kelas (siswa_id, dari_kelas_id, ke_kelas_id, tahun_ajaran_id, status, tanggal_keputusan)
+             VALUES (?, ?, ?, ?, 'naik', date('now'))`
+          ).bind(s.siswa_id, body.dari_kelas_id, s.ke_kelas_id, body.tahun_ajaran_id)
+        );
+        batchStatements.push(
+          env.DB.prepare("UPDATE siswa SET kelas_id = ?, tahun_ajaran_id = ? WHERE id = ?")
+            .bind(s.ke_kelas_id, targetTaId, s.siswa_id)
+        );
+        results.push({ siswa_id: s.siswa_id, status: 'naik', kelas_nama: '' });
       }
     }
 
     // Proses siswa yang tidak naik kelas
     if (body.siswa_tidak_naik && body.siswa_tidak_naik.length > 0) {
       for (const siswaId of body.siswa_tidak_naik) {
-        await env.DB.prepare(
-          `INSERT INTO kenaikan_kelas (siswa_id, dari_kelas_id, ke_kelas_id, tahun_ajaran_id, status, tanggal_keputusan)
-           VALUES (?, ?, NULL, ?, 'tidak_naik', date('now'))`
-        ).bind(siswaId, body.dari_kelas_id, body.tahun_ajaran_id).run();
-
+        batchStatements.push(
+          env.DB.prepare(
+            `INSERT INTO kenaikan_kelas (siswa_id, dari_kelas_id, ke_kelas_id, tahun_ajaran_id, status, tanggal_keputusan)
+             VALUES (?, ?, NULL, ?, 'tidak_naik', date('now'))`
+          ).bind(siswaId, body.dari_kelas_id, body.tahun_ajaran_id)
+        );
         results.push({ siswa_id: siswaId, status: 'tidak_naik' });
       }
     }
@@ -351,23 +390,48 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
 
       for (const r of results) {
         if (r.status === 'naik') {
-          // Update status siswa jadi lulus
-          await env.DB.prepare("UPDATE siswa SET status = 'lulus' WHERE id = ?").bind(r.siswa_id).run();
-
-          // Insert ke alumni
-          await env.DB.prepare(
-            `INSERT OR IGNORE INTO alumni (siswa_id, tahun_lulus) VALUES (?, ?)`
-          ).bind(r.siswa_id, tahunLulus?.nama || String(body.tahun_ajaran_id)).run();
-
+          batchStatements.push(
+            env.DB.prepare("UPDATE siswa SET status = 'lulus' WHERE id = ?").bind(r.siswa_id)
+          );
+          batchStatements.push(
+            env.DB.prepare(`INSERT OR IGNORE INTO alumni (siswa_id, tahun_lulus) VALUES (?, ?)`)
+              .bind(r.siswa_id, tahunLulus?.nama || String(body.tahun_ajaran_id))
+          );
           r.status = 'lulus_alumni';
         }
       }
     }
 
-    // Log aktivitas
-    await env.DB.prepare(
-      "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'create', 'kenaikan_kelas', ?, ?)"
-    ).bind(user.sub, `Batch kenaikan kelas dari kelas ${body.dari_kelas_id}: ${results.length} siswa diproses`, ip).run();
+    // Log aktivitas (part of batch)
+    batchStatements.push(
+      env.DB.prepare(
+        "INSERT INTO log_aktivitas (user_id, aksi, modul, detail, ip_address) VALUES (?, 'create', 'kenaikan_kelas', ?, ?)"
+      ).bind(user.sub, `Batch kenaikan kelas dari kelas ${body.dari_kelas_id}: ${results.length} siswa diproses`, ip)
+    );
+
+    // Eksekusi semua dalam satu batch (atomic transaction)
+    if (batchStatements.length > 0) {
+      await env.DB.batch(batchStatements);
+    }
+
+    // Ambil nama kelas tujuan untuk response
+    if (body.siswa_naik && body.siswa_naik.length > 0) {
+      const uniqueKelasIds = [...new Set(body.siswa_naik.map(s => s.ke_kelas_id))];
+      const kelasPlaceholders = uniqueKelasIds.map(() => '?').join(',');
+      const kelasNamaRows = await env.DB.prepare(
+        `SELECT id, nama FROM kelas WHERE id IN (${kelasPlaceholders})`
+      ).bind(...uniqueKelasIds).all<{ id: number; nama: string }>();
+      const kelasNamaMap = new Map<number, string>();
+      for (const row of kelasNamaRows.results) {
+        kelasNamaMap.set(row.id, row.nama);
+      }
+      for (const r of results) {
+        if (r.status === 'naik' || r.status === 'lulus_alumni') {
+          const siswaNaik = body.siswa_naik!.find(s => s.siswa_id === r.siswa_id);
+          if (siswaNaik) r.kelas_nama = kelasNamaMap.get(siswaNaik.ke_kelas_id) || '';
+        }
+      }
+    }
 
     return created({ processed: results.length, details: results });
   }
@@ -427,12 +491,51 @@ export async function handleKenaikanKelas(request: Request, env: Env, user: User
   // Alumni CRUD
   if (resource === 'alumni' || (resource === 'kenaikan-kelas' && subPath.startsWith('alumni'))) {
     const alumniSubPath = resource === 'alumni' ? subPath : subPath.replace('alumni', '');
-    if (request.method === 'GET') {
+
+    // GET calon alumni (siswa XII yang belum alumni)
+    if (alumniSubPath === 'calon' && request.method === 'GET') {
       const rows = await env.DB.prepare(
-        `SELECT a.*, s.nama as siswa_nama, s.nis FROM alumni a
-         LEFT JOIN siswa s ON a.siswa_id = s.id ORDER BY a.tahun_lulus DESC`
+        `SELECT s.id, s.nama, s.nis, k.nama as kelas_nama
+         FROM siswa s
+         LEFT JOIN kelas k ON s.kelas_id = k.id
+         LEFT JOIN tingkat t ON k.tingkat_id = t.id
+         WHERE s.status = 'aktif' AND t.nama = 'XII'
+           AND s.id NOT IN (SELECT siswa_id FROM alumni)
+         ORDER BY s.nama ASC`
       ).all();
       return success(rows.results);
+    }
+
+    if (request.method === 'GET') {
+      const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
+      const perPage = Math.min(100, Math.max(1, parseInt(url.searchParams.get('per_page') || '20')));
+      const search = url.searchParams.get('search') || '';
+      const offset = (page - 1) * perPage;
+
+      let where = '';
+      const bindings: unknown[] = [];
+      if (search) {
+        where = `WHERE s.nama LIKE ? OR s.nis LIKE ?`;
+        bindings.push(`%${search}%`, `%${search}%`);
+      }
+
+      const countResult = await env.DB.prepare(
+        `SELECT COUNT(*) as total FROM alumni a
+         LEFT JOIN siswa s ON a.siswa_id = s.id ${where}`
+      ).bind(...bindings).first<{ total: number }>();
+      const total = countResult?.total || 0;
+
+      const rows = await env.DB.prepare(
+        `SELECT a.*, s.nama as siswa_nama, s.nis FROM alumni a
+         LEFT JOIN siswa s ON a.siswa_id = s.id ${where}
+         ORDER BY a.tahun_lulus DESC
+         LIMIT ? OFFSET ?`
+      ).bind(...bindings, perPage, offset).all();
+
+      return success({
+        items: rows.results,
+        pagination: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) }
+      });
     }
 
     if (request.method === 'POST') {

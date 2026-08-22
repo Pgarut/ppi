@@ -20,6 +20,14 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
   List<Map<String, dynamic>> _tahunAjaranList = [];
   bool _loading = true;
 
+  // Pagination
+  int _kenaikanPage = 1;
+  int _kenaikanTotalPages = 1;
+  int _alumniPage = 1;
+  int _alumniTotalPages = 1;
+  final _searchKenaikanCtrl = TextEditingController();
+  final _searchAlumniCtrl = TextEditingController();
+
   // Batch processing state
   int _wizardStep = 0; // 0=riwayat, 1=pilih kelas, 2=centang siswa, 3=pilih kelas tujuan, 4=review
   String? _selectedKelasId;
@@ -48,6 +56,8 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
     _tabCtrl.dispose();
     _minAbsensiCtrl.dispose();
     _minNilaiCtrl.dispose();
+    _searchKenaikanCtrl.dispose();
+    _searchAlumniCtrl.dispose();
     super.dispose();
   }
 
@@ -55,12 +65,18 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
     setState(() => _loading = true);
     try {
       final results = await Future.wait([
-        WakilKurikulumService.getKenaikanKelas(),
-        WakilKurikulumService.getAlumni(),
+        WakilKurikulumService.getKenaikanKelas(page: _kenaikanPage, search: _searchKenaikanCtrl.text),
+        WakilKurikulumService.getAlumni(page: _alumniPage, search: _searchAlumniCtrl.text),
       ]);
-      _kenaikan = List<Map<String, dynamic>>.from(results[0]);
-      _alumni = List<Map<String, dynamic>>.from(results[1]);
-    } catch (_) {}
+      final kenaikanData = results[0] as Map<String, dynamic>;
+      final alumniData = results[1] as Map<String, dynamic>;
+      _kenaikan = List<Map<String, dynamic>>.from(kenaikanData['items'] ?? []);
+      _kenaikanTotalPages = kenaikanData['pagination']?['total_pages'] ?? 1;
+      _alumni = List<Map<String, dynamic>>.from(alumniData['items'] ?? []);
+      _alumniTotalPages = alumniData['pagination']?['total_pages'] ?? 1;
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat data: $e')));
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -69,7 +85,9 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
       final ref = await WakilKurikulumService.getReferensi();
       _kelasList = (ref['kelas'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
       _tahunAjaranList = (ref['tahun_ajaran'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat referensi: $e')));
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -144,13 +162,37 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
   }
 
   Future<void> _submitBatch() async {
+    if (_loadingBatch) return;
+
+    // Konfirmasi sebelum proses
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(Icons.warning_amber_rounded, color: AppTheme.orange, size: 40),
+        title: const Text('Konfirmasi Kenaikan Kelas'),
+        content: Text(
+          'Proses kenaikan kelas untuk ${_selectedSiswaIds.length} siswa?\n\n'
+          '${_isLastLevel ? "Semua siswa yang dipilih akan menjadi ALUMNI." : "Siswa tidak dipilih akan TIDAK NAIK kelas."}',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.primary),
+            child: const Text('Ya, Proses'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _loadingBatch = true);
     try {
       final siswaNaik = <Map<String, dynamic>>[];
       final siswaTidakNaik = <int>[];
 
       for (final siswaId in _selectedSiswaIds) {
         if (_isLastLevel) {
-          // Kelas XII → langsung lulus/alumni
           siswaNaik.add({'siswa_id': siswaId, 'ke_kelas_id': 0});
         } else {
           final kelasId = _siswaKelasTujuan[siswaId];
@@ -160,7 +202,6 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
         }
       }
 
-      // Siswa yang tidak dipilih = tidak naik
       for (final s in _calonSiswa) {
         final id = s['id'] as int;
         if (!_selectedSiswaIds.contains(id)) {
@@ -184,6 +225,8 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memproses: $e')));
+    } finally {
+      if (mounted) setState(() => _loadingBatch = false);
     }
   }
 
@@ -307,6 +350,26 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
         ),
         const SizedBox(height: 16),
 
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: TextField(
+            controller: _searchKenaikanCtrl,
+            decoration: InputDecoration(
+              hintText: 'Cari nama atau NIS...',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              suffixIcon: _searchKenaikanCtrl.text.isNotEmpty
+                ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () { _searchKenaikanCtrl.clear(); _load(); })
+                : null,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              isDense: true,
+            ),
+            onSubmitted: (_) => _load(),
+          ),
+        ),
+        const SizedBox(height: 12),
+
         // Riwayat List
         Expanded(
           child: _kenaikan.isEmpty
@@ -326,6 +389,14 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
                   itemBuilder: (_, i) => _buildRiwayatCard(_kenaikan[i]),
                 ),
         ),
+
+        // Pagination
+        if (_kenaikanTotalPages > 1)
+          _buildPagination(
+            currentPage: _kenaikanPage,
+            totalPages: _kenaikanTotalPages,
+            onPageChanged: (page) { _kenaikanPage = page; _load(); },
+          ),
       ],
     );
   }
@@ -416,7 +487,9 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
   }
 
   Widget _buildStepIndicator() {
-    final steps = ['Pilih Kelas', 'Centang Siswa', 'Pilih Tujuan', 'Review'];
+    final steps = _isLastLevel
+      ? ['Pilih Kelas', 'Centang Siswa', 'Review']
+      : ['Pilih Kelas', 'Centang Siswa', 'Pilih Tujuan', 'Review'];
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(16),
@@ -1031,9 +1104,11 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
               Expanded(
                 flex: 2,
                 child: FilledButton.icon(
-                  onPressed: _submitBatch,
-                  icon: const Icon(Icons.check_circle, size: 18),
-                  label: const Text('Proses Kenaikan Kelas'),
+                  onPressed: _loadingBatch ? null : _submitBatch,
+                  icon: _loadingBatch
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.check_circle, size: 18),
+                  label: Text(_loadingBatch ? 'Memproses...' : 'Proses Kenaikan Kelas'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppTheme.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1084,7 +1159,28 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: TextField(
+            controller: _searchAlumniCtrl,
+            decoration: InputDecoration(
+              hintText: 'Cari nama atau NIS...',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              suffixIcon: _searchAlumniCtrl.text.isNotEmpty
+                ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () { _searchAlumniCtrl.clear(); _load(); })
+                : null,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              isDense: true,
+            ),
+            onSubmitted: (_) => _load(),
+          ),
+        ),
+        const SizedBox(height: 12),
+
         Expanded(
           child: _alumni.isEmpty
               ? const Center(
@@ -1141,48 +1237,77 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
                   },
                 ),
         ),
+
+        // Pagination
+        if (_alumniTotalPages > 1)
+          _buildPagination(
+            currentPage: _alumniPage,
+            totalPages: _alumniTotalPages,
+            onPageChanged: (page) { _alumniPage = page; _load(); },
+          ),
       ],
     );
   }
 
   Future<void> _showFormAlumni() async {
-    final siswaIdCtrl = TextEditingController();
     final tahunLulusCtrl = TextEditingController();
     final kontakCtrl = TextEditingController();
+    int? selectedSiswaId;
+    List<Map<String, dynamic>> calonAlumniList = [];
+
+    try {
+      final result = await WakilKurikulumService.getCalonAlumni();
+      calonAlumniList = List<Map<String, dynamic>>.from(result);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat data siswa: $e')));
+      return;
+    }
 
     return showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Tambah Alumni'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: siswaIdCtrl, keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: 'Santri ID', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
-          const SizedBox(height: 12),
-          TextField(controller: tahunLulusCtrl,
-              decoration: InputDecoration(labelText: 'Tahun Lulus', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
-          const SizedBox(height: 12),
-          TextField(controller: kontakCtrl,
-              decoration: InputDecoration(labelText: 'Kontak', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-          FilledButton(
-            onPressed: () async {
-              try {
-                await WakilKurikulumService.createAlumni({
-                  'siswa_id': int.tryParse(siswaIdCtrl.text),
-                  'tahun_lulus': tahunLulusCtrl.text,
-                  'kontak': kontakCtrl.text,
-                });
-                if (ctx.mounted) Navigator.pop(ctx);
-                _load();
-              } catch (e) { if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('$e'))); }
-            },
-            style: FilledButton.styleFrom(backgroundColor: AppTheme.primary),
-            child: const Text('Simpan'),
-          ),
-        ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Tambah Alumni'),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            DropdownButtonFormField<int>(
+              value: selectedSiswaId,
+              decoration: InputDecoration(
+                labelText: 'Pilih Siswa',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              items: calonAlumniList.map((s) => DropdownMenuItem(
+                value: s['id'] as int,
+                child: Text('${s['nama']} (${s['nis'] ?? '-'})', style: const TextStyle(fontSize: 13)),
+              )).toList(),
+              onChanged: (v) => setD(() => selectedSiswaId = v),
+            ),
+            const SizedBox(height: 12),
+            TextField(controller: tahunLulusCtrl,
+                decoration: InputDecoration(labelText: 'Tahun Lulus', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
+            const SizedBox(height: 12),
+            TextField(controller: kontakCtrl,
+                decoration: InputDecoration(labelText: 'Kontak', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            FilledButton(
+              onPressed: selectedSiswaId == null ? null : () async {
+                try {
+                  await WakilKurikulumService.createAlumni({
+                    'siswa_id': selectedSiswaId,
+                    'tahun_lulus': tahunLulusCtrl.text,
+                    'kontak': kontakCtrl.text,
+                  });
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  _load();
+                } catch (e) { if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('$e'))); }
+              },
+              style: FilledButton.styleFrom(backgroundColor: AppTheme.primary),
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1299,6 +1424,61 @@ class _KenaikanKelasPageState extends State<KenaikanKelasPage> with SingleTicker
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPagination({required int currentPage, required int totalPages, required Function(int) onPageChanged}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left, size: 20),
+            onPressed: currentPage > 1 ? () => onPageChanged(currentPage - 1) : null,
+          ),
+          ...List.generate(totalPages > 5 ? 5 : totalPages, (i) {
+            int pageNum;
+            if (totalPages <= 5) {
+              pageNum = i + 1;
+            } else if (currentPage <= 3) {
+              pageNum = i + 1;
+            } else if (currentPage >= totalPages - 2) {
+              pageNum = totalPages - 4 + i;
+            } else {
+              pageNum = currentPage - 2 + i;
+            }
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: InkWell(
+                onTap: () => onPageChanged(pageNum),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: pageNum == currentPage ? AppTheme.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '$pageNum',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: pageNum == currentPage ? FontWeight.w600 : FontWeight.normal,
+                      color: pageNum == currentPage ? Colors.white : AppTheme.grey600,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+          IconButton(
+            icon: const Icon(Icons.chevron_right, size: 20),
+            onPressed: currentPage < totalPages ? () => onPageChanged(currentPage + 1) : null,
+          ),
+        ],
       ),
     );
   }

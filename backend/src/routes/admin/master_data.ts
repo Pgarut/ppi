@@ -61,7 +61,7 @@ const configs: Record<string, CrudConfig> = {
     leftJoin: { table: 'users', on: 'users.guru_id = guru.id', select: ["users.username"] },
   },
   'siswa': {
-    table: 'siswa', columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'tahun_ajaran_id', 'status', 'nama_ayah', 'nama_ibu', 'pekerjaan_ayah', 'pekerjaan_ibu', 'whatsapp'], label: 'Santri', searchFields: ['nama', 'nis', 'nisn'], filterFields: ['kelas_id'],
+    table: 'siswa', columns: ['nis', 'nisn', 'nama', 'jenis_kelamin', 'kelas_id', 'tahun_ajaran_id', 'status', 'nama_ayah', 'nama_ibu', 'pekerjaan_ayah', 'pekerjaan_ibu', 'whatsapp'], label: 'Santri', searchFields: ['nama', 'nis', 'nisn'], filterFields: ['kelas_id', 'status'],
     sortJoin: ' LEFT JOIN kelas ON siswa.kelas_id = kelas.id LEFT JOIN tingkat ON kelas.tingkat_id = tingkat.id',
     sortBy: `CASE tingkat.nama WHEN 'VII' THEN 7 WHEN 'VIII' THEN 8 WHEN 'IX' THEN 9 WHEN 'X' THEN 10 WHEN 'XI' THEN 11 WHEN 'XII' THEN 12 ELSE 99 END, kelas.nama, siswa.nama`,
     leftJoin: { table: 'users', on: 'users.siswa_id = siswa.id', select: ["users.username"] },
@@ -214,7 +214,13 @@ export async function handleAdminMasterData(request: Request, env: Env, user: Us
       }
       return result;
     }
-    if (isDelete) return remove(env, cfg, parseInt(pathParts[3]), user, ip);
+    if (isDelete) {
+      const id = parseInt(pathParts[3]);
+      if (resource === 'siswa') {
+        await env.DB.prepare('DELETE FROM users WHERE siswa_id = ?').bind(id).run();
+      }
+      return remove(env, cfg, id, user, ip);
+    }
   } catch (e) {
     return badRequest(e instanceof Error ? e.message : 'Invalid request');
   }

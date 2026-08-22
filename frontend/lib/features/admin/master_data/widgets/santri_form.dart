@@ -62,6 +62,8 @@ class _SantriFormState extends State<SantriForm> {
         _selectedStatus = 'lulus';
       } else if (rawStatus.toLowerCase() == 'keluar') {
         _selectedStatus = 'keluar';
+      } else if (rawStatus.toLowerCase() == 'pindah') {
+        _selectedStatus = 'pindah';
       } else {
         _selectedStatus = rawStatus.isNotEmpty ? rawStatus : null;
       }
@@ -182,6 +184,7 @@ class _SantriFormState extends State<SantriForm> {
                 DropdownMenuItem(value: 'aktif', child: Text('Aktif')),
                 DropdownMenuItem(value: 'lulus', child: Text('Lulus')),
                 DropdownMenuItem(value: 'keluar', child: Text('Keluar')),
+                DropdownMenuItem(value: 'pindah', child: Text('Pindah')),
               ],
               onChanged: (v) => setState(() => _selectedStatus = v),
             ),
