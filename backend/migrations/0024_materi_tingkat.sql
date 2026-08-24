@@ -16,6 +16,24 @@
 PRAGMA foreign_keys = OFF;
 PRAGMA defer_foreign_keys = ON;
 
+-- 0. Jaga agar migration tetap jalan di database baru yang chain-nya
+--     tidak pernah membuat tabel materi (mis. DB lokal yang hanya
+--     memakai folder migrations/).
+CREATE TABLE IF NOT EXISTS materi (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    guru_id             INTEGER NOT NULL REFERENCES guru(id),
+    mata_pelajaran_id   INTEGER NOT NULL REFERENCES mata_pelajaran(id),
+    kelas_id            INTEGER NOT NULL REFERENCES kelas(id),
+    judul               TEXT NOT NULL,
+    deskripsi           TEXT,
+    link_url            TEXT NOT NULL,
+    link_youtube        TEXT,
+    pertemuan           TEXT,
+    is_aktif            INTEGER NOT NULL DEFAULT 1,
+    created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- 1. Buat tabel baru
 CREATE TABLE materi_new (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -47,6 +47,7 @@ class _DashboardShellState extends State<DashboardShell> {
     'rapor': 'Rapor Santri',
     'materi': 'Materi Pembelajaran',
     'dauroh': 'Program at-Ta\'wid',
+    'idarat': 'Idarat al-Madfu\'at',
     'santri': 'Data Santri',
     'guru': 'Data Guru',
     'kelas': 'Data Kelas',

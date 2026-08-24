@@ -11,12 +11,12 @@ export async function handleAdminApiKeys(request: Request, env: Env, user: UserP
   const subPath = pathParts.slice(2).join('/');
 
   // POST /api/admin/api-keys - Generate new API Key
-  if (subPath === '' && method === 'POST') {
+  if (subPath === 'api-keys' && method === 'POST') {
     return createApiKey(request, env, user);
   }
 
   // GET /api/admin/api-keys - List all API Keys
-  if (subPath === '' && method === 'GET') {
+  if (subPath === 'api-keys' && method === 'GET') {
     return listApiKeys(request, env, user, url);
   }
 
@@ -52,7 +52,7 @@ async function createApiKey(request: Request, env: Env, user: UserPayload): Prom
     return badRequest('Invalid JSON body');
   }
 
-  const { nama_pihak, permissions = 'readwrite', rate_limit = 1000 } = body;
+  const { nama_pihak, permissions = 'readwrite', rate_limit = 5000 } = body;
 
   if (!nama_pihak || nama_pihak.trim() === '') {
     return badRequest('nama_pihak wajib diisi');

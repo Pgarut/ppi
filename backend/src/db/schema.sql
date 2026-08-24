@@ -404,8 +404,8 @@ CREATE TABLE pengaturan (
 );
 
 INSERT OR IGNORE INTO pengaturan (key, value) VALUES
-    ('hero_title', 'Sistem Informasi Madrasah PPI'),
-    ('hero_subtitle', 'Kelola data akademik, absensi, nilai, rapor, dan bimbingan konseling dalam satu platform.'),
+    ('hero_title', 'MA PERSIS GARUT'),
+    ('hero_subtitle', 'Absensi, Jadwal, Nilai, dan Lainnya'),
     ('logo_url', ''),
     ('background_url', '');
 
@@ -680,7 +680,7 @@ CREATE TABLE api_keys (
     nama_pihak      TEXT NOT NULL,                    -- nama pihak ketiga (mis. "Bank BRI", "Toko Maju")
     api_key_hash    TEXT NOT NULL,                    -- bcrypt hash dari api_key
     permissions     TEXT NOT NULL DEFAULT 'read',     -- 'read', 'write', 'readwrite'
-    rate_limit      INTEGER NOT NULL DEFAULT 1000,    -- request per hari
+    rate_limit      INTEGER NOT NULL DEFAULT 5000,    -- request per hari
     is_aktif        INTEGER NOT NULL DEFAULT 1,       -- 1 = aktif, 0 = nonaktif
     last_used_at    TEXT,                             -- timestamp terakhir digunakan
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),

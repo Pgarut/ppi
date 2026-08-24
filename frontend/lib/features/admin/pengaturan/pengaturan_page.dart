@@ -861,7 +861,7 @@ class _ApiKeysTabState extends State<_ApiKeysTab> {
                   final res = await AdminService.createApiKey({
                     'nama_pihak': namaCtrl.text.trim(),
                     'permissions': permissions,
-                    'rate_limit': int.tryParse(rateLimitCtrl.text) ?? 1000,
+                    'rate_limit': int.tryParse(rateLimitCtrl.text) ?? 5000,
                   });
                   if (ctx.mounted) Navigator.pop(ctx);
                   _load();
@@ -947,7 +947,7 @@ class _ApiKeysTabState extends State<_ApiKeysTab> {
 
   Future<void> _editPermissions(Map<String, dynamic> item) async {
     String permissions = item['permissions'] as String? ?? 'readwrite';
-    final rateLimitCtrl = TextEditingController(text: (item['rate_limit'] ?? 1000).toString());
+    final rateLimitCtrl = TextEditingController(text: (item['rate_limit'] ?? 5000).toString());
 
     await showDialog(
       context: context,
@@ -982,7 +982,7 @@ class _ApiKeysTabState extends State<_ApiKeysTab> {
                 try {
                   await AdminService.updateApiKey(item['id'] as int, {
                     'permissions': permissions,
-                    'rate_limit': int.tryParse(rateLimitCtrl.text) ?? 1000,
+                    'rate_limit': int.tryParse(rateLimitCtrl.text) ?? 5000,
                   });
                   if (ctx.mounted) Navigator.pop(ctx);
                   _load();
@@ -1100,7 +1100,7 @@ class _ApiKeysTabState extends State<_ApiKeysTab> {
                   final item = _items[i];
                   final isActive = item['is_aktif'] as bool? ?? false;
                   final permissions = item['permissions'] as String? ?? 'readwrite';
-                  final rateLimit = item['rate_limit'] as int? ?? 1000;
+                  final rateLimit = item['rate_limit'] as int? ?? 5000;
                   final lastUsed = item['last_used_at'] as String?;
                   final createdAt = item['created_at'] as String?;
 

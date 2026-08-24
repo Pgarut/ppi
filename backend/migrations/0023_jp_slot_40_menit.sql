@@ -45,10 +45,12 @@ UPDATE jadwal_pelajaran SET jam_mulai = '07:40', jam_selesai = '08:20'
   WHERE jam_mulai = '07:45' AND jam_selesai = '08:30';
 UPDATE jadwal_pelajaran SET jam_mulai = '08:20', jam_selesai = '09:00'
   WHERE jam_mulai = '08:30' AND jam_selesai = '09:15';
-UPDATE jadwal_pelajaran SET jam_mulai = '09:00', jam_selesai = '09:20'
-  WHERE jam_mulai = '09:30' AND jam_selesai = '10:15' AND is_istirahat = 1;
+-- Catatan: tidak memakai kolom is_istirahat agar migration tetap jalan
+--  di database yang skema jadwal_pelajaran-nya belum punya kolom itu.
+--  Slot 09:30-10:15 (JP4 lama) dipetakan ke slot jembatan JP5;
+--  migration 0025 memetakan ulang ke jadwal 40 menit berurutan.
 UPDATE jadwal_pelajaran SET jam_mulai = '09:20', jam_selesai = '09:40'
-  WHERE jam_mulai = '09:30' AND jam_selesai = '10:15' AND is_istirahat != 1;
+  WHERE jam_mulai = '09:30' AND jam_selesai = '10:15';
 UPDATE jadwal_pelajaran SET jam_mulai = '10:00', jam_selesai = '10:40'
   WHERE jam_mulai = '10:15' AND jam_selesai = '11:00';
 UPDATE jadwal_pelajaran SET jam_mulai = '10:40', jam_selesai = '11:20'
