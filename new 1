@@ -1,0 +1,25 @@
+Tinggi
+R1. Catatan Wali Kelas tidak pernah tersimpan (fitur mati)
+Tabel nilai_rapor tidak pernah di-INSERT di seluruh codebase (backend, migration, seed) — hanya di-SELECT/UPDATE. Endpoint PUT /guru/catatan-wali (wali_kelas.ts:161) melakukan UPDATE nilai_rapor ... terhadap 0 baris → mengembalikan "Catatan tersimpan" tapi tidak ada data yang tersimpan. Akibatnya catatan_wali di rapor selalu null (rapor.ts:157). saveCatatanWali di guru_service.dart:123 juga tidak dipanggil UI mana pun — jadi guru wali tidak punya cara mengisi catatan.
+R2. PDF "Download PDF F4" Wali Kelas ukuran halaman salah
+wali_kelas_page.dart:706: PdfPageFormat(215.0, 330.0) — argumen default dalam poin (215×330 pt ≈ 7.6×11.6 cm), bukan F4. Seharusnya PdfPageFormat(215 * PdfPageFormat.mm, 330 * PdfPageFormat.mm) seperti yang benar dipakai di rapor_page.dart:228. PDF rekap kehadiran akan tampil terpotong/menjadi sangat kecil saat dicetak F4.
+R3. Rekap kehadiran Wali Kelas menghitung "sesi", bukan "hari"
+wali_kelas.ts:46-53 menjumlahkan semua baris absensi_siswa per kelas (tanpa filter mapel/jam). Karena guru absensi diinput per sesi mapel+jam (absensi_page.dart), satu siswa bisa punya 5 baris "hadir" dalam sehari (5 mapel) → Total Hadir wali kelas membengkak dan tidak mencerminkan kehadiran harian. Absensi harian umum (mapel NULL) juga ikut dihitung — kedua tipe dicampur.
+🟠 Sedang
+S1. Status Pengiriman rapor bergantung pada jadwal ter-validasi
+rapor.ts:83-91 mengambil daftar mapel dari jadwal_pelajaran WHERE status_validasi='tervalidasi'. Jika Wakil Kurikulum belum memvalidasi jadwal, tab "Status Pengiriman" tampil kosong walau nilai sudah diinput guru. Sama dengan rapor/data-wali (rapor.ts:38-44) → header "X Mapel" = 0.
+S2. Rapor menampilkan nilai sebelum publikasi
+rapor.ts:171-181 membaca semua nilai tanpa memeriksa semester.nilai_published (toggle publikasi ada di admin/rapor.ts:179-197). Wali kelas bisa melihat nilai yang belum di-publish.
+S3. Bobot nilai rapor hardcoded 60/40, PTS diabaikan
+rapor.ts:213-221 nilai_akhir = 60% ujian + 40% rata-rata harian, mengabaikan tabel bobot_nilai (admin bisa konfigurasi). Nilai pts1/pts2 juga tidak dimasukkan sama sekali (hanya harian dan pas/pat yang dipakai).
+S4. Rata-rata harian bisa ganda bila 2 guru mengajar mapel sama
+nilai punya UNIQUE termasuk diinput_oleh (schema.sql:271) → rapor.ts:189-205 mengumpulkan SEMUA harian per siswa+mapel tanpa filter guru, nilai dari 2 guru bisa masuk dua kali ke array nilai_harian.
+🟡 Kecil
+K1. rapor.ts:96 MIN(id) as nilai_id di status-pengiriman — penanda "sudah input" valid, tapi jumlah_santri = COUNT baris nilai, bisa melebihi jumlah santri bila ada duplikat harian.
+K2. Rapor GET tidak memvalidasi status_validasi nilai ('draft'/'tervalidasi') — nilai draft ikut tampil.
+K3. Wali kelas tidak punya akses input absensi langsung (hanya lihat); absensi hanya via guru mapel per sesi — sesuai desain, tetapi membuat R3 lebih terasa.
+Catatan
+rapor_page.dart Tab "Status Pengiriman" logikanya benar (mapel+status dari nilai pas/pat); tidak ada bug crash.
+Wali kelas non-wali ditangani dengan benar (rapor_page.dart:71-87, wali_kelas_page.dart:116-132).
+Fix T3 sebelumnya (pengaduan diproses) sudah terpakai di wali_kelas.ts:61 untuk hitung status santri — konsisten.
+Rekomendasi prioritas: R1 → R2 → R3 → S1. Mau saya eksekusi?
