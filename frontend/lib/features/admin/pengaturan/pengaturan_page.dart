@@ -1199,6 +1199,7 @@ class _ApiKeysTabState extends State<_ApiKeysTab> {
                                 },
                                 itemBuilder: (ctx) => [
                                   const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 18), SizedBox(width: 8), Text('Edit Permission')])),
+                                  // ignore: prefer_const_constructors - uses runtime variable isActive
                                   PopupMenuItem(value: 'toggle', child: Row(children: [Icon(isActive ? Icons.block_outlined : Icons.check_circle_outline, size: 18), SizedBox(width: 8), Text(isActive ? 'Nonaktifkan' : 'Aktifkan')])),
                                   const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline, size: 18, color: AppTheme.error), SizedBox(width: 8), Text('Hapus', style: TextStyle(color: AppTheme.error))])),
                                 ],
@@ -1206,7 +1207,7 @@ class _ApiKeysTabState extends State<_ApiKeysTab> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          Divider(height: 1, color: AppTheme.grey100),
+                          const Divider(height: 1, color: AppTheme.grey100),
                           const SizedBox(height: 12),
                           Wrap(
                             spacing: 24,
@@ -1244,7 +1245,7 @@ class _InfoChip extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoChip({required this.icon, required this.label, required this.value, super.key});
+  const _InfoChip({required this.icon, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
