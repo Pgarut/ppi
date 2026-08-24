@@ -49,4 +49,18 @@ class SantriService {
     final response = await ApiClient.get('/siswa/materi', queryParams: queryParams);
     return (response['data']['grouped'] as List).cast<Map<String, dynamic>>();
   }
+
+  Future<Map<String, dynamic>> getPembayaran({
+    int page = 1,
+    int perPage = 20,
+    String? status,
+  }) async {
+    final queryParams = <String, String>{
+      'page': page.toString(),
+      'per_page': perPage.toString(),
+    };
+    if (status != null && status.isNotEmpty) queryParams['status'] = status;
+    final response = await ApiClient.get('/siswa/pembayaran', queryParams: queryParams);
+    return response['data'] as Map<String, dynamic>;
+  }
 }
