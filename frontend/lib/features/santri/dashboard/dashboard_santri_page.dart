@@ -103,6 +103,7 @@ class _DashboardSantriPageState extends State<DashboardSantriPage> {
         FeatureItem('Nilai', 'nilai', Icons.grade, 'Nilai akademik'),
         FeatureItem('Materi', 'materi', Icons.menu_book, 'Materi pelajaran'),
         FeatureItem('at-Ta\'wid', 'dauroh', Icons.bookmark, 'Program at-Ta\'wid & Nilai'),
+        FeatureItem('Idarat al-Madfu\'at', 'idarat', Icons.account_balance_wallet, 'Administrasi Pembayaran'),
       ],
       onFeatureTap: widget.onFeatureTap,
     );
