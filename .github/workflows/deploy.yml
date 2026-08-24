@@ -137,8 +137,9 @@ jobs:
         run: flutter pub get
 
       # Test sudah dijalankan di job 'test', tidak perlu diulang
+      # ⚠️ JANGAN set repo variable API_BASE_URL ke localhost — hardcode agar aman dari salah konfigurasi
       - name: Build Flutter Web
-        run: flutter build web --release --no-web-resources-cdn --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://ppi-backend-production.pgarut77.workers.dev' }}
+        run: flutter build web --release --no-web-resources-cdn --dart-define=API_BASE_URL=https://ppi-backend-production.pgarut77.workers.dev
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler@latest pages deploy build/web --project-name=ppi --branch main
