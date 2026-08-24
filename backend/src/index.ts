@@ -1,11 +1,13 @@
 import bcrypt from 'bcryptjs';
 import { authMiddleware, generateToken, generateRefreshToken, verifyRefreshToken } from './middleware/auth';
 import { generalRateLimit, bruteForceCheck, bruteForceRecordFailure, bruteForceRecordSuccess } from './middleware/rate_limit';
+import { validateApiKey } from './middleware/api_key';
 import { createSession, validateSession, revokeSession, hashToken } from './middleware/session';
 import { Env, Role, UserPayload } from './types';
 import { json, success, error, unauthorized, cors, setCorsOrigin, resolveCorsOrigin } from './utils/response';
 import { handleAdminMasterData, handleMapelKelas, handleGuruMapelAmpu, handleGuruKelasAmpu, handleGuruMapelKelas, handleGuruMapelKelasAll, handleGuruMapelKelasRow, handleGuruByMapelKelas, handleWaliKelasList, handleGuruBKList, handleSiswaTemplate, handleSiswaPreview, handleSiswaBulk, handleMapelTemplate, handleMapelPreview, handleMapelBulk, handleGuruTemplate, handleGuruPreview, handleGuruBulk, handleWaliKelasAssign } from './routes/admin/master_data';
 import { handleAdminUsers, handleHakAkses } from './routes/admin/users';
+import { handleAdminApiKeys } from './routes/admin/api_keys';
 import { handleBackup, handleRestore, handleLogAktivitas } from './routes/admin/system';
 import { handlePengaturanTampilan, handleProfilSekolah } from './routes/admin/pengaturan_tampilan';
 import { handleDashboard } from './routes/admin/dashboard';
@@ -40,6 +42,7 @@ import { handleBKKS } from './routes/kepala_sekolah/bk';
 import { handleLaporanKS } from './routes/kepala_sekolah/laporan';
 import { handleSiswaRoutes } from './routes/siswa/index';
 import { handleHealth } from './routes/health';
+import { handleApiV1Routes } from './routes/api/v1';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -81,6 +84,11 @@ export default {
       // Refresh token (NO auth required - uses refresh_token from body)
       if (path === '/api/auth/refresh' && request.method === 'POST') {
         return handleRefresh(request, env);
+      }
+
+      // API v1 routes (Sistem 2 integration - uses X-API-Key, not JWT)
+      if (pathParts[0] === 'api' && pathParts[1] === 'v1') {
+        return handleApiV1Routes(request, env, pathParts, url);
       }
 
       // Authenticated routes
@@ -190,6 +198,11 @@ export default {
         }
         if (subPath === 'hak-akses' || subPath.startsWith('hak-akses/')) {
           return handleHakAkses(request, env, user, pathParts);
+        }
+
+        // API Keys
+        if (subPath === 'api-keys' || subPath.startsWith('api-keys/')) {
+          return handleAdminApiKeys(request, env, user, pathParts, url);
         }
 
         // System

@@ -16,6 +16,19 @@ export interface Env {
   DAUROH_JAM_KELUAR_SELESAI?: string;
 }
 
+export interface ApiKeyPayload {
+  id: number;
+  nama_pihak: string;
+  permissions: 'read' | 'write' | 'readwrite';
+  rate_limit: number;
+}
+
+export interface ApiKeyRateLimitEntry {
+  count: number;
+  windowStart: number;
+  date: string; // YYYY-MM-DD
+}
+
 export interface UserPayload {
   sub: number;
   username: string;

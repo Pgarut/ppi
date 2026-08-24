@@ -233,4 +233,31 @@ class AdminService {
   static Future<void> deleteGuruMapelKelas(int id) async {
     await ApiClient.delete('/admin/guru-mapel-kelas/$id');
   }
+
+  // ── API Keys ──
+  static Future<Map<String, dynamic>> getApiKeys({int page = 1, int perPage = 20, String? search, String? status}) async {
+    final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    if (status != null && status.isNotEmpty) params['status'] = status;
+    final res = await ApiClient.get('/admin/api-keys', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getApiKey(int id) async {
+    final res = await ApiClient.get('/admin/api-keys/$id');
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createApiKey(Map<String, dynamic> body) async {
+    final res = await ApiClient.post('/admin/api-keys', body: body);
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<void> updateApiKey(int id, Map<String, dynamic> body) async {
+    await ApiClient.put('/admin/api-keys/$id', body: body);
+  }
+
+  static Future<void> deleteApiKey(int id) async {
+    await ApiClient.delete('/admin/api-keys/$id');
+  }
 }

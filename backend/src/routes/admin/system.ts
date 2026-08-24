@@ -14,6 +14,7 @@ export async function handleBackup(request: Request, env: Env, user: UserPayload
       'materi',
       'pengaduan', 'jadwal_konseling', 'konseling', 'bakat_minat',
       'kenaikan_kelas', 'alumni',
+      'api_keys', 'jenis_pembayaran', 'pembayaran', 'notifikasi',
     ];
 
     const dump: Record<string, unknown[]> = {};
@@ -60,6 +61,7 @@ export async function handleRestore(request: Request, env: Env, user: UserPayloa
       'materi',
       'pengaduan', 'jadwal_konseling', 'konseling', 'bakat_minat',
       'kenaikan_kelas', 'alumni', 'pengaturan', 'rate_limits',
+      'api_keys', 'api_key_rate_limits', 'jenis_pembayaran', 'pembayaran', 'notifikasi',
     ];
     const invalidTables = Object.keys(body.data).filter(t => !validTables.includes(t));
     if (invalidTables.length > 0) {
