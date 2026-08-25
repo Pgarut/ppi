@@ -7,6 +7,7 @@ import '../features/guru_bk/guru_bk_page.dart';
 import '../features/kepala_sekolah/kepala_sekolah_page.dart';
 import '../features/santri/santri_page.dart';
 import '../features/musyrifah/musyrifah_page.dart';
+import '../shared/widgets/pages/live_display_page.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -17,6 +18,7 @@ class AppRoutes {
   static const String guruBk = '/guru-bk';
   static const String santri = '/santri';
   static const String musyrifah = '/musyrifah';
+  static const String displayAbsensi = '/display-absensi';
 
   static String dashboardByRole(String role) {
     switch (role) {
@@ -57,6 +59,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const SantriPage());
       case musyrifah:
         return MaterialPageRoute(builder: (_) => const MusyrifahPage());
+      case displayAbsensi:
+        return MaterialPageRoute(builder: (_) => const LiveDisplayPage());
       default:
         return MaterialPageRoute(builder: (_) => const LoginScreen());
     }

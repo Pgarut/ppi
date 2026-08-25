@@ -76,6 +76,9 @@ class _AuthGateState extends State<AuthGate> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Jangan auto-login jika ada halaman lain di atas (mis. layar display publik)
+      final modal = ModalRoute.of(context);
+      if (modal != null && !modal.isCurrent) return;
       context.read<AuthProvider>().tryAutoLogin();
     });
   }
@@ -87,10 +90,15 @@ class _AuthGateState extends State<AuthGate> {
       case AuthStatus.authenticated:
         final route = auth.dashboardRoute;
         if (route != null && !_redirected) {
-          _redirected = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) Navigator.of(context).pushReplacementNamed(route);
-          });
+          final modal = ModalRoute.of(context);
+          if (modal == null || modal.isCurrent) {
+            _redirected = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              if (ModalRoute.of(context)?.isCurrent != true) return;
+              Navigator.of(context).pushReplacementNamed(route);
+            });
+          }
         }
         return const SplashScreen();
       case AuthStatus.uninitialized:

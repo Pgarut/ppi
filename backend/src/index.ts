@@ -43,6 +43,7 @@ import { handleLaporanKS } from './routes/kepala_sekolah/laporan';
 import { handleSiswaRoutes } from './routes/siswa/index';
 import { handleHealth } from './routes/health';
 import { handleApiV1Routes } from './routes/api/v1';
+import { handlePublicDisplay } from './routes/public/display';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -79,6 +80,11 @@ export default {
       if (path === '/api/pengaturan-tampilan' && request.method === 'GET') {
         const rows = await env.DB.prepare('SELECT key, value FROM pengaturan ORDER BY key').all();
         return success(rows.results);
+      }
+
+      // Public display kiosk - papan absensi asatidz live (read-only, tanpa auth)
+      if (pathParts[0] === 'api' && pathParts[1] === 'public') {
+        return handlePublicDisplay(request, env, pathParts);
       }
 
       // Refresh token (NO auth required - uses refresh_token from body)
