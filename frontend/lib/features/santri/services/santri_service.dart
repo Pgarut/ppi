@@ -29,9 +29,10 @@ class SantriService {
     return response['data'] as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> getNilai({String? semesterId}) async {
+  Future<Map<String, dynamic>> getNilai({String? semesterId, String? tahunAjaranId}) async {
     final queryParams = <String, String>{};
     if (semesterId != null) queryParams['semester_id'] = semesterId;
+    if (tahunAjaranId != null) queryParams['tahun_ajaran_id'] = tahunAjaranId;
     final response = await ApiClient.get('/siswa/nilai', queryParams: queryParams);
     return response['data'] as Map<String, dynamic>;
   }

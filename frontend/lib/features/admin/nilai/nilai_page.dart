@@ -23,7 +23,7 @@ class _NilaiPageState extends State<NilaiPage> with SingleTickerProviderStateMix
   bool _loadingPublikasi = false;
 
   @override
-  void initState() { super.initState(); _tabCtrl = TabController(length: 3, vsync: this); _load(); _loadPublikasi(); }
+  void initState() { super.initState(); _tabCtrl = TabController(length: 4, vsync: this); _load(); _loadPublikasi(); }
 
   @override
   void dispose() { _tabCtrl.dispose(); super.dispose(); }
@@ -90,6 +90,7 @@ class _NilaiPageState extends State<NilaiPage> with SingleTickerProviderStateMix
         bottom: TabBar(controller: _tabCtrl, onTap: (i) { _page = 1; _load(); }, isScrollable: true,
           tabs: const [
             Tab(text: 'Monitoring Nilai', icon: Icon(Icons.visibility_outlined, size: 18)),
+            Tab(text: 'Publikasi Mapel', icon: Icon(Icons.publish_outlined, size: 18)),
             Tab(text: 'Analisis', icon: Icon(Icons.analytics_outlined, size: 18)),
             Tab(text: 'Audit', icon: Icon(Icons.history, size: 18)),
           ],
@@ -97,6 +98,7 @@ class _NilaiPageState extends State<NilaiPage> with SingleTickerProviderStateMix
       ),
       body: IndexedStack(index: _tabCtrl.index, children: [
         _buildMonitoringTab(),
+        const _PublikasiMapelTab(),
         const _AnalisisNilaiTab(),
         const _AuditNilaiTab(),
       ]),
@@ -239,6 +241,195 @@ class _NilaiPageState extends State<NilaiPage> with SingleTickerProviderStateMix
                   },
                 )),
     ]);
+  }
+}
+
+// ── Publikasi Per Mapel Tab ──
+class _PublikasiMapelTab extends StatefulWidget {
+  const _PublikasiMapelTab();
+  @override
+  State<_PublikasiMapelTab> createState() => _PublikasiMapelTabState();
+}
+
+class _PublikasiMapelTabState extends State<_PublikasiMapelTab> {
+  List<Map<String, dynamic>> _semesterList = [];
+  List<Map<String, dynamic>> _tingkatList = [];
+  List<Map<String, dynamic>> _kelasList = [];
+  List<Map<String, dynamic>> _items = [];
+  String? _semesterId;
+  String? _tingkatId;
+  String? _kelasId;
+  String _jenis = '';
+  bool _loading = false;
+  bool _loaded = false;
+
+  @override
+  void initState() { super.initState(); _loadRef(); }
+
+  Future<void> _loadRef() async {
+    try {
+      final res = await AdminService.getReferensi();
+      setState(() {
+        _semesterList = (res['semester'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+        _tingkatList = (res['tingkat'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+        _kelasList = (res['kelas'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+      });
+    } catch (_) {}
+  }
+
+  List<Map<String, dynamic>> get _filteredKelas {
+    if (_tingkatId == null) return _kelasList;
+    return _kelasList.where((k) => '${k['tingkat_id']}' == _tingkatId).toList();
+  }
+
+  Future<void> _loadMapel() async {
+    if (_semesterId == null) return;
+    setState(() { _loading = true; _loaded = true; });
+    try {
+      final res = await AdminService.getPublikasiMapel(
+        semesterId: _semesterId!,
+        tingkatId: _tingkatId,
+        kelasId: _kelasId,
+        jenis: _jenis.isEmpty ? null : _jenis,
+      );
+      setState(() { _items = (res['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? []; });
+    } catch (_) { _items = []; }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _toggle(Map<String, dynamic> item) async {
+    if (_semesterId == null) return;
+    final mapelId = item['mata_pelajaran_id'] as int;
+    final current = item['is_published'] == 1;
+    try {
+      await AdminService.togglePublikasiMapel(int.parse(_semesterId!), mapelId, !current);
+      setState(() { item['is_published'] = current ? 0 : 1; });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${item['nama']} ${!current ? 'dipublikasikan' : 'disembunyikan'} dari siswa'),
+          backgroundColor: !current ? AppTheme.primary : AppTheme.orange,
+        ));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.error));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(children: [
+      DataCard(
+        padding: const EdgeInsets.all(16),
+        header: const Row(children: [
+          Icon(Icons.publish_outlined, size: 20, color: AppTheme.primary),
+          SizedBox(width: 8),
+          Text('Publikasi Nilai Per Mata Pelajaran', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        ]),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: DropdownButtonFormField<String>(
+              value: _semesterId,
+              isDense: true,
+              decoration: inputDecoration('Semester', Icons.calendar_month_outlined),
+              items: _semesterList.map((s) => DropdownMenuItem(value: '${s['id']}', child: Text('${s['nama']}', style: const TextStyle(fontSize: 13)))).toList(),
+              onChanged: (v) => setState(() { _semesterId = v; _loaded = false; _items = []; }),
+            )),
+            const SizedBox(width: 12),
+            Expanded(child: DropdownButtonFormField<String>(
+              value: _tingkatId,
+              isDense: true,
+              decoration: inputDecoration('Tingkat', Icons.school_outlined, optional: true),
+              items: [const DropdownMenuItem<String>(value: null, child: Text('Semua Tingkat', style: TextStyle(fontSize: 13))),
+                ..._tingkatList.map((t) => DropdownMenuItem(value: '${t['id']}', child: Text('${t['nama']}', style: const TextStyle(fontSize: 13))))],
+              onChanged: (v) => setState(() { _tingkatId = v; _kelasId = null; }),
+            )),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: DropdownButtonFormField<String>(
+              value: _kelasId,
+              isDense: true,
+              decoration: inputDecoration('Kelas', Icons.class_outlined, optional: true),
+              items: [const DropdownMenuItem<String>(value: null, child: Text('Semua Kelas', style: TextStyle(fontSize: 13))),
+                ..._filteredKelas.map((k) => DropdownMenuItem(value: '${k['id']}', child: Text('${k['nama']}', style: const TextStyle(fontSize: 13))))],
+              onChanged: (v) => setState(() => _kelasId = v),
+            )),
+            const SizedBox(width: 12),
+            Expanded(child: DropdownButtonFormField<String>(
+              value: _jenis.isEmpty ? null : _jenis,
+              isDense: true,
+              decoration: inputDecoration('Jenis Ujian', Icons.category_outlined, optional: true),
+              items: ['', 'harian', 'tugas', 'uts', 'uas', 'akhir', 'pts1', 'pas', 'pts2', 'pat'].map((s) => DropdownMenuItem(value: s.isEmpty ? null : s,
+                  child: Text(s.isEmpty ? 'Semua' : s, style: const TextStyle(fontSize: 13)))).toList(),
+              onChanged: (v) => setState(() => _jenis = v ?? ''),
+            )),
+          ]),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _semesterId != null ? _loadMapel : null,
+              icon: const Icon(Icons.search, size: 18),
+              label: const Text('Tampilkan'),
+            ),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 16),
+      if (_loading)
+        const Center(child: CircularProgressIndicator())
+      else if (_loaded && _items.isEmpty)
+        const EmptyState(icon: Icons.inbox_outlined, message: 'Tidak ada mapel yang memiliki data nilai.')
+      else if (_loaded) ...[
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppTheme.grey200)),
+          child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              const Icon(Icons.book_outlined, size: 20, color: AppTheme.primary),
+              const SizedBox(width: 8),
+              Text('Daftar Mata Pelajaran (${_items.length})', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+            ]),
+            const SizedBox(height: 12),
+            ..._items.map((item) {
+              final isPublished = item['is_published'] == 1;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isPublished ? AppTheme.primary.withValues(alpha: 0.05) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isPublished ? AppTheme.primary.withValues(alpha: 0.3) : AppTheme.grey200),
+                ),
+                child: Row(children: [
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${item['nama'] ?? '-'}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                    const SizedBox(height: 4),
+                    Text('${item['total_nilai'] ?? 0} nilai terinput', style: const TextStyle(fontSize: 12, color: AppTheme.grey500)),
+                  ])),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isPublished ? AppTheme.primary.withValues(alpha: 0.1) : AppTheme.grey100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(isPublished ? 'Published' : 'Draft',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isPublished ? AppTheme.primary : AppTheme.grey500)),
+                  ),
+                  const SizedBox(width: 12),
+                  Switch(
+                    value: isPublished,
+                    onChanged: (_) => _toggle(item),
+                    activeColor: AppTheme.primary,
+                  ),
+                ]),
+              );
+            }),
+          ])),
+        ),
+      ] else
+        const EmptyState(icon: Icons.publish_outlined, message: 'Pilih semester dan klik Tampilkan.'),
+    ]));
   }
 }
 

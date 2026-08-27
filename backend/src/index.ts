@@ -731,11 +731,12 @@ async function handleDashboardGuru(env: Env, user: UserPayload): Promise<Respons
 }
 
 async function handleReferensi(env: Env): Promise<Response> {
-  const [kelas, mataPelajaran, semester, siswa] = await Promise.all([
+  const [kelas, mataPelajaran, semester, siswa, tingkat] = await Promise.all([
     env.DB.prepare('SELECT id, nama FROM kelas ORDER BY nama').all(),
     env.DB.prepare('SELECT id, nama, kode FROM mata_pelajaran ORDER BY nama').all(),
     env.DB.prepare('SELECT id, nama FROM semester WHERE is_aktif = 1 ORDER BY tahun_ajaran_id DESC, nama').all(),
     env.DB.prepare("SELECT id, nis, nama, kelas_id FROM siswa WHERE status = 'aktif' ORDER BY nama").all(),
+    env.DB.prepare("SELECT id, nama FROM tingkat ORDER BY CASE nama WHEN 'VII' THEN 7 WHEN 'VIII' THEN 8 WHEN 'IX' THEN 9 WHEN 'X' THEN 10 WHEN 'XI' THEN 11 WHEN 'XII' THEN 12 ELSE 99 END").all(),
   ]);
 
   return success({
@@ -743,6 +744,7 @@ async function handleReferensi(env: Env): Promise<Response> {
     mata_pelajaran: mataPelajaran.results,
     semester: semester.results,
     siswa: siswa.results,
+    tingkat: tingkat.results,
   });
 }
 

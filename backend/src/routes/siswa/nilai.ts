@@ -7,6 +7,27 @@ export async function handleNilai(
   url: URL
 ): Promise<Response> {
   const semesterId = url.searchParams.get('semester_id');
+  const tahunAjaranId = url.searchParams.get('tahun_ajaran_id');
+
+  // Ambil daftar tahun ajaran yang punya data nilai untuk siswa ini
+  const { results: taList } = await env.DB.prepare(
+    `SELECT DISTINCT ta.id, ta.nama
+     FROM tahun_ajaran ta
+     JOIN semester s ON s.tahun_ajaran_id = ta.id
+     JOIN nilai n ON n.semester_id = s.id
+     WHERE n.siswa_id = ?
+     ORDER BY ta.nama DESC`
+  ).bind(user.siswa_id).all();
+
+  // Ambil daftar semester berdasarkan tahun ajaran yang dipilih
+  let semQuery = 'SELECT id, nama, is_aktif FROM semester';
+  const semParams: any[] = [];
+  if (tahunAjaranId) {
+    semQuery += ' WHERE tahun_ajaran_id = ?';
+    semParams.push(parseInt(tahunAjaranId));
+  }
+  semQuery += ' ORDER BY tahun_ajaran_id DESC, nama';
+  const { results: semList } = await env.DB.prepare(semQuery).bind(...semParams).all();
 
   // Ambil semester aktif jika tidak ditentukan
   let semId = semesterId;
@@ -29,6 +50,8 @@ export async function handleNilai(
         semester_id: semId,
         published: false,
         message: 'Nilai belum dipublikasikan oleh administrator',
+        daftar_tahun_ajaran: taList,
+        daftar_semester: semList,
       });
     }
   }
@@ -52,6 +75,13 @@ export async function handleNilai(
 
   if (semId) {
     query += ' AND n.semester_id = ?';
+    params.push(semId);
+
+    // Filter by published mapel per semester
+    query += ` AND n.mata_pelajaran_id IN (
+      SELECT mata_pelajaran_id FROM publikasi_nilai_mapel
+      WHERE semester_id = ? AND is_published = 1
+    )`;
     params.push(semId);
   }
 
@@ -129,5 +159,7 @@ export async function handleNilai(
     rekap,
     rata_rata_keseluruhan: avgKeseluruhan,
     semester_id: semId,
+    daftar_tahun_ajaran: taList,
+    daftar_semester: semList,
   });
 }

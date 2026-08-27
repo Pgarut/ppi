@@ -183,6 +183,23 @@ class AdminService {
     await ApiClient.put('/admin/rapor/$semesterId/publikasi-nilai', body: {'nilai_published': published});
   }
 
+  static Future<Map<String, dynamic>> getPublikasiMapel({required String semesterId, String? tingkatId, String? kelasId, String? jenis}) async {
+    final params = <String, String>{'semester_id': semesterId};
+    if (tingkatId != null) params['tingkat_id'] = tingkatId;
+    if (kelasId != null) params['kelas_id'] = kelasId;
+    if (jenis != null) params['jenis'] = jenis;
+    final res = await ApiClient.get('/admin/nilai/publikasi-mapel', queryParams: params);
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<void> togglePublikasiMapel(int semesterId, int mapelId, bool published) async {
+    await ApiClient.put('/admin/nilai/publikasi-mapel', body: {
+      'semester_id': semesterId,
+      'mata_pelajaran_id': mapelId,
+      'is_published': published,
+    });
+  }
+
   // ── Profil Sekolah ──
   static Future<Map<String, dynamic>> getProfil() async {
     final res = await ApiClient.get('/admin/profil');

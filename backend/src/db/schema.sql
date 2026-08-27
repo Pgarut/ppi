@@ -749,3 +749,14 @@ CREATE TABLE notifikasi (
 CREATE INDEX idx_notifikasi_santri ON notifikasi(santri_id);
 CREATE INDEX idx_notifikasi_is_read ON notifikasi(is_read);
 CREATE INDEX idx_notifikasi_created ON notifikasi(created_at);
+
+-- Tabel Publikasi Nilai Per Mapel
+CREATE TABLE publikasi_nilai_mapel (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    semester_id       INTEGER NOT NULL REFERENCES semester(id),
+    mata_pelajaran_id INTEGER NOT NULL REFERENCES mata_pelajaran(id),
+    is_published      INTEGER NOT NULL DEFAULT 0,
+    created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at        TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(semester_id, mata_pelajaran_id)
+);
