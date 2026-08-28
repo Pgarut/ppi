@@ -98,9 +98,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              gradient: AppTheme.headerGradient,
+              color: Colors.white,
               image: _backgroundUrl.isNotEmpty
-                  ? DecorationImage(image: NetworkImage(_backgroundUrl), fit: BoxFit.cover, opacity: 0.12)
+                  ? DecorationImage(image: NetworkImage(_backgroundUrl), fit: BoxFit.cover, opacity: 0.10)
                   : null,
             ),
             child: Center(
@@ -117,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
+                            color: AppTheme.primaryLight,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: _logoUrl.isNotEmpty
@@ -125,17 +125,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   _logoUrl,
                                   width: 64,
                                   height: 64,
-                                  color: Colors.white,
+                                  color: AppTheme.primary,
                                   errorBuilder: (_, __, ___) =>
-                                      const Icon(Icons.school, size: 56, color: Colors.white),
+                                      const Icon(Icons.school, size: 56, color: AppTheme.primary),
                                 )
-                              : const Icon(Icons.school, size: 56, color: Colors.white),
+                              : const Icon(Icons.school, size: 56, color: AppTheme.primary),
                         ),
                         const SizedBox(height: 32),
                         Text(
                           _heroTitle,
                           style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            color: Colors.white,
+                            color: AppTheme.grey800,
                             fontWeight: FontWeight.bold,
                             height: 1.2,
                           ),
@@ -143,8 +143,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         const SizedBox(height: 16),
                         Text(
                           _heroSubtitle,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
+                          style: const TextStyle(
+                            color: AppTheme.grey500,
                             fontSize: 16,
                             height: 1.5,
                           ),
@@ -180,14 +180,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   Widget _buildMobileLayout(BuildContext context, AuthProvider auth) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [AppTheme.primaryDark, AppTheme.primary, AppTheme.primaryLight],
-          stops: [0, 0.3, 0.7],
-        ),
-      ),
+      color: Colors.white,
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -202,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: AppTheme.primaryLight,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: _logoUrl.isNotEmpty
@@ -210,18 +203,18 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 _logoUrl,
                                 width: 56,
                                 height: 56,
-                                color: Colors.white,
+                                color: AppTheme.primary,
                                 errorBuilder: (_, __, ___) =>
-                                    const Icon(Icons.school, size: 52, color: Colors.white),
+                                    const Icon(Icons.school, size: 52, color: AppTheme.primary),
                               )
-                            : const Icon(Icons.school, size: 52, color: Colors.white),
+                            : const Icon(Icons.school, size: 52, color: AppTheme.primary),
                       ),
                       const SizedBox(height: 20),
                       Text(
                         _heroTitle.replaceAll('\n', ' '),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppTheme.grey800,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                           height: 1.3,
@@ -231,8 +224,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       Text(
                         _heroSubtitle.replaceAll('\n', ' '),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.8),
+                        style: const TextStyle(
+                          color: AppTheme.grey600,
                           fontSize: 13,
                           height: 1.4,
                         ),
@@ -266,7 +259,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+            border: Border.all(color: AppTheme.grey200),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),

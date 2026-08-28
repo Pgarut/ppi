@@ -10,50 +10,41 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [AppTheme.primaryDark, AppTheme.primary, AppTheme.primaryLight],
-            stops: [0, 0.3, 0.7],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Icon(Icons.school, size: 52, color: Colors.white),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryLight,
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Sistem Informasi\nMA Persis Garut',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    height: 1.3,
-                  ),
+                child: const Icon(Icons.school, size: 52, color: AppTheme.primary),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Sistem Informasi\nMA Persis Garut',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppTheme.grey800,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  height: 1.3,
                 ),
-                const SizedBox(height: 40),
-                const SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3,
-                    color: Colors.white,
-                  ),
+              ),
+              const SizedBox(height: 40),
+              const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: AppTheme.primary,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

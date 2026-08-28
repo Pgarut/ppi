@@ -35,7 +35,9 @@ class AuthProvider extends ChangeNotifier {
     try {
       final loggedIn = await _authService.isLoggedIn();
       if (loggedIn) {
-        final user = await _authService.getCurrentUser();
+        final user = await _authService.getCurrentUser().timeout(
+          const Duration(seconds: 10),
+        );
         if (user != null) {
           _user = user;
           _status = AuthStatus.authenticated;

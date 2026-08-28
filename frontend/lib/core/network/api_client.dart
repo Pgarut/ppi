@@ -88,11 +88,11 @@ class ApiClient {
   static Future<bool> _isTokenExpiringSoon() async {
     try {
       final expiryStr = await _storage.read(key: _tokenExpiryKey);
-      if (expiryStr == null) return true;
+      if (expiryStr == null) return false;
       final expiryTime = DateTime.parse(expiryStr);
       return DateTime.now().add(_refreshBeforeExpiry).isAfter(expiryTime);
     } catch (_) {
-      return true;
+      return false;
     }
   }
 
