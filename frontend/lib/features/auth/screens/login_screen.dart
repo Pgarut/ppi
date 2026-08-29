@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/common_widgets.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/login_form.dart';
 
@@ -96,65 +97,69 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     return Row(
       children: [
         Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              image: _backgroundUrl.isNotEmpty
-                  ? DecorationImage(image: NetworkImage(_backgroundUrl), fit: BoxFit.cover, opacity: 0.10)
-                  : null,
-            ),
-            child: Center(
-              child: FadeTransition(
-                opacity: _fadeIn,
-                child: SlideTransition(
-                  position: _slideUp,
-                  child: Padding(
-                    padding: const EdgeInsets.all(48),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryLight,
-                            borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (_backgroundUrl.isNotEmpty)
+                SafeNetworkImage(
+                  _backgroundUrl,
+                  fit: BoxFit.cover,
+                  errorWidget: const SizedBox.shrink(),
+                  placeholder: const SizedBox.shrink(),
+                ),
+              Container(color: Colors.white.withValues(alpha: 0.9)),
+              Center(
+                child: FadeTransition(
+                  opacity: _fadeIn,
+                  child: SlideTransition(
+                    position: _slideUp,
+                    child: Padding(
+                      padding: const EdgeInsets.all(48),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryLight,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: _logoUrl.isNotEmpty
+                                ? SafeNetworkImage(
+                                    _logoUrl,
+                                    width: 64,
+                                    height: 64,
+                                    color: AppTheme.primary,
+                                    errorWidget: const Icon(Icons.school, size: 56, color: AppTheme.primary),
+                                  )
+                                : const Icon(Icons.school, size: 56, color: AppTheme.primary),
                           ),
-                          child: _logoUrl.isNotEmpty
-                              ? Image.network(
-                                  _logoUrl,
-                                  width: 64,
-                                  height: 64,
-                                  color: AppTheme.primary,
-                                  errorBuilder: (_, __, ___) =>
-                                      const Icon(Icons.school, size: 56, color: AppTheme.primary),
-                                )
-                              : const Icon(Icons.school, size: 56, color: AppTheme.primary),
-                        ),
-                        const SizedBox(height: 32),
-                        Text(
-                          _heroTitle,
-                          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            color: AppTheme.grey800,
-                            fontWeight: FontWeight.bold,
-                            height: 1.2,
+                          const SizedBox(height: 32),
+                          Text(
+                            _heroTitle,
+                            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                              color: AppTheme.grey800,
+                              fontWeight: FontWeight.bold,
+                              height: 1.2,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _heroSubtitle,
-                          style: const TextStyle(
-                            color: AppTheme.grey500,
-                            fontSize: 16,
-                            height: 1.5,
+                          const SizedBox(height: 16),
+                          Text(
+                            _heroSubtitle,
+                            style: const TextStyle(
+                              color: AppTheme.grey500,
+                              fontSize: 16,
+                              height: 1.5,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
         Expanded(
@@ -199,13 +204,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: _logoUrl.isNotEmpty
-                            ? Image.network(
+                            ? SafeNetworkImage(
                                 _logoUrl,
                                 width: 56,
                                 height: 56,
                                 color: AppTheme.primary,
-                                errorBuilder: (_, __, ___) =>
-                                    const Icon(Icons.school, size: 52, color: AppTheme.primary),
+                                errorWidget: const Icon(Icons.school, size: 52, color: AppTheme.primary),
                               )
                             : const Icon(Icons.school, size: 52, color: AppTheme.primary),
                       ),

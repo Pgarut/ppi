@@ -243,7 +243,7 @@ export default {
         const subPath = pathParts.slice(2).join('/');
 
         if (subPath === 'dashboard') return handleDashboardWK(env);
-        if (subPath.startsWith('kesiapan') || subPath.startsWith('jp-slots') || subPath.startsWith('referensi') || subPath.startsWith('jadwal') || subPath.startsWith('jadwal-per-kelas') || subPath.startsWith('beban') || subPath.startsWith('jadwal-guru') || subPath.startsWith('jadwal-kelas') || subPath.startsWith('wali-kelas') || subPath.startsWith('kelas-gabungan') || subPath.startsWith('kegiatan-tetap')) {
+        if (subPath.startsWith('kesiapan') || subPath.startsWith('jp-slots') || subPath.startsWith('referensi') || subPath.startsWith('jadwal') || subPath.startsWith('jadwal-per-kelas') || subPath.startsWith('beban') || subPath.startsWith('jadwal-guru') || subPath.startsWith('jadwal-kelas') || subPath.startsWith('wali-kelas') || subPath.startsWith('kelas-gabungan') || subPath.startsWith('kegiatan-tetap') || subPath.startsWith('guru-by-kelas-mapel')) {
           return handlePenjadwalan(request, env, user, pathParts, url);
         }
         if (subPath.startsWith('bobot-nilai') || subPath.startsWith('monitoring-nilai') || subPath.startsWith('status-pengumpulan')) {

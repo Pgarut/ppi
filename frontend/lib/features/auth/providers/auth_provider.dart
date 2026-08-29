@@ -31,7 +31,14 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _autoLoginStarted = false;
+
   Future<void> tryAutoLogin() async {
+    // Idempoten: jangan jalankan ulang auto-login jika sudah pernah dimulai,
+    // agar tidak memicu serangkaian request berulang saat AuthGate rebuild
+    // akibat status auth yang berubah (mencegah churn/loop jaringan).
+    if (_autoLoginStarted) return;
+    _autoLoginStarted = true;
     try {
       final loggedIn = await _authService.isLoggedIn();
       if (loggedIn) {

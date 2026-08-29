@@ -1,5 +1,130 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../../core/theme/app_theme.dart';
+
+// ═══════════════════════════════════════════════════════════
+//  SAFE NETWORK IMAGE - Menghindari ImageCodecException
+//  Mencegah error "Failed to detect image file format" saat server
+//  mengembalikan konten HTML (mis. logo_url/background_url salah)
+//  atau status non-2xx. Memvalidasi magic bytes sebelum decode.
+// ═══════════════════════════════════════════════════════════
+class SafeNetworkImage extends StatefulWidget {
+  final String url;
+  final double? width;
+  final double? height;
+  final BoxFit fit;
+  final Color? color;
+  final Widget? errorWidget;
+  final Widget? placeholder;
+  final Alignment alignment;
+
+  const SafeNetworkImage(
+    this.url, {
+    super.key,
+    this.width,
+    this.height,
+    this.fit = BoxFit.contain,
+    this.color,
+    this.errorWidget,
+    this.placeholder,
+    this.alignment = Alignment.center,
+  });
+
+  @override
+  State<SafeNetworkImage> createState() => _SafeNetworkImageState();
+}
+
+class _SafeNetworkImageState extends State<SafeNetworkImage> {
+  Uint8List? _bytes;
+  String? _error;
+
+  static bool _looksLikeImage(List<int> b) {
+    if (b.length < 12) return false;
+    // PNG
+    if (b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47) return true;
+    // JPEG
+    if (b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF) return true;
+    // GIF
+    if (b[0] == 0x47 && b[1] == 0x49 && b[2] == 0x46 && b[3] == 0x38) return true;
+    // BMP
+    if (b[0] == 0x42 && b[1] == 0x4D) return true;
+    // WebP (RIFF....WEBP)
+    if (b[0] == 0x52 && b[1] == 0x49 && b[2] == 0x46 && b[3] == 0x46 &&
+        b[8] == 0x57 && b[9] == 0x45 && b[10] == 0x42 && b[11] == 0x50) {
+      return true;
+    }
+    // SVG (teks) - biarkan Flutter menanganinya; bukan gambar raster utama
+    return false;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant SafeNetworkImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      setState(() { _bytes = null; _error = null; });
+      _load();
+    }
+  }
+
+  Future<void> _load() async {
+    final url = widget.url;
+    if (url.isEmpty) {
+      setState(() => _error = 'empty');
+      return;
+    }
+    try {
+      final uri = Uri.parse(url);
+      if (uri.scheme != 'http' && uri.scheme != 'https') {
+        setState(() => _error = 'scheme');
+        return;
+      }
+      final res = await http.get(uri).timeout(const Duration(seconds: 15));
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        setState(() => _error = 'http ${res.statusCode}');
+        return;
+      }
+      final body = res.bodyBytes;
+      if (!_looksLikeImage(body)) {
+        setState(() => _error = 'not-image');
+        return;
+      }
+      if (mounted) setState(() => _bytes = body);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'network');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error != null) {
+      return widget.errorWidget ??
+          const Icon(Icons.broken_image_outlined, color: AppTheme.grey300);
+    }
+    if (_bytes == null) {
+      return widget.placeholder ??
+          const SizedBox.shrink();
+    }
+    return Image.memory(
+      _bytes!,
+      width: widget.width,
+      height: widget.height,
+      fit: widget.fit,
+      color: widget.color,
+      alignment: widget.alignment,
+      errorBuilder: (_, __, ___) =>
+          widget.errorWidget ??
+          const Icon(Icons.broken_image_outlined, color: AppTheme.grey300),
+    );
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 //  EMPTY STATE - Consistent empty/error state widget

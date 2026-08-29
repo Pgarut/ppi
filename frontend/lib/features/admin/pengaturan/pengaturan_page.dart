@@ -732,25 +732,41 @@ class _TampilanLoginTabState extends State<_TampilanLoginTab> {
             const SizedBox(height: 12),
             Container(
               height: 200,
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(colors: [AppTheme.primaryDark, AppTheme.secondary]),
                 borderRadius: BorderRadius.circular(12),
-                image: _bgUrlCtrl.text.isNotEmpty
-                    ? DecorationImage(image: NetworkImage(_bgUrlCtrl.text), fit: BoxFit.cover, opacity: 0.3)
-                    : null,
               ),
-              child: Center(
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  _logoUrlCtrl.text.isNotEmpty
-                      ? Image.network(_logoUrlCtrl.text, width: 40, height: 40, color: Colors.white)
-                      : const Icon(Icons.school, size: 40, color: Colors.white),
-                  const SizedBox(height: 12),
-                  Text(_heroTitleCtrl.text.isNotEmpty ? _heroTitleCtrl.text : 'Judul',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                  const SizedBox(height: 4),
-                  Text(_heroSubtitleCtrl.text.isNotEmpty ? _heroSubtitleCtrl.text : 'Subtitle',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12)),
-                ]),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (_bgUrlCtrl.text.isNotEmpty)
+                    SafeNetworkImage(
+                      _bgUrlCtrl.text,
+                      fit: BoxFit.cover,
+                      errorWidget: const SizedBox.shrink(),
+                      placeholder: const SizedBox.shrink(),
+                    ),
+                  Center(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      _logoUrlCtrl.text.isNotEmpty
+                          ? SafeNetworkImage(
+                              _logoUrlCtrl.text,
+                              width: 40,
+                              height: 40,
+                              color: Colors.white,
+                              errorWidget: const Icon(Icons.school, size: 40, color: Colors.white),
+                            )
+                          : const Icon(Icons.school, size: 40, color: Colors.white),
+                      const SizedBox(height: 12),
+                      Text(_heroTitleCtrl.text.isNotEmpty ? _heroTitleCtrl.text : 'Judul',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                      const SizedBox(height: 4),
+                      Text(_heroSubtitleCtrl.text.isNotEmpty ? _heroSubtitleCtrl.text : 'Subtitle',
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12)),
+                    ]),
+                  ),
+                ],
               ),
             ),
           ]),
