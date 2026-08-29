@@ -379,13 +379,24 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
 
   // 1. Coba cari di users WHERE username = ? (admin/guru/WK/BK/KS)
   let result = await env.DB.prepare(
-    'SELECT id, username, password_hash, role, guru_id, is_active FROM users WHERE username = ?'
+    'SELECT id, username, password_hash, role, guru_id, siswa_id, is_active FROM users WHERE username = ?'
   ).bind(credential).first<{
     id: number; username: string; password_hash: string; role: Role;
-    guru_id: number | null; siswa_id: null; is_active: number;
+    guru_id: number | null; siswa_id: number | null; is_active: number;
   }>();
 
   let siswaInfo: { siswa_id: number; nama: string; nis: string; kelas_id: number | null; kelas_nama: string | null } | null = null;
+
+  // 1b. Jika user role siswa ditemukan via username, ambil data siswa dari relasi users.siswa_id
+  //     (agar siswa_id/nama terisi di JWT meski login pakai username = NIS)
+  if (result && result.role === 'siswa' && result.siswa_id) {
+    const s = await env.DB.prepare(
+      `SELECT s.id as siswa_id, s.nama, s.nis, s.kelas_id, k.nama as kelas_nama
+       FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id
+       WHERE s.id = ?`
+    ).bind(result.siswa_id).first<{ siswa_id: number; nama: string; nis: string; kelas_id: number | null; kelas_nama: string | null }>();
+    if (s) siswaInfo = s;
+  }
 
   // 2. Jika tidak ditemukan, coba cari sebagai NIS siswa
   if (!result) {
