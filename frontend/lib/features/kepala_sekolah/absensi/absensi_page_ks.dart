@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_utils.dart';
 import '../services/kepala_sekolah_service.dart';
 
 class AbsensiPageKS extends StatefulWidget {
@@ -103,7 +104,7 @@ class _TabGuruState extends State<_TabGuru> {
   @override
   void initState() {
     super.initState();
-    _tanggalCtl.text = DateTime.now().toIso8601String().substring(0, 10);
+    _tanggalCtl.text = AppUtils.wibDateString();
     _load();
   }
 
@@ -277,7 +278,7 @@ class _TabSiswaState extends State<_TabSiswa> {
   @override
   void initState() {
     super.initState();
-    _tanggalCtl.text = DateTime.now().toIso8601String().substring(0, 10);
+    _tanggalCtl.text = AppUtils.wibDateString();
     _loadKelas();
     _load();
   }

@@ -105,6 +105,21 @@ class AdminService {
     return res['data'] as Map<String, dynamic>;
   }
 
+  // ── Pengaturan Waktu Absensi Guru ──
+  static Future<Map<String, dynamic>> getPengaturanWaktuAbsensi() async {
+    final res = await ApiClient.get('/admin/absensi/pengaturan-waktu');
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  static Future<void> updatePengaturanWaktuAbsensi(Map<String, dynamic> body) async {
+    await ApiClient.put('/admin/absensi/pengaturan-waktu', body: body);
+  }
+
+  static Future<Map<String, dynamic>> getQRAbsensi() async {
+    final res = await ApiClient.get('/admin/absensi/qr');
+    return res['data'] as Map<String, dynamic>;
+  }
+
   // ── Nilai ──
   static Future<Map<String, dynamic>> getNilai({int page = 1, int perPage = 20, String? kelasId, String? mapelId, String? jenis, String? statusValidasi, String? semesterId}) async {
     final params = <String, String>{'page': '$page', 'per_page': '$perPage'};
@@ -218,6 +233,21 @@ class AdminService {
 
   static Future<void> updatePengaturanTampilan(Map<String, String> body) async {
     await ApiClient.put('/admin/pengaturan-tampilan', body: body);
+  }
+
+  /// Nama sekolah dari pengaturan (`hero_title`), fallback ke default bila gagal.
+  static Future<String> getNamaSekolah() async {
+    try {
+      final items = await getPengaturanTampilan();
+      for (final item in items) {
+        final m = item as Map<String, dynamic>;
+        if (m['key'] == 'hero_title') {
+          final v = (m['value'] ?? '').toString().trim();
+          if (v.isNotEmpty) return v;
+        }
+      }
+    } catch (_) {}
+    return 'MA Persis Garut';
   }
 
   // ── Guru Mapel Kelas (Gabungan Spesifik) ──

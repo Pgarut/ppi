@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../services/admin_service.dart';
 import '../services/dauroh_service.dart';
 
 class QrDaurohPage extends StatefulWidget {
@@ -16,14 +17,18 @@ class QrDaurohPage extends StatefulWidget {
 
 class _QrDaurohPageState extends State<QrDaurohPage> {
   String? _token;
+  String _namaSekolah = 'MA Persis Garut';
   bool _loading = true;
   String? _error;
+  Map<String, dynamic>? _waktu;
 
   @override
   void initState() {
     super.initState();
     _load();
   }
+
+  String _fmtJam(String? t) => (t != null && t.length >= 5) ? t.substring(0, 5) : '-';
 
   Future<void> _load() async {
     setState(() {
@@ -32,9 +37,19 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
     });
     try {
       final info = await DaurohService.getQRInfo();
+      Map<String, dynamic>? waktu;
+      try {
+        waktu = await DaurohService.getPengaturanWaktuAbsensi();
+      } catch (_) {}
+      String namaSekolah = 'MA Persis Garut';
+      try {
+        namaSekolah = await AdminService.getNamaSekolah();
+      } catch (_) {}
       if (mounted) {
         setState(() {
           _token = info['token']?.toString() ?? 'PPI_DAUROH_QR_2026';
+          _waktu = waktu;
+          _namaSekolah = namaSekolah;
           _loading = false;
         });
       }
@@ -87,7 +102,7 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
           pw.SizedBox(height: 4),
           pw.Center(
             child: pw.Text(
-              'MA Persis Garut',
+              _namaSekolah,
               style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey600),
             ),
           ),
@@ -224,9 +239,9 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
             dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: AppTheme.grey800),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'MA Persis Garut',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.grey600),
+          Text(
+            _namaSekolah,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.grey600),
           ),
         ],
       ),
@@ -259,8 +274,10 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
           _buildInstructionStep(1, 'Cetak QR Code ini (ukuran minimal 10x10 cm)'),
           _buildInstructionStep(2, 'Tempel QR Code di pintu masuk atau area yang mudah diakses'),
           _buildInstructionStep(3, 'Musyrifah buka aplikasi → tap icon "Scan" di navigation bar'),
-          _buildInstructionStep(4, 'Arahkan kamera ke QR Code untuk absen masuk (06:30-07:00 WIB)'),
-          _buildInstructionStep(5, 'Scan kembali untuk absen keluar (08:00-09:00 WIB)'),
+          _buildInstructionStep(4, 'Arahkan kamera ke QR Code untuk absen masuk '
+              '(${_fmtJam(_waktu?['jam_masuk_mulai']?.toString())}-${_fmtJam(_waktu?['jam_masuk_selesai']?.toString())} WIB)'),
+          _buildInstructionStep(5, 'Scan kembali untuk absen keluar '
+              '(${_fmtJam(_waktu?['jam_keluar_mulai']?.toString())}-${_fmtJam(_waktu?['jam_keluar_selesai']?.toString())} WIB)'),
         ],
       ),
     );

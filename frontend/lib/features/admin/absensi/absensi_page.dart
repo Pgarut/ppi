@@ -20,16 +20,19 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
   int _page = 1;
   int _totalPages = 1;
   String _filterTanggal = '';
+  String _filterTanggalSelesai = '';
   String _statusFilter = '';
   String? _kelasId;
   List<dynamic> _kelas = [];
   final TextEditingController _tanggalCtrl = TextEditingController();
+  final TextEditingController _tanggalSelesaiCtrl = TextEditingController();
+  final GlobalKey<_AuditAbsensiTabState> _auditKey = GlobalKey<_AuditAbsensiTabState>();
 
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 5, vsync: this);
-    _filterTanggal = DateTime.now().toIso8601String().substring(0, 10);
+    _filterTanggal = AppUtils.wibDateString();
     _tanggalCtrl.text = _filterTanggal;
     _loadKelas();
     _load();
@@ -44,7 +47,7 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
   }
 
   @override
-  void dispose() { _tabCtrl.dispose(); _tanggalCtrl.dispose(); super.dispose(); }
+  void dispose() { _tabCtrl.dispose(); _tanggalCtrl.dispose(); _tanggalSelesaiCtrl.dispose(); super.dispose(); }
 
   Future<void> _pickTanggal() async {
     final d = await showDatePicker(
@@ -56,8 +59,39 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
       setState(() {
         _filterTanggal = d.toIso8601String().substring(0, 10);
         _tanggalCtrl.text = _filterTanggal;
+        if (_filterTanggalSelesai.isNotEmpty && _filterTanggalSelesai.compareTo(_filterTanggal) < 0) {
+          _filterTanggalSelesai = '';
+          _tanggalSelesaiCtrl.clear();
+        }
       });
     }
+  }
+
+  Future<void> _pickTanggalSelesai() async {
+    final d = await showDatePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      initialDate: _filterTanggalSelesai.isNotEmpty ? DateTime.tryParse(_filterTanggalSelesai) : null,
+    );
+    if (d == null) return;
+    if (!mounted) return;
+    final selesai = d.toIso8601String().substring(0, 10);
+    if (_filterTanggal.isNotEmpty && selesai.compareTo(_filterTanggal) < 0) {
+      AppUtils.showError(context, 'Tanggal selesai harus sama atau setelah tanggal mulai');
+      return;
+    }
+    setState(() {
+      _filterTanggalSelesai = selesai;
+      _tanggalSelesaiCtrl.text = _filterTanggalSelesai;
+    });
+  }
+
+  void _clearTanggalSelesai() {
+    setState(() {
+      _filterTanggalSelesai = '';
+      _tanggalSelesaiCtrl.clear();
+    });
   }
 
   Future<void> _load() async {
@@ -65,12 +99,20 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
     try {
       final idx = _tabCtrl.index;
       if (idx == 2) {
-        _rekap = await AdminService.getRekapAbsensi(tanggalMulai: _filterTanggal);
+        _rekap = await AdminService.getRekapAbsensi(
+          tanggalMulai: _filterTanggal,
+          tanggalSelesai: _filterTanggalSelesai.isEmpty ? null : _filterTanggalSelesai,
+        );
       } else if (idx < 2) {
         final res = idx == 0
             ? await AdminService.getAbsensiGuru(page: _page, tanggal: _filterTanggal, status: _statusFilter)
             : await AdminService.getAbsensiSiswa(page: _page, tanggal: _filterTanggal, status: _statusFilter, kelasId: _kelasId);
-        _data = (res['items'] as List<dynamic>).cast<Map<String, dynamic>>();
+        final items = (res['items'] as List<dynamic>).cast<Map<String, dynamic>>();
+        if (_page == 1) {
+          _data = items;
+        } else {
+          _data.addAll(items);
+        }
         _totalPages = res['pagination']?['total_pages'] ?? 1;
       }
     } catch (_) { _data = []; _rekap = null; }
@@ -81,7 +123,14 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Absensi'), automaticallyImplyLeading: false,
-        bottom: TabBar(controller: _tabCtrl, onTap: (i) { _page = 1; _load(); }, isScrollable: true,
+        bottom: TabBar(controller: _tabCtrl, onTap: (i) {
+          _page = 1;
+          if (i <= 2) {
+            _load();
+          } else if (i == 4) {
+            _auditKey.currentState?.reload();
+          }
+        }, isScrollable: true,
           tabs: const [
             Tab(text: 'Asatidz', icon: Icon(Icons.person_outlined, size: 18)),
             Tab(text: 'Santri', icon: Icon(Icons.people_outlined, size: 18)),
@@ -92,11 +141,13 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
         ),
       ),
       body: IndexedStack(index: _tabCtrl.index, children: [
-        _buildMonitoringTab(true),
-        _buildMonitoringTab(false),
+        // Hanya tab monitoring yang sedang aktif yang dibangun, sehingga tab
+        // Asatidz & Santri tidak merender `_data` yang sama secara bersamaan.
+        _tabCtrl.index == 0 ? _buildMonitoringTab(true) : const SizedBox.shrink(),
+        _tabCtrl.index == 1 ? _buildMonitoringTab(false) : const SizedBox.shrink(),
         _buildRekapTab(),
         const _AnalisisAbsensiTab(),
-        const _AuditAbsensiTab(),
+        _AuditAbsensiTab(key: _auditKey),
       ]),
     );
   }
@@ -349,6 +400,21 @@ class _AbsensiPageState extends State<AbsensiPage> with SingleTickerProviderStat
             decoration: inputDecoration('Tanggal Mulai', Icons.date_range_outlined),
           ),
         ),
+        SizedBox(
+          width: 240,
+          child: TextField(
+            controller: _tanggalSelesaiCtrl,
+            readOnly: true,
+            onTap: _pickTanggalSelesai,
+            decoration: inputDecoration('Tanggal Selesai (opsional)', Icons.event_available_outlined, optional: true),
+          ),
+        ),
+        if (_filterTanggalSelesai.isNotEmpty)
+          IconButton(
+            tooltip: 'Hapus tanggal selesai',
+            onPressed: _clearTanggalSelesai,
+            icon: const Icon(Icons.close, size: 18),
+          ),
         FilledButton.icon(
           onPressed: () { _page = 1; _load(); },
           icon: const Icon(Icons.search, size: 18),
@@ -622,7 +688,7 @@ class _AnalisisAbsensiTabState extends State<_AnalisisAbsensiTab> {
 
 // ── Audit Absensi Tab ──
 class _AuditAbsensiTab extends StatefulWidget {
-  const _AuditAbsensiTab();
+  const _AuditAbsensiTab({super.key});
   @override
   State<_AuditAbsensiTab> createState() => _AuditAbsensiTabState();
 }
@@ -636,11 +702,22 @@ class _AuditAbsensiTabState extends State<_AuditAbsensiTab> {
   @override
   void initState() { super.initState(); _load(); }
 
+  void reload() {
+    if (_loading) return;
+    _page = 1;
+    _load();
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
       final res = await AdminService.getAuditAbsensi(page: _page);
-      _items = (res['items'] as List<dynamic>).cast<Map<String, dynamic>>();
+      final items = (res['items'] as List<dynamic>).cast<Map<String, dynamic>>();
+      if (_page == 1) {
+        _items = items;
+      } else {
+        _items.addAll(items);
+      }
       _totalPages = res['pagination']?['total_pages'] ?? 1;
     } catch (_) { _items = []; }
     if (mounted) setState(() => _loading = false);
@@ -651,6 +728,8 @@ class _AuditAbsensiTabState extends State<_AuditAbsensiTab> {
       case 'create': return Icons.add_circle_outline;
       case 'update': return Icons.edit_outlined;
       case 'delete': return Icons.delete_outline;
+      case 'scan_masuk': return Icons.login;
+      case 'scan_keluar': return Icons.logout;
       case 'hadir': case 'izin': case 'sakit': case 'alpa': return Icons.check_circle_outline;
       default: return Icons.info_outline;
     }
@@ -661,6 +740,8 @@ class _AuditAbsensiTabState extends State<_AuditAbsensiTab> {
       case 'create': return AppTheme.primary;
       case 'update': return AppTheme.orange;
       case 'delete': return AppTheme.error;
+      case 'scan_masuk': return AppTheme.primary;
+      case 'scan_keluar': return AppTheme.teal;
       case 'hadir': return AppTheme.primary;
       case 'izin': return AppTheme.orange;
       case 'sakit': return AppTheme.blue;

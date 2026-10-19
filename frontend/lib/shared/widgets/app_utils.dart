@@ -65,9 +65,15 @@ class AppUtils {
     return result ?? false;
   }
 
+  /// Tanggal hari ini menurut zona WIB (UTC+7), format `yyyy-MM-dd`.
+  /// Dipakai agar filter tanggal tidak bergeser pada perangkat non-WIB.
+  static String wibDateString([DateTime? when]) {
+    final wib = (when ?? DateTime.now()).toUtc().add(const Duration(hours: 7));
+    return '${wib.year}-${wib.month.toString().padLeft(2, '0')}-${wib.day.toString().padLeft(2, '0')}';
+  }
+
   /// Handle error from try-catch: show snackbar + log
-  static void handleError(BuildContext context, dynamic error, {String? message}) {
-    final msg = message ?? _formatError(error);
+  static void handleError(BuildContext context, dynamic error, {String? message}) {    final msg = message ?? _formatError(error);
     showError(context, msg);
     AppLogger.error('[Error] $msg');
   }

@@ -1,14 +1,162 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../config/env.dart';
+import '../services/admin_service.dart';
 
-class QrAbsensiPage extends StatelessWidget {
+class QrAbsensiPage extends StatefulWidget {
   const QrAbsensiPage({super.key});
 
   @override
+  State<QrAbsensiPage> createState() => _QrAbsensiPageState();
+}
+
+class _QrAbsensiPageState extends State<QrAbsensiPage> {
+  String? _token;
+  String _namaSekolah = 'MA Persis Garut';
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final info = await AdminService.getQRAbsensi();
+      String namaSekolah = 'MA Persis Garut';
+      try {
+        namaSekolah = await AdminService.getNamaSekolah();
+      } catch (_) {}
+      if (mounted) {
+        setState(() {
+          _token = info['token']?.toString() ?? Env.qrAbsensiToken;
+          _namaSekolah = namaSekolah;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _printQR() async {
+    final token = _token ?? Env.qrAbsensiToken;
+
+    final pdf = pw.Document();
+    final theme = pw.ThemeData.withFont(
+      base: await PdfGoogleFonts.nunitoRegular(),
+      bold: await PdfGoogleFonts.nunitoBold(),
+    );
+
+    final qrImage = await QrPainter(
+      data: token,
+      version: QrVersions.auto,
+      eyeStyle: const QrEyeStyle(
+        eyeShape: QrEyeShape.square,
+        color: Colors.black,
+      ),
+      dataModuleStyle: const QrDataModuleStyle(
+        dataModuleShape: QrDataModuleShape.square,
+        color: Colors.black,
+      ),
+    ).toImage(300);
+    final byteData = await qrImage.toByteData(format: ui.ImageByteFormat.png);
+    final qrBytes = byteData!.buffer.asUint8List();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        theme: theme,
+        margin: const pw.EdgeInsets.all(40),
+        build: (context) => [
+          pw.Center(
+            child: pw.Text(
+              'QR ABSENSI ASATIDZ',
+              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Center(
+            child: pw.Text(
+              _namaSekolah,
+              style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey600),
+            ),
+          ),
+          pw.SizedBox(height: 30),
+          pw.Center(
+            child: pw.Container(
+              width: 200,
+              height: 200,
+              child: pw.Image(pw.MemoryImage(qrBytes)),
+            ),
+          ),
+          pw.SizedBox(height: 20),
+          pw.Center(
+            child: pw.Text(
+              'Token: $token',
+              style: pw.TextStyle(
+                fontSize: 14,
+                fontWeight: pw.FontWeight.bold,
+                letterSpacing: 2,
+              ),
+            ),
+          ),
+          pw.SizedBox(height: 40),
+          pw.Center(
+            child: pw.Text(
+              'Pindai QR Code ini untuk absensi asatidz.\n'
+              'Scan pertama = Jam Masuk, scan kedua = Jam Keluar.',
+              textAlign: pw.TextAlign.center,
+              style: pw.TextStyle(fontSize: 11, color: PdfColors.grey500, fontStyle: pw.FontStyle.italic),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (format) => pdf.save());
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
+    }
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: AppTheme.error),
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: AppTheme.error)),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _load,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('QR Code Absensi'),
@@ -19,20 +167,13 @@ class QrAbsensiPage extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            // Header info
             _buildInfoCard(),
             const SizedBox(height: 24),
-
-            // QR Code
             _buildQrCode(),
             const SizedBox(height: 24),
-
-            // Instructions
             _buildInstructions(),
             const SizedBox(height: 24),
-
-            // Print button
-            _buildPrintButton(context),
+            _buildPrintButton(),
           ],
         ),
       ),
@@ -79,6 +220,7 @@ class QrAbsensiPage extends StatelessWidget {
   }
 
   Widget _buildQrCode() {
+    final token = _token ?? Env.qrAbsensiToken;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -105,7 +247,7 @@ class QrAbsensiPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           QrImageView(
-            data: Env.qrAbsensiToken,
+            data: token,
             version: QrVersions.auto,
             size: 250,
             backgroundColor: Colors.white,
@@ -119,9 +261,9 @@ class QrAbsensiPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'MA Persis Garut',
-            style: TextStyle(
+          Text(
+            _namaSekolah,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppTheme.grey600,
@@ -208,21 +350,12 @@ class QrAbsensiPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPrintButton(BuildContext context) {
+  Widget _buildPrintButton() {
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: ElevatedButton.icon(
-        onPressed: () {
-          // Copy token to clipboard for manual printing
-          Clipboard.setData(const ClipboardData(text: Env.qrAbsensiToken));
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Token QR telah disalin ke clipboard'),
-              backgroundColor: AppTheme.primary,
-            ),
-          );
-        },
+        onPressed: _printQR,
         icon: const Icon(Icons.print, color: Colors.white),
         label: const Text(
           'Cetak QR Code',

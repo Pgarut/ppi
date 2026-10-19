@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
-import '../../../config/env.dart';
 
 class ScanAbsenPage extends StatefulWidget {
   final VoidCallback? onBack;
@@ -20,12 +19,23 @@ class _ScanAbsenPageState extends State<ScanAbsenPage> {
   String? _resultMessage;
   bool? _isSuccess;
   DateTime? _lastScanTime;
+  Map<String, dynamic>? _waktu;
 
   @override
   void initState() {
     super.initState();
     _initCamera();
+    _loadWaktu();
   }
+
+  Future<void> _loadWaktu() async {
+    try {
+      final res = await ApiClient.get('/absensi/pengaturan-waktu');
+      if (mounted) setState(() => _waktu = res['data'] as Map<String, dynamic>);
+    } catch (_) {}
+  }
+
+  String _fmtJam(String? t) => (t != null && t.length >= 5) ? t.substring(0, 5) : '-';
 
   void _initCamera() {
     _cameraController = MobileScannerController(
@@ -48,8 +58,7 @@ class _ScanAbsenPageState extends State<ScanAbsenPage> {
     final barcode = capture.barcodes.first;
     final scannedValue = barcode.rawValue ?? '';
 
-    // Validasi QR token
-    if (scannedValue != Env.qrAbsensiToken) {
+    if (scannedValue.isEmpty) {
       _showResult(false, 'QR Code tidak valid');
       return;
     }
@@ -60,10 +69,10 @@ class _ScanAbsenPageState extends State<ScanAbsenPage> {
       if (diff.inSeconds < 3) return;
     }
 
-    _processScan();
+    _processScan(token: scannedValue);
   }
 
-  Future<void> _processScan() async {
+  Future<void> _processScan({required String token}) async {
     setState(() {
       _isProcessing = true;
       _hasResult = false;
@@ -72,7 +81,7 @@ class _ScanAbsenPageState extends State<ScanAbsenPage> {
     _lastScanTime = DateTime.now();
 
     try {
-      final response = await ApiClient.post('/absensi/scan', body: {'token': Env.qrAbsensiToken});
+      final response = await ApiClient.post('/absensi/scan', body: {'token': token});
       final data = response['data'] as Map<String, dynamic>;
       final action = data['action'] as String;
       final time = data['time'] as String;
@@ -265,6 +274,22 @@ class _ScanAbsenPageState extends State<ScanAbsenPage> {
                 fontSize: 13,
               ),
             ),
+            if (_waktu != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Jam masuk ${_fmtJam(_waktu!['jam_masuk_mulai']?.toString())}–${_fmtJam(_waktu!['jam_masuk_selesai']?.toString())}'
+                  '  •  Jam keluar ${_fmtJam(_waktu!['jam_keluar_mulai']?.toString())}–${_fmtJam(_waktu!['jam_keluar_selesai']?.toString())}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
           ],
         ),
       ),
