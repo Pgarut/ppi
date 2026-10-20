@@ -228,7 +228,18 @@
       if (!('serviceWorker' in navigator)) return;
       
       var swRegistered = false;
-      var reloadedForUpdate = false;
+      
+      // CATATAN PENTING (jangan diubah tanpa alasan kuat):
+      // Flutter sudah memanggil self.skipWaiting() sendiri di event 'install'
+      // pada flutter_service_worker.js, sehingga service worker baru SELALU
+      // langsung aktif. Karena itu:
+      //   - JANGAN mengirim postMessage('skipWaiting') lagi
+      //   - JANGAN memanggil window.location.reload() pada 'controllerchange'
+      // Kalau keduanya dilakukan, halaman akan memuat ulang terus-menerus
+      // (loading -> tampil -> loading -> tampil).
+      //
+      // Versi baru tetap terpakai tanpa reload, karena service worker baru
+      // sudah aktif dan permintaan berikutnya memakai berkas versi terbaru.
       
       function registerSW() {
         if (swRegistered) return;
@@ -238,39 +249,12 @@
           .then(function(registration) {
             console.log('Service Worker registered:', registration.scope);
             
-            // Check for updates periodically (every 30 min).
-            // Pembaruan TETAP dijalankan, tetapi tanpa notifikasi:
-            // begitu versi baru siap, halaman dimuat ulang sendiri
-            // (lihat listener 'updatefound' di bawah).
+            // Periksa versi baru berkala (tiap 30 menit). Ini hanya memicu
+            // pemasangan versi baru di latar belakang — tanpa notifikasi dan
+            // tanpa memuat ulang halaman.
             setInterval(function() {
               registration.update().catch(function() {});
             }, 30 * 60 * 1000);
-            
-            registration.addEventListener('updatefound', function() {
-              var newWorker = registration.installing;
-              if (!newWorker) return;
-              
-              newWorker.addEventListener('statechange', function() {
-                if (newWorker.state !== 'installed') return;
-                if (!navigator.serviceWorker.controller) return; // First load, not update
-                
-                // Minta service worker baru langsung mengambil alih...
-                try {
-                  newWorker.postMessage('skipWaiting');
-                } catch (e) {}
-                
-                // ...sehingga 'controllerchange' terpicu dan halaman
-                // dimuat ulang otomatis (tanpa pemberitahuan ke pengguna).
-              });
-            });
-            
-            // Listen for controlling worker change (actual update applied)
-            navigator.serviceWorker.addEventListener('controllerchange', function() {
-              // Muat ulang sekali saja agar versi baru langsung dipakai.
-              if (reloadedForUpdate) return;
-              reloadedForUpdate = true;
-              window.location.reload();
-            });
           })
           .catch(function(error) {
             console.log('SW registration failed:', error);
