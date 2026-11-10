@@ -21,6 +21,7 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
   bool? _isSuccess;
   DateTime? _lastScanTime;
   Map<String, dynamic>? _waktu;
+  Timer? _resultTimer;
 
   @override
   void initState() {
@@ -48,6 +49,7 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
 
   @override
   void dispose() {
+    _resultTimer?.cancel();
     _cameraController?.dispose();
     super.dispose();
   }
@@ -57,7 +59,7 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
     if (capture.barcodes.isEmpty) return;
 
     final barcode = capture.barcodes.first;
-    final scannedValue = barcode.rawValue ?? '';
+    final scannedValue = (barcode.rawValue ?? '').trim();
 
     if (scannedValue.isEmpty) {
       _showResult(false, 'QR Code tidak valid');
@@ -73,6 +75,7 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
   }
 
   Future<void> _processScan({required String token, int? jadwalId}) async {
+    if (!mounted) return;
     setState(() {
       _isProcessing = true;
       _hasResult = false;
@@ -82,6 +85,7 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
 
     try {
       final data = await MusyrifahService.scanAbsensi(token: token, jadwalId: jadwalId);
+      if (!mounted) return;
 
       if (data['action'] == 'pilih_jadwal') {
         final options = (data['jadwal'] as List? ?? []).cast<Map<String, dynamic>>();
@@ -94,6 +98,7 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
           return;
         }
         final selected = await _pickJadwal(options: options);
+        if (!mounted) return;
         if (selected == null) return;
         await _processScan(token: token, jadwalId: selected);
         return;
@@ -113,7 +118,7 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
     } on ApiException catch (e) {
       _showResult(false, e.message);
     } catch (e) {
-      _showResult(false, 'Gagal mengirim data absensi');
+      _showResult(false, 'Gagal mengirim data absensi: ${e.toString().replaceFirst('Exception: ', '')}');
     }
   }
 
@@ -152,6 +157,8 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
   }
 
   void _showResult(bool success, String message) {
+    if (!mounted) return;
+    _resultTimer?.cancel();
     setState(() {
       _hasResult = true;
       _isSuccess = success;
@@ -159,7 +166,7 @@ class _ScanQrMusyrifahPageState extends State<ScanQrMusyrifahPage> {
       _isProcessing = false;
     });
 
-    Future.delayed(const Duration(seconds: 4), () {
+    _resultTimer = Timer(const Duration(seconds: 4), () {
       if (mounted) {
         setState(() {
           _hasResult = false;

@@ -282,8 +282,15 @@ async function handleAbsensiMusyrifah(
 }
 
 async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayload) {
-  const body = await request.json() as { token?: string; jadwal_id?: number };
-  const { token, jadwal_id } = body;
+  const body = await request.json().catch(() => null) as { token?: unknown; jadwal_id?: unknown } | null;
+  if (!body) return error('Body JSON tidak valid', 400);
+
+  const token = typeof body.token === 'string' ? body.token : '';
+  const jadwalIdRaw = body.jadwal_id;
+  const jadwalId = jadwalIdRaw == null || jadwalIdRaw === '' ? undefined : Number(jadwalIdRaw);
+  if (jadwalId !== undefined && (!Number.isInteger(jadwalId) || jadwalId <= 0)) {
+    return error('jadwal_id tidak valid', 400);
+  }
 
   const QR_TOKEN = env.QR_DAUROH_TOKEN || 'PPI_DAUROH_QR_2026';
   if (token !== QR_TOKEN) {
@@ -323,9 +330,9 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
   let jadwalFilter = '';
   const jadwalBindings: unknown[] = [musyrifah.id, musyrifah.id, hariIni];
   
-  if (jadwal_id) {
+  if (jadwalId !== undefined) {
     jadwalFilter = ' AND j.id = ?';
-    jadwalBindings.push(jadwal_id);
+    jadwalBindings.push(jadwalId);
   }
 
   const jadwalList = await env.DB.prepare(`
@@ -339,11 +346,16 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
   `).bind(...jadwalBindings).all<{ id: number; nama_program: string; hari: string; jam_mulai: string; jam_selesai: string }>();
 
   if (jadwalList.results.length === 0) {
-    return error(`Tidak ada jadwal dauroh aktif hari ini (${hariIni})`, 400);
+    return error(
+      jadwalId !== undefined
+        ? 'Jadwal yang dipilih tidak ditemukan atau bukan jadwal Anda hari ini'
+        : `Tidak ada jadwal dauroh aktif hari ini (${hariIni})`,
+      400
+    );
   }
 
   let jadwal: { id: number; nama_program: string; hari: string; jam_mulai: string; jam_selesai: string };
-  if (jadwal_id) {
+  if (jadwalId !== undefined) {
     jadwal = jadwalList.results[0];
   } else if (jadwalList.results.length > 1) {
     // Musyrifah punya >1 jadwal aktif hari ini — minta memilih jadwal
@@ -364,8 +376,8 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
 
   // Cek absensi hari ini (check-in / check-out)
   const existing = await env.DB.prepare(
-    'SELECT id, waktu_masuk, waktu_keluar FROM dauroh_absensi_musyrifah WHERE musyrifah_id = ? AND jadwal_id = ? AND tanggal = ?'
-  ).bind(musyrifah.id, jadwal.id, today).first<{ id: number; waktu_masuk: string | null; waktu_keluar: string | null }>();
+    'SELECT id, waktu_masuk, waktu_keluar, status FROM dauroh_absensi_musyrifah WHERE musyrifah_id = ? AND jadwal_id = ? AND tanggal = ?'
+  ).bind(musyrifah.id, jadwal.id, today).first<{ id: number; waktu_masuk: string | null; waktu_keluar: string | null; status: string }>();
 
   const jadwalRes = {
     program: jadwal.nama_program,
@@ -375,31 +387,62 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
   };
 
   if (inJamMasuk) {
+    // Baris sudah ada tetapi jam masuk masih kosong (mis. hasil koreksi admin).
+    if (existing && !existing.waktu_masuk) {
+      if (existing.status !== 'hadir') {
+        return error(
+          `Absensi hari ini sudah ditandai "${existing.status}" oleh admin. Hubungi admin bila Anda sebenarnya hadir.`,
+          400
+        );
+      }
+      await env.DB.prepare(
+        'UPDATE dauroh_absensi_musyrifah SET waktu_masuk = ?, waktu_scan = ? WHERE id = ?'
+      ).bind(currentTime, currentTime, existing.id).run();
+
+      return success({
+        action: 'absen_masuk',
+        time: currentTime,
+        jadwal: jadwalRes,
+        message: `Absensi masuk tercatat pukul ${currentTime} WIB`,
+      });
+    }
+
     if (!existing) {
-      // Scan masuk → absen masuk
+      // Insert idempoten: dua scan hampir bersamaan tidak memicu error UNIQUE.
       await env.DB.prepare(`
         INSERT INTO dauroh_absensi_musyrifah (musyrifah_id, jadwal_id, tanggal, waktu_scan, waktu_masuk, status)
         VALUES (?, ?, ?, ?, ?, 'hadir')
+        ON CONFLICT(musyrifah_id, jadwal_id, tanggal) DO NOTHING
       `).bind(musyrifah.id, jadwal.id, today, currentTime, currentTime).run();
 
       return success({
         action: 'absen_masuk',
         time: currentTime,
         jadwal: jadwalRes,
-        message: `Absensi masuk tercatat pukul ${currentTime}`,
+        message: `Absensi masuk tercatat pukul ${currentTime} WIB`,
       });
     }
-    if (existing.waktu_masuk && !existing.waktu_keluar) {
-      return error(`Jam masuk sudah tercatat. Jam keluar dibuka pukul ${keluarMulai.slice(0, 5)} WIB.`, 400);
+
+    if (!existing.waktu_keluar) {
+      return error(
+        `Jam masuk sudah tercatat pukul ${existing.waktu_masuk!.slice(0, 5)} WIB. Jam keluar dibuka pukul ${keluarMulai.slice(0, 5)} WIB.`,
+        400
+      );
     }
     return error('Anda sudah melakukan absensi masuk dan keluar hari ini', 400);
   }
 
   // inJamKeluar
   if (!existing || !existing.waktu_masuk) {
+    if (existing && existing.status !== 'hadir') {
+      return error(
+        `Absensi hari ini sudah ditandai "${existing.status}" oleh admin. Hubungi admin bila Anda sebenarnya hadir.`,
+        400
+      );
+    }
     return error('Belum ada absen masuk hari ini', 400);
   }
-  if (existing.waktu_masuk && !existing.waktu_keluar) {
+  if (!existing.waktu_keluar) {
     // Scan keluar → absen keluar
     await env.DB.prepare(
       'UPDATE dauroh_absensi_musyrifah SET waktu_keluar = ? WHERE id = ?'
@@ -409,7 +452,7 @@ async function scanAbsensiMusyrifah(request: Request, env: Env, user: UserPayloa
       action: 'absen_keluar',
       time: currentTime,
       jadwal: jadwalRes,
-      message: `Absensi keluar tercatat pukul ${currentTime}`,
+      message: `Absensi keluar tercatat pukul ${currentTime} WIB`,
     });
   }
   return error('Anda sudah melakukan absensi masuk dan keluar hari ini', 400);

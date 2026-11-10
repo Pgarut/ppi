@@ -56,7 +56,7 @@ class _ScanAbsenPageState extends State<ScanAbsenPage> {
     if (capture.barcodes.isEmpty) return;
 
     final barcode = capture.barcodes.first;
-    final scannedValue = barcode.rawValue ?? '';
+    final scannedValue = (barcode.rawValue ?? '').trim();
 
     if (scannedValue.isEmpty) {
       _showResult(false, 'QR Code tidak valid');

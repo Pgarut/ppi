@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/app_utils.dart';
 import '../../services/admin_service.dart';
 import '../services/dauroh_service.dart';
 
@@ -16,9 +17,12 @@ class QrDaurohPage extends StatefulWidget {
 }
 
 class _QrDaurohPageState extends State<QrDaurohPage> {
+  static const _fallbackToken = 'PPI_DAUROH_QR_2026';
+
   String? _token;
   String _namaSekolah = 'MA Persis Garut';
   bool _loading = true;
+  bool _printing = false;
   String? _error;
   Map<String, dynamic>? _waktu;
 
@@ -47,7 +51,7 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
       } catch (_) {}
       if (mounted) {
         setState(() {
-          _token = info['token']?.toString() ?? 'PPI_DAUROH_QR_2026';
+          _token = info['token']?.toString() ?? _fallbackToken;
           _waktu = waktu;
           _namaSekolah = namaSekolah;
           _loading = false;
@@ -64,79 +68,93 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
   }
 
   Future<void> _printQR() async {
-    final token = _token ?? 'PPI_DAUROH_QR_2026';
+    final token = _token ?? _fallbackToken;
 
-    final pdf = pw.Document();
-    final theme = pw.ThemeData.withFont(
-      base: await PdfGoogleFonts.nunitoRegular(),
-      bold: await PdfGoogleFonts.nunitoBold(),
-    );
+    setState(() => _printing = true);
+    try {
+      final pdf = pw.Document();
+      final theme = pw.ThemeData.withFont(
+        base: await PdfGoogleFonts.nunitoRegular(),
+        bold: await PdfGoogleFonts.nunitoBold(),
+      );
 
-    final qrImage = await QrPainter(
-      data: token,
-      version: QrVersions.auto,
-      eyeStyle: const QrEyeStyle(
-        eyeShape: QrEyeShape.square,
-        color: Colors.black,
-      ),
-      dataModuleStyle: const QrDataModuleStyle(
-        dataModuleShape: QrDataModuleShape.square,
-        color: Colors.black,
-      ),
-    ).toImage(300);
-    final byteData = await qrImage.toByteData(format: ui.ImageByteFormat.png);
-    final qrBytes = byteData!.buffer.asUint8List();
+      final qrImage = await QrPainter(
+        data: token,
+        version: QrVersions.auto,
+        eyeStyle: const QrEyeStyle(
+          eyeShape: QrEyeShape.square,
+          color: Colors.black,
+        ),
+        dataModuleStyle: const QrDataModuleStyle(
+          dataModuleShape: QrDataModuleShape.square,
+          color: Colors.black,
+        ),
+      ).toImage(300);
+      final byteData = await qrImage.toByteData(format: ui.ImageByteFormat.png);
+      final qrBytes = byteData!.buffer.asUint8List();
 
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        theme: theme,
-        margin: const pw.EdgeInsets.all(40),
-        build: (context) => [
-          pw.Center(
-            child: pw.Text(
-              'ABSENSI AT-TA\'WID',
-              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
-            ),
-          ),
-          pw.SizedBox(height: 4),
-          pw.Center(
-            child: pw.Text(
-              _namaSekolah,
-              style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey600),
-            ),
-          ),
-          pw.SizedBox(height: 30),
-          pw.Center(
-            child: pw.Container(
-              width: 200,
-              height: 200,
-              child: pw.Image(pw.MemoryImage(qrBytes)),
-            ),
-          ),
-          pw.SizedBox(height: 20),
-          pw.Center(
-            child: pw.Text(
-              'Token: $token',
-              style: pw.TextStyle(
-                fontSize: 14,
-                fontWeight: pw.FontWeight.bold,
-                letterSpacing: 2,
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          theme: theme,
+          margin: const pw.EdgeInsets.all(40),
+          build: (context) => [
+            pw.Center(
+              child: pw.Text(
+                'ABSENSI AT-TA\'WID',
+                style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
               ),
             ),
-          ),
-          pw.SizedBox(height: 40),
-          pw.Center(
-            child: pw.Text(
-              'Pindai QR Code ini untuk absensi musyrifah.',
-              style: pw.TextStyle(fontSize: 11, color: PdfColors.grey500, fontStyle: pw.FontStyle.italic),
+            pw.SizedBox(height: 4),
+            pw.Center(
+              child: pw.Text(
+                _namaSekolah,
+                style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey600),
+              ),
             ),
-          ),
-        ],
-      ),
-    );
+            pw.SizedBox(height: 30),
+            pw.Center(
+              child: pw.Container(
+                width: 200,
+                height: 200,
+                child: pw.Image(pw.MemoryImage(qrBytes)),
+              ),
+            ),
+            pw.SizedBox(height: 20),
+            pw.Center(
+              child: pw.Text(
+                'Token: $token',
+                style: pw.TextStyle(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 40),
+            pw.Center(
+              child: pw.Text(
+                'Pindai QR Code ini untuk absensi musyrifah.',
+                style: pw.TextStyle(fontSize: 11, color: PdfColors.grey500, fontStyle: pw.FontStyle.italic),
+              ),
+            ),
+          ],
+        ),
+      );
 
-    await Printing.layoutPdf(onLayout: (format) => pdf.save());
+      await Printing.layoutPdf(onLayout: (format) => pdf.save());
+    } catch (e) {
+      if (mounted) {
+        final detail = e.toString().replaceFirst('Exception: ', '');
+        AppUtils.handleError(
+          context,
+          e,
+          message: 'Gagal mencetak QR: $detail',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _printing = false);
+    }
   }
 
   @override
@@ -209,7 +227,7 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
   }
 
   Widget _buildQrCode() {
-    final token = _token ?? 'PPI_DAUROH_QR_2026';
+    final token = _token ?? _fallbackToken;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -317,14 +335,21 @@ class _QrDaurohPageState extends State<QrDaurohPage> {
       width: double.infinity,
       height: 56,
       child: ElevatedButton.icon(
-        onPressed: _printQR,
-        icon: const Icon(Icons.print, color: Colors.white),
-        label: const Text(
-          'Cetak QR Code',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+        onPressed: _printing ? null : _printQR,
+        icon: _printing
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.print, color: Colors.white),
+        label: Text(
+          _printing ? 'Menyiapkan...' : 'Cetak QR Code',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.primary,
+          disabledBackgroundColor: AppTheme.grey400,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),

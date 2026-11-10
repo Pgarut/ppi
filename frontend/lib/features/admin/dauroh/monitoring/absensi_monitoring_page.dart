@@ -35,6 +35,16 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
     return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
+  /// 'HH:MM:SS' -> 'HH:MM' (atau '-' bila kosong).
+  String _fmtJam(dynamic value) {
+    final v = value?.toString() ?? '';
+    if (v.isEmpty) return '-';
+    return v.length >= 5 ? v.substring(0, 5) : v;
+  }
+
+  String _errText(Object e) =>
+      e.toString().replaceFirst('ApiException: ', '').replaceFirst('Exception: ', '');
+
   @override
   void dispose() {
     _tanggalCtrl.dispose();
@@ -72,7 +82,7 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = _errText(e);
           _loading = false;
         });
       }
@@ -116,11 +126,12 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
             controller: _tanggalCtrl,
             readOnly: true,
             onTap: () async {
+              final wibToday = DateTime.tryParse(_wibDate()) ?? DateTime.now();
               final date = await showDatePicker(
                 context: context,
-                initialDate: DateTime.tryParse(_tanggal) ?? DateTime.now(),
+                initialDate: DateTime.tryParse(_tanggal) ?? wibToday,
                 firstDate: DateTime(2024),
-                lastDate: DateTime.now(),
+                lastDate: wibToday,
               );
               if (date != null) {
                 setState(() {
@@ -242,9 +253,9 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
               DataCell(Text(row['jenis_kelamin']?.toString() == 'L' ? 'L' : 'P')),
               DataCell(Text(row['nama_program']?.toString() ?? '-')),
               DataCell(Text(row['hari']?.toString() ?? '-')),
-              DataCell(Text('${row['jam_mulai'] ?? '-'} - ${row['jam_selesai'] ?? '-'}')),
-              DataCell(Text(row['waktu_masuk']?.toString() ?? '-')),
-              DataCell(Text(row['waktu_keluar']?.toString() ?? '-')),
+              DataCell(Text('${_fmtJam(row['jam_mulai'])} - ${_fmtJam(row['jam_selesai'])}')),
+              DataCell(Text(_fmtJam(row['waktu_masuk']))),
+              DataCell(Text(_fmtJam(row['waktu_keluar']))),
               DataCell(
                 belumAbsen
                     ? const StatusBadge(label: 'Belum Absen', color: AppTheme.grey400)
@@ -338,15 +349,13 @@ class _AbsensiMonitoringPageState extends State<AbsensiMonitoringPage> {
                 if (waktuKeluarCtrl.text.trim().isNotEmpty) body['waktu_keluar'] = waktuKeluarCtrl.text.trim();
                 body['status'] = status;
 
-                if (body['waktu_masuk'] == null && body['waktu_keluar'] == null) {
-                  AppUtils.showError(ctx, 'Isi minimal salah satu jam (masuk/keluar)');
-                  return;
-                }
                 try {
                   await DaurohService.updateAbsensiMusyrifah(id, body);
                   if (ctx.mounted) Navigator.pop(ctx, true);
                 } catch (e) {
-                  if (ctx.mounted) AppUtils.handleError(ctx, e, message: 'Gagal menyimpan koreksi');
+                  if (ctx.mounted) {
+                    AppUtils.handleError(ctx, e, message: 'Gagal menyimpan koreksi: ${_errText(e)}');
+                  }
                 }
               },
               child: const Text('Simpan'),

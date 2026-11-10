@@ -21,9 +21,23 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
   @override
   void initState() {
     super.initState();
-    _bulan = '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}';
+    final now = _wibNow;
+    _bulan = '${now.year}-${now.month.toString().padLeft(2, '0')}';
     _load();
   }
+
+  /// Waktu WIB, agar filter bulan tidak bergeser bila zona perangkat berbeda.
+  DateTime get _wibNow => DateTime.now().toUtc().add(const Duration(hours: 7));
+
+  /// 'HH:MM:SS' -> 'HH:MM' (atau '-' bila kosong).
+  String _fmtJam(dynamic value) {
+    final v = value?.toString() ?? '';
+    if (v.isEmpty) return '-';
+    return v.length >= 5 ? v.substring(0, 5) : v;
+  }
+
+  String _errText(Object e) =>
+      e.toString().replaceFirst('ApiException: ', '').replaceFirst('Exception: ', '');
 
   Future<void> _load() async {
     setState(() {
@@ -49,7 +63,7 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = _errText(e);
           _loading = false;
         });
       }
@@ -111,8 +125,8 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
   }
 
   Widget _buildAbsensiCard(Map<String, dynamic> absensi) {
-    final waktuMasuk = absensi['waktu_masuk']?.toString() ?? '-';
-    final waktuKeluar = absensi['waktu_keluar']?.toString() ?? '-';
+    final waktuMasuk = _fmtJam(absensi['waktu_masuk']);
+    final waktuKeluar = _fmtJam(absensi['waktu_keluar']);
     final status = absensi['status']?.toString() ?? 'hadir';
     final hari = absensi['hari']?.toString() ?? '-';
     final jamMulai = absensi['jam_mulai']?.toString() ?? '';
@@ -193,7 +207,7 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
           _load();
         },
         itemBuilder: (_) {
-          final now = DateTime.now();
+          final now = _wibNow;
           final items = <PopupMenuEntry<String>>[];
           for (int i = 0; i < 6; i++) {
             final date = DateTime(now.year, now.month - i, 1);
